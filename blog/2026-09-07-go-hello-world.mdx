@@ -1,0 +1,36 @@
+---
+slug: go-hello-world
+title: "Go by Example: Hello World"
+authors: [lucabelezal]
+tags: [go, engenharia-de-software]
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+Primeiro programa em Go — imprime “hello world” e mostra como rodar e compilar.
+
+{/* truncate */}
+
+<GoExample title="Hello World" playHash="NeviD0awXjt" next={{title: "Values", href: "/go/values"}}>
+
+<GoExampleRow docs={<>Nosso primeiro programa imprime o clássico “hello world”. Aqui está o código completo.</>} code={`package main
+
+import "fmt"
+
+func main() {`} />
+
+<GoExampleRow docs={<></>} code={`    fmt.Println("hello world")
+}`} />
+
+<GoExampleRow docs={<>Para rodar, salve em `hello-world.go` e use `go run`.</>} code={`$ go run hello-world.go
+hello world`} />
+
+<GoExampleRow docs={<>Compilando em binário:</>} code={`$ go build hello-world.go
+$ ls
+hello-world    hello-world.go
+$ ./hello-world
+hello world`} />
+
+</GoExample>
+
+> Também disponível como doc em [/go/hello-world](/go/hello-world) — mesmo lado a lado + link para [go.dev/play](https://go.dev/play/).

@@ -1,0 +1,34 @@
+---
+slug: go-values
+title: "Go by Example: Values"
+authors: [lucabelezal]
+tags: [go, engenharia-de-software]
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+Tipos básicos de valores em Go — strings, números e booleans.
+
+{/* truncate */}
+
+<GoExample title="Values" playHash="YnVS3LZr8pk" next={{title: "Variables", href: "/go/variables"}}>
+
+<GoExampleRow docs={<>Go tem vários tipos incluindo strings, inteiros, floats e booleans.</>} code={`package main
+
+import "fmt"
+
+func main() {`} />
+
+<GoExampleRow docs={<>Strings concatenadas com `+`.</>} code={`    fmt.Println("go" + "lang")`} />
+
+<GoExampleRow docs={<>Inteiros e floats.</>} code={`    fmt.Println("1+1 =", 1+1)
+    fmt.Println("7.0/3.0 =", 7.0/3.0)`} />
+
+<GoExampleRow docs={<>Booleans.</>} code={`    fmt.Println(true && false)
+    fmt.Println(true || false)
+    fmt.Println(!true)
+}`} />
+
+</GoExample>
+
+> Doc espelhado em [/go/values](/go/values).
