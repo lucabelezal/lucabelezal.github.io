@@ -82,4 +82,10 @@
     margin-bottom: 16px;
     padding-left: 0;
   }
+
+  .code :global(.prism-code) {
+    font-size: 12px !important;
+    line-height: 1.65 !important;
+    padding: 12px 10px !important;
+  }
 }

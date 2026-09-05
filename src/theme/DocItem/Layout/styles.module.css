@@ -1,3 +1,12 @@
+.docItemRow {
+  align-items: flex-start;
+}
+
+.docItemAside {
+  position: sticky;
+  top: calc(var(--ifm-navbar-height) + 1rem);
+}
+
 .docItemContainer header + *,
 .docItemContainer article > *:first-child {
   margin-top: 0;
@@ -6,5 +15,23 @@
 @media (min-width: 997px) {
   .docItemCol {
     max-width: 75% !important;
+  }
+}
+
+@media (max-width: 996px) {
+  .docItemRow {
+    display: block;
+  }
+
+  .docItemCol {
+    width: 100%;
+  }
+
+  .docItemAside {
+    display: none;
+  }
+
+  .docItemContainer {
+    width: 100%;
   }
 }

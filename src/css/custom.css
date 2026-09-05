@@ -73,6 +73,7 @@ code {
 .prism-code {
   font-family: var(--ifm-font-family-monospace);
   line-height: var(--ifm-pre-line-height);
+  overflow-x: auto;
 }
 
 /* ── Seções de post (O que vamos aprender / Pré-reqs / Resumo / etc.) ── */
@@ -198,6 +199,87 @@ code {
   /* Remove limite estreito da coluna principal quando em docs */
   .container {
     max-width: 1680px !important;
+  }
+}
+
+/* Mobile reading defaults: preserve content width for code, not prose. */
+@media (max-width: 996px) {
+  .theme-doc-markdown,
+  .blog-wrapper article {
+    font-size: 1rem;
+    line-height: 1.78;
+  }
+
+  .theme-doc-markdown p,
+  .blog-wrapper article p {
+    margin-bottom: 1.15rem;
+  }
+
+  .theme-doc-markdown h2,
+  .blog-wrapper article h2 {
+    margin-top: 2rem;
+    margin-bottom: 0.8rem;
+  }
+
+  .theme-doc-markdown h3,
+  .blog-wrapper article h3 {
+    margin-top: 1.6rem;
+    margin-bottom: 0.65rem;
+  }
+
+  .theme-code-block,
+  .theme-doc-markdown pre,
+  .blog-wrapper article pre {
+    max-width: 100%;
+    margin: 1.25rem 0;
+  }
+
+  .theme-code-block .prism-code,
+  .theme-doc-markdown pre code,
+  .blog-wrapper article pre code {
+    font-size: 0.78rem;
+    line-height: 1.7;
+  }
+
+  .blogSection {
+    padding: 0.9rem 1rem;
+    margin: 1.35rem 0;
+  }
+
+  .blogSection__body ul,
+  .blogSection__body ol {
+    padding-left: 1.15rem;
+  }
+
+  .skillsGained__list {
+    gap: 0.45rem;
+  }
+
+  .skillsGained__list li {
+    padding: 0.3rem 0.65rem;
+  }
+
+  .seriesNav {
+    padding: 0.85rem 1rem;
+    margin-top: 1.5rem;
+  }
+
+  .seriesNav__links {
+    display: block;
+  }
+
+  .seriesNav__item {
+    min-height: 2.75rem;
+    padding: 0.65rem 0;
+    font-size: 0.95rem;
+  }
+
+  .seriesNav__item + .seriesNav__item {
+    border-top: 1px solid var(--ifm-color-emphasis-200);
+  }
+
+  .seriesNav__item--next {
+    text-align: left;
   }
 }
 .prism-code {
