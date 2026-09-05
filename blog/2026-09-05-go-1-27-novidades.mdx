@@ -1,0 +1,206 @@
+---
+slug: go-1-27-novidades
+title: "Go 1.27: novidades que importam para backend"
+authors: [lucabelezal]
+tags: [go, backend, engenharia-de-software]
+description: As principais novidades do Go 1.27 e o que elas mudam para quem constrói serviços backend.
+---
+
+O Go 1.27 trouxe mudanças na linguagem, na biblioteca padrão, no runtime e nas ferramentas. Para quem está aprendendo backend, a pergunta importante não é apenas o que foi lançado, mas o que muda a forma de escrever e operar um serviço.
+
+Este post faz essa triagem: mostra as novidades relevantes, explica o impacto prático e separa o que já pode ser adotado do que ainda merece cautela.
+
+{/* truncate */}
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+<WhatYouWillLearn>
+
+- entender as novidades mais importantes do Go 1.27
+- avaliar métodos genéricos, `encoding/json/v2` e UUIDs
+- investigar vazamentos de goroutines
+- distinguir recursos estáveis de recursos experimentais
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- fundamentos de Go, packages e módulos
+- noções de APIs HTTP e concorrência
+- Go 1.27 para executar os exemplos deste artigo
+
+</Prerequisites>
+
+## 1. Contexto
+
+O Go 1.27 foi lançado em agosto de 2026. A versão mantém a compatibilidade da linguagem, mas adiciona recursos que afetam a expressividade do código, o tratamento de dados e o diagnóstico em produção.
+
+As [notas oficiais do Go 1.27](https://go.dev/doc/go1.27) também listam mudanças de baixo nível, como alocação de memória, ML-DSA e SIMD. Elas são importantes para conhecer, mas não têm a mesma prioridade para quem está construindo sua primeira API.
+
+## 2. O problema
+
+Uma nova versão pode causar dois erros: ignorar melhorias úteis ou adotar tudo imediatamente. Uma atualização responsável começa pelo problema do serviço.
+
+Um backend pode continuar usando `encoding/json` sem problemas, mas se beneficiar de conhecer `encoding/json/v2`. Da mesma forma, detectar uma goroutine presa em produção costuma ser mais valioso do que usar uma API experimental de SIMD.
+
+## 3. Modelo mental
+
+| Grupo | Exemplos | Decisão |
+| --- | --- | --- |
+| Linguagem e biblioteca | métodos genéricos, `uuid`, `encoding/json/v2` | aprender e avaliar para uso direto |
+| Ferramentas e diagnóstico | `go doc -ex`, `go fix`, `goroutineleak` | incorporar ao fluxo de trabalho |
+| Experimentais | SIMD e APIs de baixo nível | medir antes de adotar |
+
+“Novo” não significa “obrigatório”. A melhor novidade é a que reduz complexidade ou melhora a capacidade de investigar um problema.
+
+## 4. Implementação
+
+### Métodos genéricos
+
+Antes do Go 1.27, funções podiam declarar parâmetros de tipo, mas métodos não podiam declarar seus próprios parâmetros. Agora uma operação genérica pode ficar próxima do tipo ao qual pertence:
+
+```go title="generic-method.go"
+package main
+
+import "fmt"
+
+type Box struct {
+    value int
+}
+
+func (b Box) Map[T any](transform func(int) T) T {
+    return transform(b.value)
+}
+
+func main() {
+    box := Box{value: 42}
+    text := box.Map(func(value int) string {
+        return fmt.Sprintf("value=%d", value)
+    })
+    fmt.Println(text)
+}
+```
+
+O ganho é de organização de API. Nem toda função precisa virar método genérico; se a transformação é independente, uma função no package pode ser mais clara.
+
+### `encoding/json/v2`
+
+O pacote oferece uma evolução mais configurável para contratos JSON. A API continua familiar, mas a migração deve começar em um boundary pequeno e coberto por testes:
+
+```go title="json-v2.go"
+package main
+
+import (
+    "bytes"
+    "fmt"
+
+    "encoding/json/v2"
+)
+
+type User struct {
+    ID    string `json:"id"`
+    Email string `json:"email"`
+}
+
+func main() {
+    input := []byte(`{"id":"u_123","email":"dev@example.com"}`)
+    var user User
+    if err := json.Unmarshal(input, &user); err != nil {
+        panic(err)
+    }
+
+    var output bytes.Buffer
+    if err := json.MarshalWrite(&output, user); err != nil {
+        panic(err)
+    }
+    fmt.Println(output.String())
+}
+```
+
+O ponto principal para backend é tratar JSON como contrato: nomes, campos desconhecidos, valores nulos e compatibilidade precisam ser testados.
+
+### UUID na biblioteca padrão
+
+O novo pacote `uuid` reduz a necessidade de uma dependência externa para geração e parsing:
+
+```go title="uuid.go"
+package main
+
+import (
+    "fmt"
+    "uuid"
+)
+
+func main() {
+    id := uuid.New()
+    parsed, err := uuid.Parse(id.String())
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(parsed)
+}
+```
+
+UUID resolve geração e validação. Não resolve a escolha de chave, índice, ordenação ou estratégia de persistência.
+
+### Detectando vazamento de goroutines
+
+O runtime passou a oferecer o perfil `goroutineleak`, que ajuda a encontrar goroutines bloqueadas e sem possibilidade de desbloqueio. Com profiling HTTP habilitado:
+
+```bash title="Terminal"
+curl http://localhost:6060/debug/pprof/goroutineleak?debug=2
+```
+
+Esse perfil não substitui `go test -race` nem uma revisão do ciclo de vida. Ele fornece uma evidência para investigar quem criou a goroutine e como ela deveria terminar.
+
+### Ferramentas
+
+O `go doc` ganhou `-ex` para mostrar exemplos executáveis de um package ou símbolo:
+
+```bash title="Terminal"
+go doc -ex bytes.Buffer
+```
+
+O `go fix` recebeu modernizadores. Use-o em uma branch, revise o diff e rode os testes antes de aceitar a transformação.
+
+### Recursos experimentais
+
+O Go 1.27 inclui SIMD portátil e APIs específicas de arquitetura, além de suporte a ML-DSA. São temas relevantes para sistemas especializados, criptografia e processamento pesado, mas não são prioridade para uma API CRUD.
+
+Não adicione uma API experimental para resolver um problema que você ainda não mediu. Primeiro tenha um benchmark, uma meta e uma forma de voltar atrás.
+
+## 5. Falhas e trade-offs
+
+- Métodos genéricos aumentam a expressividade, mas uma API genérica difícil de ler continua difícil de manter.
+- `encoding/json/v2` oferece mais controle, mas uma migração sem testes pode alterar o contrato externo.
+- `uuid` reduz dependências, mas não decide a modelagem das chaves no banco.
+- O perfil `goroutineleak` ajuda no diagnóstico, mas não corrige goroutines sem dono.
+- `go fix` acelera a modernização, mas o diff precisa ser revisado.
+- Recursos experimentais podem mudar e exigir decisões de portabilidade.
+
+Antes de atualizar um projeto, verifique a versão no `go.mod` e execute `go mod tidy`, `go test ./...` e `go test -race ./...`.
+
+## Referências
+
+- [Notas oficiais do Go 1.27](https://go.dev/doc/go1.27)
+- [Anúncio do Go 1.27](https://go.dev/blog/go1.27)
+- [Histórico de releases do Go](https://go.dev/doc/devel/release)
+
+<Summary>
+
+- Go 1.27 traz melhorias úteis para linguagem, JSON, UUIDs, ferramentas e diagnóstico.
+- Métodos genéricos e `encoding/json/v2` merecem estudo, mas não exigem migração imediata de todo código.
+- `goroutineleak` melhora a investigação de problemas de concorrência em produção.
+- SIMD e outras APIs de baixo nível devem ser adotadas somente depois de medir um problema real.
+
+</Summary>
+
+<NextSteps href="/go/roadmap" title="Voltar ao Go Backend Roadmap">
+Use o roadmap para decidir em que ordem estudar fundamentos, APIs, persistência, concorrência e produção.
+</NextSteps>
+
+<SkillsGained skills={["Go 1.27", "Generics", "JSON", "Concorrência", "Observabilidade"]} />

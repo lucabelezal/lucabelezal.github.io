@@ -1,0 +1,58 @@
+---
+title: Context e Cancelamento
+sidebar_position: 81
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+# Context e Cancelamento
+
+`context.Context` conecta todas as operações de uma requisição: o handler, o serviço, o banco e chamadas externas. Quando o cliente desiste ou o prazo termina, o trabalho precisa parar também.
+
+<CodeExplanation
+  title={"context.go"}
+  code={`package main
+
+import (
+    "context"
+    "fmt"
+    "time"
+)
+
+func fetch(ctx context.Context) (string, error) {
+    select {
+    case <-time.After(2 * time.Second):
+        return "resultado", nil
+    case <-ctx.Done():
+        return "", ctx.Err()
+    }
+}
+
+func main() {
+    ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+    defer cancel()
+
+    result, err := fetch(ctx)
+    if err != nil {
+        fmt.Println("request failed:", err)
+        return
+    }
+    fmt.Println(result)
+}`}
+  sections={[
+    {text: "`fetch` recebe o context como primeiro parâmetro. Isso deixa explícito que a operação pertence ao ciclo de vida do chamador."},
+    {text: "O `select` aguarda o trabalho ou o sinal de cancelamento. Sem o segundo caso, a função continuaria trabalhando mesmo depois do timeout."},
+    {text: "`WithTimeout` cria um prazo e retorna uma função `cancel`. Chame `cancel` com `defer` para liberar o timer e os recursos associados."},
+    {text: "Como o trabalho leva dois segundos e o prazo é de cem milissegundos, o resultado esperado é `request failed: context deadline exceeded`."},
+  ]}
+/>
+
+## Regras práticas
+
+- Passe `ctx` como primeiro parâmetro, nunca o guarde em um struct de serviço.
+- Propague o mesmo context para banco e HTTP client.
+- Use `context.Background()` apenas em pontos de entrada, como `main` e testes.
+- Use `context.WithCancel`, `WithTimeout` ou `WithDeadline` quando o chamador controlar a vida da operação.
+- Não use context para passar parâmetros obrigatórios; prefira argumentos tipados.
+
+Em um servidor HTTP, comece por `req.Context()`. Em seguida, passe esse valor para cada camada que participa da requisição. Criar um novo `context.Background()` no meio do caminho quebra cancelamento e deadline.

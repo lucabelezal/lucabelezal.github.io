@@ -1,0 +1,25 @@
+.linkContent {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.72rem;
+  line-height: 1.35;
+  margin-top: 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuExternalLink {
+  align-items: flex-start;
+}

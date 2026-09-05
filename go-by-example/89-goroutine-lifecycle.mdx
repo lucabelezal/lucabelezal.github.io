@@ -1,0 +1,81 @@
+---
+title: Ciclo de Vida de Goroutines
+sidebar_position: 30
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+# Ciclo de Vida de Goroutines
+
+Uma goroutine não é um trabalho descartável. Quem a cria deve saber como ela termina, como recebe cancelamento e como o chamador espera por ela.
+
+<CodeExplanation
+  title={"worker.go"}
+  code={`package main
+
+import (
+    "context"
+    "fmt"
+    "sync"
+)
+
+func worker(ctx context.Context, jobs <-chan int, results chan<- int) {
+    for {
+        select {
+        case <-ctx.Done():
+            return
+        case job, ok := <-jobs:
+            if !ok {
+                return
+            }
+            select {
+            case results <- job * 2:
+            case <-ctx.Done():
+                return
+            }
+        }
+    }
+}
+
+func main() {
+    ctx, cancel := context.WithCancel(context.Background())
+    defer cancel()
+
+    jobs := make(chan int)
+    results := make(chan int)
+    var wg sync.WaitGroup
+
+    wg.Add(1)
+    go func() {
+        defer wg.Done()
+        worker(ctx, jobs, results)
+    }()
+
+    go func() {
+        jobs <- 21
+        close(jobs)
+    }()
+
+    fmt.Println(<-results)
+    wg.Wait()
+}`}
+  sections={[
+    {text: "A função `worker` recebe um channel somente para leitura e outro somente para escrita. As direções tornam o contrato verificável pelo compilador."},
+    {text: "O `select` permite sair tanto quando o contexto é cancelado quanto quando o channel de jobs é fechado. Assim a goroutine tem duas formas explícitas de terminar."},
+    {text: "O `WaitGroup` pertence ao chamador: ele registra a goroutine antes de iniciá-la e espera que ela termine. Não use `time.Sleep` para sincronizar trabalho."},
+    {text: "Quem envia os jobs fecha `jobs`. O worker apenas observa o fechamento; receivers não devem fechar channels que não possuem."},
+  ]}
+/>
+
+## Antes de escrever `go`
+
+Responda quatro perguntas:
+
+1. Quem é o dono desta goroutine?
+2. Como ela recebe cancelamento?
+3. Quem espera por ela?
+4. Quem fecha cada channel?
+
+Se alguma resposta não estiver clara, o código ainda não está pronto para ser concorrente. Muitas tarefas são mais fáceis e corretas quando executadas de forma síncrona.
+
+Este exemplo usa um worker. Para vários workers, adicione goroutines com o mesmo contrato e mantenha um único dono para o fechamento de `jobs`. Quando erros precisarem cancelar os irmãos, o próximo passo é estudar `errgroup` com `context`.

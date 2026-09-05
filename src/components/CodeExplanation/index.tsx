@@ -50,7 +50,9 @@ export default function CodeExplanation({
   locale = 'pt-BR',
   sections = [],
 }: CodeExplanationProps) {
-  const fileName = `${title.toLowerCase().replace(/\s+/g, '-')}.go`;
+  const fileName = title.endsWith('.go')
+    ? title
+    : `${title.toLowerCase().replace(/\s+/g, '-')}.go`;
   return (
     <div className={styles.container}>
       <div className={styles.left}>

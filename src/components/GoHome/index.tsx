@@ -3,6 +3,12 @@ import styles from './styles.module.css';
 
 const contents = [
   {
+    title: 'Go 1.27: novidades que importam para backend',
+    description: 'Uma leitura prática das novidades da versão e do que vale adotar em serviços backend.',
+    href: '/go-1-27-novidades',
+    date: '05 set 2026',
+  },
+  {
     title: 'Go Backend Roadmap',
     description: 'A sequência de estudo para sair dos fundamentos e chegar a serviços confiáveis em produção.',
     href: '/go/roadmap',

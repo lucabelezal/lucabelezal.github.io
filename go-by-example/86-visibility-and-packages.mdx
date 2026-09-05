@@ -1,0 +1,55 @@
+---
+title: Visibilidade e Packages
+sidebar_position: 27
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+# Visibilidade e Packages
+
+Em Go, a primeira letra do identificador define se ele pode ser usado por outro package. Maiúscula significa exportado; minúscula significa não exportado. Não existe uma palavra-chave `public` ou `private`.
+
+<CodeExplanation
+  title={"visibility.go"}
+  code={`package catalog
+
+type Product struct {
+    ID    string
+    price int
+}
+
+func NewProduct(id string, price int) Product {
+    return Product{ID: id, price: price}
+}
+
+func (p Product) Price() int {
+    return p.price
+}
+
+func normalizeID(id string) string {
+    return id
+}`}
+  sections={[
+    {text: "`Product` e `ID` começam com maiúscula, então podem ser usados por outro package. Eles fazem parte da API pública do package `catalog`."},
+    {text: "`price` começa com minúscula. Um consumidor não consegue alterar esse campo diretamente; precisa usar as operações que o package decidir expor."},
+    {text: "`NewProduct` e `Price` também são exportados. Construtores em Go são apenas funções com uma convenção de nome, não uma palavra-chave especial."},
+    {text: "`normalizeID` é um detalhe interno. Mantê-lo não exportado permite refatorar sua implementação sem quebrar consumidores."},
+  ]}
+/>
+
+## A regra que vale memorizar
+
+Visibilidade em Go é decidida pelo identificador:
+
+- `Product`, `NewProduct` e `Price` são exportados.
+- `price` e `normalizeID` não são exportados.
+
+O package deve expor uma API pequena. Se todo campo e toda função são públicos, qualquer mudança interna vira uma mudança de contrato.
+
+## Armadilhas comuns
+
+- Exportar campos só para facilitar um teste ou um JSON, sem decidir se eles realmente fazem parte do contrato.
+- Criar um package `utils` genérico em vez de colocar o comportamento perto do domínio que o usa.
+- Confundir package com namespace de classe: em Go, composição entre packages é feita por funções, tipos e interfaces exportados.
+
+Em um projeto real, coloque o código acima em `catalog/product.go` e importe o package com `catalog.NewProduct(...)`. O próximo passo é aprender a organizar módulos e testar o contrato público.

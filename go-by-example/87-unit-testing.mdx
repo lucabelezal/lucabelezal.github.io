@@ -1,0 +1,66 @@
+---
+title: Testes Unitários
+sidebar_position: 73
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+# Testes Unitários
+
+O pacote `testing` já é suficiente para começar. Um bom teste descreve um comportamento observável, roda isolado e falha com uma mensagem que ajuda a investigar o problema.
+
+<CodeExplanation
+  title={"price_test.go"}
+  code={`package price
+
+import "testing"
+
+func Calculate(quantity int, unitPrice int) int {
+    return quantity * unitPrice
+}
+
+func TestCalculate(t *testing.T) {
+    tests := []struct {
+        name      string
+        quantity  int
+        unitPrice int
+        want      int
+    }{
+        {name: "single item", quantity: 1, unitPrice: 25, want: 25},
+        {name: "multiple items", quantity: 3, unitPrice: 25, want: 75},
+        {name: "empty order", quantity: 0, unitPrice: 25, want: 0},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got := Calculate(tt.quantity, tt.unitPrice)
+            if got != tt.want {
+                t.Fatalf("Calculate() = %d, want %d", got, tt.want)
+            }
+        })
+    }
+}`}
+  sections={[
+    {text: "A função sob teste representa uma regra pequena e determinística. Em um projeto real, ela ficaria em um arquivo de produção e o teste em um arquivo terminado em `_test.go`."},
+    {text: "A tabela concentra os cenários. O campo `name` dá um nome estável para cada comportamento e torna a saída do teste fácil de ler."},
+    {text: "Cada caso roda em um subteste próprio. O `t` recebido dentro de `t.Run` deve ser usado para que a falha seja atribuída ao cenário correto."},
+    {text: "Execute com `go test -v`. O teste verifica o resultado, não a implementação interna de `Calculate`."},
+  ]}
+/>
+
+## O que testar primeiro
+
+Comece pelas regras que podem quebrar o produto: entradas vazias, limites, erros e efeitos observáveis. Não escreva testes apenas para aumentar cobertura; escreva-os para registrar decisões que precisam continuar verdadeiras.
+
+## Quando o código depende de algo externo
+
+Separe a regra pura do banco, da rede e do relógio. Para testar um handler HTTP, use `httptest`. Para um serviço que chama um banco, dependa de uma interface pequena e use um fake ou um teste de integração separado.
+
+Execute também:
+
+```bash
+go test ./...
+go test -race ./...
+```
+
+O primeiro roda a suíte; o segundo procura acessos concorrentes perigosos. Testes unitários são uma base, não substituem testes de integração quando há banco, rede ou serialização envolvida.
