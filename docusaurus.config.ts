@@ -69,7 +69,6 @@ const config: Config = {
     navbar: {
       title: 'Luca Belezal',
       items: [
-        {to: '/', label: 'Blog', position: 'left'},
         {
           href: 'https://github.com/lucabelezal',
           label: 'GitHub',
