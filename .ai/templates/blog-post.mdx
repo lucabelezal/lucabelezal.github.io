@@ -1,0 +1,76 @@
+---
+slug: meu-novo-post
+title: Título claro e específico
+authors: [lucabelezal]
+tags: [engenharia-de-software]
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+import SeriesNav from '@site/src/components/blog/SeriesNav';
+
+Um parágrafo de lead: por que alguém deveria se importar?
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- ponto 1
+- ponto 2
+- ponto 3
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- pré-requisito 1
+- pré-requisito 2
+
+</Prerequisites>
+
+## 1. Contexto
+
+Por que este tema existe? Opcional: "O que vamos construir" com diagrama.
+
+## 2. O problema
+
+Mostre o problema antes da solução, com exemplo concreto.
+
+## 3. Modelo mental
+
+Explique o conceito de forma simples.
+
+## 4. Implementação
+
+```ts title="exemplo.ts"
+// código executável — informe linguagem/versão
+```
+
+Explique o código logo depois.
+
+## 5. Falhas e trade-offs
+
+O que essa solução resolve e o que cria. Erros comuns.
+
+<Summary>
+
+- takeaway 1
+- takeaway 2
+- takeaway 3
+
+</Summary>
+
+<NextSteps href="/blog/proximo-post" title="Próximo post da série">
+Uma frase que conecta o que foi visto com o que vem a seguir.
+</NextSteps>
+
+<SkillsGained skills={["Skill 1", "Skill 2", "Skill 3"]} />
+
+<SeriesNav
+  seriesName="Minha Trilha — 01/12"
+  prev={{title: "Post anterior", href: "/blog/post-anterior"}}
+  next={{title: "Próximo post", href: "/blog/proximo-post"}}
+/>

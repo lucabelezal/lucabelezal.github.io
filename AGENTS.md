@@ -23,6 +23,14 @@ Blog de aprendizados em engenharia de software, feito com Docusaurus.
 - Sempre adicione `{/* truncate */}` após a introdução (arquivos `.mdx`).
 - Frontmatter mínimo: `slug`, `title`, `authors: [lucabelezal]`, `tags`.
 - Autores ficam centralizados em `blog/authors.yml`; tags em `blog/tags.yml`.
+- Estrutura editorial completa e template: `.ai/writing-guide.md` e
+  `.ai/templates/blog-post.mdx`.
+- Use os componentes de `src/components/blog/` para consistência:
+  `WhatYouWillLearn`, `Prerequisites`, `Summary`, `NextSteps`,
+  `SkillsGained`, `SeriesNav`.
+- Todo post termina com **Resumo → Próximo → Skills → SeriesNav** (se em trilha).
+  Ver `.ai/writing-guide.md` para o esqueleto
+  Contexto → Problema → Modelo mental → Implementação → Falhas → Resumo → Próximo.
 
 ## Tradução (en/es) — só sob demanda
 

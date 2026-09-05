@@ -1,30 +1,158 @@
+/* Fontes: Inter p/ texto, JetBrains Mono p/ código */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 /**
- * Any CSS included here will be global. The classic template
- * bundles Infima by default. Infima is a CSS framework designed to
- * work well for content-centric websites.
+ * Tema focado em leitura longa + código.
+ * Cores e tipografia ajustadas para conforto visual sem cansar a vista.
  */
 
-/* You can override the default Infima variables here. */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
-  --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+  /* Paleta de acento (azul-índigo profissional) */
+  --ifm-color-primary: #2563eb;
+  --ifm-color-primary-dark: #1d4ed8;
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93c5fd;
+
+  /* Fundo e texto: branco levemente quebrado + quase-preto, sem #fff/#000 puros */
+  --ifm-background-color: #fcfcfd;
+  --ifm-background-surface-color: #ffffff;
+  --ifm-font-color-base: #24292f;
+  --ifm-heading-color: #0f172a;
+
+  /* Tipografia */
+  --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular',
+    Menlo, Consolas, 'Liberation Mono', monospace;
+  --ifm-font-size-base: 17px;
+  --ifm-line-height-base: 1.7;
+  --ifm-heading-font-family: 'Inter', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --ifm-heading-font-weight: 700;
+
+  /* Código */
+  --ifm-code-font-size: 0.875rem;
+  --ifm-code-background: #eef2f7;
+  --ifm-pre-background: #f8fafc;
+  --ifm-pre-line-height: 1.65;
+
+  /* Destaque de linha em bloco de código (light) */
+  --docusaurus-highlighted-code-line-bg: rgba(37, 99, 235, 0.12);
 }
 
-/* For readability concerns, you should choose a lighter palette in dark mode. */
+/* Leitura mais confortável dentro do conteúdo */
+.theme-doc-markdown,
+.blog-wrapper article {
+  font-size: 1.02rem;
+  line-height: 1.75;
+}
+
+/* Código inline: discreto e legível */
+code {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 6px;
+  padding: 0.15em 0.4em;
+  font-weight: 500;
+}
+
+/* Blocos de código: cantos suaves, sombra leve */
+.theme-code-block {
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  font-size: 0.9rem;
+}
+
+.theme-code-block .prism-code {
+  background-color: var(--ifm-pre-background) !important;
+}
+
+.prism-code {
+  font-family: var(--ifm-font-family-monospace);
+  line-height: var(--ifm-pre-line-height);
+}
+
+/* ── Seções de post (O que vamos aprender / Pré-reqs / Resumo / etc.) ── */
+.blogSection {
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin: 1.5rem 0;
+  background: var(--ifm-background-surface-color);
+}
+.blogSection__title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.5rem;
+  color: var(--ifm-heading-color);
+}
+.blogSection__body ul { margin-bottom: 0; }
+.blogSection--learn { border-left-color: var(--ifm-color-primary); }
+.blogSection--prereqs { border-left-color: var(--ifm-color-emphasis-400); }
+.blogSection--summary { border-left-color: #16a34a; }
+.blogSection--next { border-left-color: #7c3aed; }
+.blogSection--skills { border-left-color: #ea580c; }
+
+.skillsGained__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.75rem;
+}
+.skillsGained__list li {
+  background: var(--ifm-color-emphasis-100);
+  border-radius: 9999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.88rem;
+}
+
+.seriesNav {
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 10px;
+  padding: 0.9rem 1.1rem;
+  margin: 2rem 0 0;
+  background: var(--ifm-background-surface-color);
+}
+.seriesNav__series {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-700);
+  margin-bottom: 0.5rem;
+}
+.seriesNav__links {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.seriesNav__item { flex: 1; font-size: 0.92rem; line-height: 1.4; }
+.seriesNav__item--next { text-align: right; }
+.seriesNav__empty { color: var(--ifm-color-emphasis-500); }
+
+.blogNextLink { margin-top: 0.6rem; }
+
+/* Dark mode: paleta de acento mais clara, fundo slate suave (sem preto) */
 [data-theme='dark'] {
-  --ifm-color-primary: #25c2a0;
-  --ifm-color-primary-dark: #21af90;
-  --ifm-color-primary-darker: #1fa588;
-  --ifm-color-primary-darkest: #1a8870;
-  --ifm-color-primary-light: #29d5b0;
-  --ifm-color-primary-lighter: #32d8b4;
-  --ifm-color-primary-lightest: #4fddbf;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #3b82f6;
+  --ifm-color-primary-darker: #2563eb;
+  --ifm-color-primary-darkest: #1e40af;
+  --ifm-color-primary-light: #93c5fd;
+  --ifm-color-primary-lighter: #bfdbfe;
+  --ifm-color-primary-lightest: #dbeafe;
+
+  --ifm-background-color: #0f172a;
+  --ifm-background-surface-color: #1e293b;
+  --ifm-font-color-base: #e2e8f0;
+  --ifm-heading-color: #f8fafc;
+
+  --ifm-code-background: #1e293b;
+  --ifm-pre-background: #16203a;
+
+  --docusaurus-highlighted-code-line-bg: rgba(96, 165, 250, 0.18);
 }
