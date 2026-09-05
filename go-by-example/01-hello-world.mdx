@@ -6,30 +6,22 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
   title="Hello World"
-  explanation={"Nosso primeiro programa imprime o clássico “hello world”. Aqui está o código completo."}
-  code={"package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"hello world\")\n}"}
-  language="go"
+  code={`package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("hello world")
+}`}
+  sections={[
+    {text: "Nosso primeiro programa imprime o clássico hello world."},
+    {text: "Salve o código em hello-world.go e rode com go run."},
+    {text: "Para compilar em binário, use go build."},
+    {text: "Agora que rodamos e compilamos um básico, vamos aprender mais."},
+  ]}
   locale="pt-BR"
 />
 
-<div style={{marginTop: 2}}>
-  <a href="https://go.dev/play/p/NeviD0axjt" target="_blank" rel="noreferrer">
-    Run on go.dev/play ↗
-  </a>
-</div>
-
-<CodeExplanation
-  title="Hello World"
-  explanation={"Our first program prints the classic hello world message. Here's the full source code."}
-  code={"package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"hello world\")\n}"}
-  language="go"
-  locale="en"
-/>
-
-<CodeExplanation
-  title="Hello World"
-  explanation={"Nuestro primer programa imprime el clásico hello world. Aquí está el código completo."}
-  code={"package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"hello world\")\n}"}
-  language="go"
-  locale="es"
-/>
+<a href="https://go.dev/play/p/NeviD0axjt" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
