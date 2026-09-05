@@ -35,7 +35,13 @@ const config: Config = {
     [
       'classic',
       {
-        docs: false,
+        docs: {
+          path: 'go-by-example',
+          routeBasePath: 'go',
+          sidebarPath: './sidebarsGo.ts',
+          editUrl:
+            'https://github.com/lucabelezal/lucabelezal.github.io/tree/main/go-by-example/',
+        },
         blog: {
           routeBasePath: '/',
           showReadingTime: true,
@@ -69,6 +75,12 @@ const config: Config = {
     navbar: {
       title: 'Luca Belezal',
       items: [
+        {
+          type: 'docSidebar',
+          sidebarId: 'goSidebar',
+          position: 'left',
+          label: 'Go by Example',
+        },
         {
           href: 'https://github.com/lucabelezal',
           label: 'GitHub',

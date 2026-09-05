@@ -1,0 +1,38 @@
+---
+title: Variables
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Variables" playHash="N5rWndIliJW" next={{title: "Constants", href: "/go/constants"}}>
+
+<GoExampleRow docs={<>Em Go, variáveis são declaradas explicitamente e o compilador verifica tipos.</>} code={`package main
+
+import "fmt"
+
+func main() {`} />
+
+<GoExampleRow docs={<>`var` declara 1 ou mais variáveis.</>} code={`    var a = "initial"
+    fmt.Println(a)`} />
+
+<GoExampleRow docs={<>Múltiplas variáveis de uma vez.</>} code={`    var b, c int = 1, 2
+    fmt.Println(b, c)`} />
+
+<GoExampleRow docs={<>Go infere o tipo.</>} code={`    var d = true
+    fmt.Println(d)`} />
+
+<GoExampleRow docs={<>Variáveis sem inicialização são *zero-valued* — `int` é `0`.</>} code={`    var e int
+    fmt.Println(e)`} />
+
+<GoExampleRow docs={<>Atalho `:=` para declarar e inicializar (só dentro de funções).</>} code={`    f := "apple"
+    fmt.Println(f)
+}`} />
+
+<GoExampleRow docs={<>Saída:</>} code={`$ go run variables.go
+initial
+1 2
+true
+0
+apple`} />
+
+</GoExample>

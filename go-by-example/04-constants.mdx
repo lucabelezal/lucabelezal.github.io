@@ -1,0 +1,30 @@
+---
+title: Constants
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Constants" playHash="LfvIxHlpomp">
+
+<GoExampleRow docs={<>Go suporta constantes de caracteres, strings, booleans e números.</>} code={`package main
+
+import (
+    "fmt"
+    "math"
+)
+
+const s string = "constant"
+
+func main() {`} />
+
+<GoExampleRow docs={<>Constante dentro de `main`.</>} code={`    fmt.Println(s)
+    const n = 500000000`} />
+
+<GoExampleRow docs={<>Expressões constantes com precisão arbitrária.</>} code={`    const d = 3e20 / n
+    fmt.Println(d)`} />
+
+<GoExampleRow docs={<>Constante numérica sem tipo até ser convertida.</>} code={`    fmt.Println(int64(d))
+    fmt.Println(math.Sin(n))
+}`} />
+
+</GoExample>

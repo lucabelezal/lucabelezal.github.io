@@ -1,0 +1,94 @@
+.wrapper {
+  max-width: 995px;
+  margin: 0 auto 4rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.row { }
+
+.docs {
+  width: 42%;
+  min-width: 280px;
+  vertical-align: top;
+  text-align: left;
+  padding: 6px 12px 18px 0;
+  font-size: 15px;
+  line-height: 20px;
+  color: var(--ifm-font-color-base);
+}
+
+.docs p {
+  margin: 0;
+}
+
+.code {
+  width: 58%;
+  min-width: 320px;
+  vertical-align: top;
+  background: var(--go-code-bg);
+  border-radius: 6px;
+  padding: 6px 8px;
+  position: relative;
+  font-size: 14px;
+  line-height: 18px;
+}
+
+.code pre {
+  margin: 0;
+  background: transparent !important;
+  padding: 0;
+}
+
+.codeEmpty {
+  background: transparent !important;
+}
+
+.codeLeading {
+  padding-bottom: 12px;
+}
+
+.actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 6px;
+}
+
+.run,
+.copy {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  opacity: 0.7;
+}
+
+.run:hover,
+.copy:hover {
+  opacity: 1;
+}
+
+.next {
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .table,
+  .row,
+  .docs,
+  .code {
+    display: block;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .docs {
+    padding-bottom: 6px;
+  }
+  .code {
+    margin-bottom: 12px;
+  }
+}
