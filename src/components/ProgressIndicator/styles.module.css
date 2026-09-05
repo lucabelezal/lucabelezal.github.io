@@ -29,6 +29,21 @@
   transition: width 180ms ease-out;
 }
 
+.reset {
+  display: block;
+  margin: 0.7rem 0 0 auto;
+  padding: 0;
+  border: 0;
+  color: var(--ifm-color-primary);
+  background: transparent;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.reset:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 996px) {
   .container {
     display: none;
