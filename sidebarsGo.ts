@@ -95,7 +95,10 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: '2026',
       collapsible: false,
-      items: ['roadmap'],
+      items: [
+        'roadmap',
+        {type: 'link', label: 'Go by Example', href: '/go/hello-world'},
+      ],
     },
   ],
 };
