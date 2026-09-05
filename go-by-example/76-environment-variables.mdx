@@ -23,7 +23,7 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Use os.Environ to list all key/value pairs in the environment. This returns a slice of strings in the form KEY=value. You can strings.SplitN them to get the key and value. Here we print all the keys."},
+    {text: "Use `os.Environ` to list all key/value pairs in the environment. This returns a slice of strings in the form `KEY=value`. You can `strings.SplitN` them to get the key and value. Here we print all the keys."},
     {text: "Saída:\n# Running the program shows that we pick up the value\n# for `FOO` that we set in the program, but that\n# `BAR` is empty.\n$ go run environment-variables.go\nFOO: 1\nBAR: \n\n# The list of keys in the environment will depend on your\n# particular machine.\nTERM_PROGRAM\nPATH\nSHELL\n...\nFOO\n\n# If we set `BAR` in the environment first, the running\n# program picks that value up.\n$ BAR=2 go run environment-variables.go\nFOO: 1\nBAR: 2\n..."}
   ]}
 />

@@ -28,9 +28,9 @@ func main() {
 }`}
   sections={[
     {text: "Timers represent a single event in the future. You tell the timer how long you want to wait, and it provides a channel that will be notified at that time. This timer will wait 2 seconds."},
-    {text: "The <-timer1.C blocks on the timer's channel C until it sends a value indicating that the timer fired."},
-    {text: "If you just wanted to wait, you could have used time.Sleep. One reason a timer may be useful is that you can cancel the timer before it fires. Here's an example of that."},
-    {text: "Give the timer2 enough time to fire, if it ever was going to, to show it is in fact stopped."},
+    {text: "The `<-timer1.C` blocks on the timer's channel `C` until it sends a value indicating that the timer fired."},
+    {text: "If you just wanted to wait, you could have used `time.Sleep`. One reason a timer may be useful is that you can cancel the timer before it fires. Here's an example of that."},
+    {text: "Give the `timer2` enough time to fire, if it ever was going to, to show it is in fact stopped."},
     {text: "Saída:\n# The first timer will fire ~2s after we start the\n# program, but the second should be stopped before it has\n# a chance to fire.\n$ go run timers.go\nTimer 1 fired\nTimer 2 stopped"}
   ]}
 />

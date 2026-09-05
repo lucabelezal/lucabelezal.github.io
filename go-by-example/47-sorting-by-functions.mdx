@@ -35,10 +35,10 @@ func main() {
     fmt.Println(people)
 }`}
   sections={[
-    {text: "We implement a comparison function for string lengths. cmp.Compare is helpful for this."},
-    {text: "Now we can call slices.SortFunc with this custom comparison function to sort fruits by name length."},
+    {text: "We implement a comparison function for string lengths. `cmp.Compare` is helpful for this."},
+    {text: "Now we can call `slices.SortFunc` with this custom comparison function to sort `fruits` by name length."},
     {text: "We can use the same technique to sort a slice of values that aren't built-in types."},
-    {text: "Sort people by age using slices.SortFunc.  Note: if the Person struct is large, you may want the slice to contain *Person instead and adjust the sorting function accordingly. If in doubt, [benchmark](testing-and-benchmarking)!"},
+    {text: "Sort `people` by age using `slices.SortFunc`.  Note: if the `Person` struct is large, you may want the slice to contain `*Person` instead and adjust the sorting function accordingly. If in doubt, [benchmark](testing-and-benchmarking)!"},
     {text: "Saída:\n$ go run sorting-by-functions.go \n[kiwi peach banana]\n[{TJ 25} {Jax 37} {Alex 72}]"}
   ]}
 />

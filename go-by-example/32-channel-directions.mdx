@@ -23,8 +23,8 @@ func main() {
     fmt.Println(<-pongs)
 }`}
   sections={[
-    {text: "This ping function only accepts a channel for sending values. It would be a compile-time error to try to receive on this channel."},
-    {text: "The pong function accepts one channel for receives (pings) and a second for sends (pongs)."},
+    {text: "This `ping` function only accepts a channel for sending values. It would be a compile-time error to try to receive on this channel."},
+    {text: "The `pong` function accepts one channel for receives (`pings`) and a second for sends (`pongs`)."},
     {text: "Saída:\n$ go run channel-directions.go\npassed message"}
   ]}
 />

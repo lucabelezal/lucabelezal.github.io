@@ -26,12 +26,12 @@ func main() {
     fmt.Println(e)
 }`}
   sections={[
-    {text: "The built-in package strconv provides the number parsing."},
-    {text: "With ParseFloat, this 64 tells how many bits of precision to parse."},
-    {text: "For ParseInt, the 0 means infer the base from the string. 64 requires that the result fit in 64 bits."},
-    {text: "ParseInt will recognize hex-formatted numbers."},
-    {text: "A ParseUint is also available."},
-    {text: "Atoi is a convenience function for basic base-10 int parsing."},
+    {text: "The built-in package `strconv` provides the number parsing."},
+    {text: "With `ParseFloat`, this `64` tells how many bits of precision to parse."},
+    {text: "For `ParseInt`, the `0` means infer the base from the string. `64` requires that the result fit in 64 bits."},
+    {text: "`ParseInt` will recognize hex-formatted numbers."},
+    {text: "A `ParseUint` is also available."},
+    {text: "`Atoi` is a convenience function for basic base-10 `int` parsing."},
     {text: "Parse functions return an error on bad input."},
     {text: "Saída:\n$ go run number-parsing.go \n1.234\n123\n456\n789\n135\nstrconv.ParseInt: parsing \"wat\": invalid syntax\n\n# Next we'll look at another common parsing task: URLs."}
   ]}

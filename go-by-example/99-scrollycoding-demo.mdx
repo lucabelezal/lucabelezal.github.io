@@ -2,10 +2,11 @@
 title: "Demo: Scrollycoding (Code Hike style)"
 ---
 
-import CodeExplanation from '@site/src/components/CodeExplanation';
+import Scrollycoding from '@site/src/components/Scrollycoding';
 
-<CodeExplanation
-  title={"Demo: Scrollycoding (Code Hike style)"}
-  code={``}
-  sections={[]}
+<Scrollycoding
+  steps={[
+    { title: "Intro", content: "Welcome! Este é o estilo Code Hike. Ao rolar, o código à direita muda o foco.", code: `package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("hello")\n}`, language: "go" },
+    { title: "A Game of Thrones", content: "Primeiro livro da série.", code: `const houses = [\n  "Stark",\n  "Lannister",\n]`, language: "js" },
+  ]}
 />

@@ -21,10 +21,10 @@ func main() {
 ", bs)
 }`}
   sections={[
-    {text: "Go implements several hash functions in various crypto/* packages."},
+    {text: "Go implements several hash functions in various `crypto/*` packages."},
     {text: "Here we start with a new hash."},
-    {text: "Write expects bytes. If you have a string s, use []byte(s) to coerce it to bytes."},
-    {text: "This gets the finalized hash result as a byte slice. The argument to Sum can be used to append to an existing byte slice: it usually isn't needed."},
+    {text: "`Write` expects bytes. If you have a string `s`, use `[]byte(s)` to coerce it to bytes."},
+    {text: "This gets the finalized hash result as a byte slice. The argument to `Sum` can be used to append to an existing byte slice: it usually isn't needed."},
     {text: "Saída:\n# Running the program computes the hash and prints it in\n# a human-readable hex format.\n$ go run sha256-hashes.go\nsha256 this string\n1af1dfa857bf1d8814fe1af8983c18080019922e557f15a8a...\n\n\n# You can compute other hashes using a similar pattern to\n# the one shown above. For example, to compute\n# SHA512 hashes import `crypto/sha512` and use\n# `sha512.New()`.\n\n# Note that if you need cryptographically secure hashes,\n# you should carefully research\n# [hash strength](https://en.wikipedia.org/wiki/Cryptographic_hash_function)!"}
   ]}
 />

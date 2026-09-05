@@ -51,13 +51,13 @@ func main() {
     }
 }`}
   sections={[
-    {text: "By convention, errors are the last return value and have type error, a built-in interface."},
-    {text: "errors.New constructs a basic error value with the given error message."},
-    {text: "A nil value in the error position indicates that there was no error."},
+    {text: "By convention, errors are the last return value and have type `error`, a built-in interface."},
+    {text: "`errors.New` constructs a basic `error` value with the given error message."},
+    {text: "A `nil` value in the error position indicates that there was no error."},
     {text: "A sentinel error is a predeclared variable that is used to signify a specific error condition."},
-    {text: "We can wrap errors with higher-level errors to add context. The simplest way to do this is with the %w verb in fmt.Errorf. Wrapped errors create a logical chain (A wraps B, which wraps C, etc.) that can be queried with functions like errors.Is and errors.AsType."},
-    {text: "It's idiomatic to use an inline error check in the if line."},
-    {text: "errors.Is checks that a given error (or any error in its chain) matches a specific error value. This is especially useful with wrapped or nested errors, allowing you to identify specific error types or sentinel errors in a chain of errors."},
+    {text: "We can wrap errors with higher-level errors to add context. The simplest way to do this is with the `%w` verb in `fmt.Errorf`. Wrapped errors create a logical chain (A wraps B, which wraps C, etc.) that can be queried with functions like `errors.Is` and `errors.AsType`."},
+    {text: "It's idiomatic to use an inline error check in the `if` line."},
+    {text: "`errors.Is` checks that a given error (or any error in its chain) matches a specific error value. This is especially useful with wrapped or nested errors, allowing you to identify specific error types or sentinel errors in a chain of errors."},
     {text: "Saída:\n$ go run errors.go\nf worked: 10\nf failed: can't work with 42\nTea is ready!\nTea is ready!\nWe should buy new tea!\nTea is ready!\nNow it is dark."}
   ]}
 />

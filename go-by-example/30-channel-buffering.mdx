@@ -16,7 +16,7 @@ func main() {
     fmt.Println(<-messages)
 }`}
   sections={[
-    {text: "Here we make a channel of strings buffering up to 2 values."},
+    {text: "Here we `make` a channel of strings buffering up to 2 values."},
     {text: "Because this channel is buffered, we can send these values into the channel without a corresponding concurrent receive."},
     {text: "Later we can receive these two values as usual."},
     {text: "Saída:\n$ go run channel-buffering.go \nbuffered\nchannel"}

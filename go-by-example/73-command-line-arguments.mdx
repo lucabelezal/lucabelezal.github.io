@@ -20,7 +20,7 @@ func main() {
     fmt.Println(arg)
 }`}
   sections={[
-    {text: "os.Args provides access to raw command-line arguments. Note that the first value in this slice is the path to the program, and os.Args[1:] holds the arguments to the program."},
+    {text: "`os.Args` provides access to raw command-line arguments. Note that the first value in this slice is the path to the program, and `os.Args[1:]` holds the arguments to the program."},
     {text: "You can get individual args with normal indexing."},
     {text: "Saída:\n# To experiment with command-line arguments it's best to\n# build a binary with `go build` first.\n$ go build command-line-arguments.go\n$ ./command-line-arguments a b c d\n[./command-line-arguments a b c d]       \n[a b c d]\nc\n\n# Next we'll look at more advanced command-line processing\n# with flags."}
   ]}

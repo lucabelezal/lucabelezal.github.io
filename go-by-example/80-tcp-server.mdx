@@ -47,15 +47,15 @@ func handleConnection(conn net.Conn) {
     }
 }`}
   sections={[
-    {text: "The net package provides the tools we need to easily build TCP socket servers."},
-    {text: "net.Listen starts the server on the given network (TCP) and address (port 8090 on all interfaces)."},
+    {text: "The `net` package provides the tools we need to easily build TCP socket servers."},
+    {text: "`net.Listen` starts the server on the given network (TCP) and address (port 8090 on all interfaces)."},
     {text: "Close the listener to free the port when the application exits."},
     {text: "Loop indefinitely to accept new client connections."},
     {text: "Wait for a connection."},
     {text: "We use a goroutine here to handle the connection so that the main loop can continue accepting more connections."},
-    {text: "handleConnection handles a single client connection, reading one line of text from the client and returning a response."},
+    {text: "`handleConnection` handles a single client connection, reading one line of text from the client and returning a response."},
     {text: "Closing the connection releases resources when we are finished interacting with the client."},
-    {text: "Use bufio.NewReader to read one line of data from the client (terminated by a newline)."},
+    {text: "Use `bufio.NewReader` to read one line of data from the client (terminated by a newline)."},
     {text: "Create and send a response back to the client, demonstrating two-way communication."},
     {text: "Saída:\n# Run the TCP server in the background.\n$ go run tcp-server.go &\n\n# Send data and capture the response using netcat.\n$ echo \"Hello from netcat\" | nc localhost 8090\nACK: HELLO FROM NETCAT"}
   ]}

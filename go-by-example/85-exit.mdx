@@ -16,7 +16,7 @@ func main() {
     os.Exit(3)
 }`}
   sections={[
-    {text: "defers will not be run when using os.Exit, so this fmt.Println will never be called."},
+    {text: "`defer`s will _not_ be run when using `os.Exit`, so this `fmt.Println` will never be called."},
     {text: "Exit with status 3."},
     {text: "Saída:\n#  If you run `exit.go` using `go run`, the exit\n# will be picked up by `go` and printed.\n$ go run exit.go\nexit status 3\n\n# By building and executing a binary you can see\n# the status in the terminal.\n$ go build exit.go\n$ ./exit\n$ echo $?\n3\n\n# Note that the `!` from our program never got printed."}
   ]}

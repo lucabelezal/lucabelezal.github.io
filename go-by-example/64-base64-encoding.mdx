@@ -24,9 +24,9 @@ func main() {
     fmt.Println(string(uDec))
 }`}
   sections={[
-    {text: "This syntax imports the encoding/base64 package with the b64 name instead of the default base64. It'll save us some space below."},
-    {text: "Here's the string we'll encode/decode."},
-    {text: "Go supports both standard and URL-compatible base64. Here's how to encode using the standard encoder. The encoder requires a []byte so we convert our string to that type."},
+    {text: "This syntax imports the `encoding/base64` package with the `b64` name instead of the default `base64`. It'll save us some space below."},
+    {text: "Here's the `string` we'll encode/decode."},
+    {text: "Go supports both standard and URL-compatible base64. Here's how to encode using the standard encoder. The encoder requires a `[]byte` so we convert our `string` to that type."},
     {text: "Decoding may return an error, which you can check if you don't already know the input to be well-formed."},
     {text: "This encodes/decodes using a URL-compatible base64 format."},
     {text: "Saída:\n# The string encodes to slightly different values with the\n# standard and URL base64 encoders (trailing `+` vs `-`)\n# but they both decode to the original string as desired.\n$ go run base64-encoding.go\nYWJjMTIzIT8kKiYoKSctPUB+\nabc123!?$*&()'-=@~\n\nYWJjMTIzIT8kKiYoKSctPUB-\nabc123!?$*&()'-=@~"}

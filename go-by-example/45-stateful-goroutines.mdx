@@ -73,11 +73,11 @@ func main() {
     fmt.Println("writeOps:", writeOpsFinal)
 }`}
   sections={[
-    {text: "In this example our state will be owned by a single goroutine. This will guarantee that the data is never corrupted with concurrent access. In order to read or write that state, other goroutines will send messages to the owning goroutine and receive corresponding replies. These readOp and writeOp structs encapsulate those requests and a way for the owning goroutine to respond."},
+    {text: "In this example our state will be owned by a single goroutine. This will guarantee that the data is never corrupted with concurrent access. In order to read or write that state, other goroutines will send messages to the owning goroutine and receive corresponding replies. These `readOp` and `writeOp` `struct`s encapsulate those requests and a way for the owning goroutine to respond."},
     {text: "As before we'll count how many operations we perform."},
-    {text: "The reads and writes channels will be used by other goroutines to issue read and write requests, respectively."},
-    {text: "Here is the goroutine that owns the state, which is a map as in the previous example but now private to the stateful goroutine. This goroutine repeatedly selects on the reads and writes channels, responding to requests as they arrive. A response is executed by first performing the requested operation and then sending a value on the response channel resp to indicate success (and the desired value in the case of reads)."},
-    {text: "This starts 100 goroutines to issue reads to the state-owning goroutine via the reads channel. Each read requires constructing a readOp, sending it over the reads channel, and then receiving the result over the provided resp channel."},
+    {text: "The `reads` and `writes` channels will be used by other goroutines to issue read and write requests, respectively."},
+    {text: "Here is the goroutine that owns the `state`, which is a map as in the previous example but now private to the stateful goroutine. This goroutine repeatedly selects on the `reads` and `writes` channels, responding to requests as they arrive. A response is executed by first performing the requested operation and then sending a value on the response channel `resp` to indicate success (and the desired value in the case of `reads`)."},
+    {text: "This starts 100 goroutines to issue reads to the state-owning goroutine via the `reads` channel. Each read requires constructing a `readOp`, sending it over the `reads` channel, and then receiving the result over the provided `resp` channel."},
     {text: "We start 10 writes as well, using a similar approach."},
     {text: "Let the goroutines work for a second."},
     {text: "Finally, capture and report the op counts."},

@@ -57,7 +57,7 @@ func main() {
 }`}
   sections={[
     {text: "We can create a new template and parse its body from a string. Templates are a mix of static text and \"actions\" enclosed in `{{..."},
-    {text: "Alternatively, we can use the template.Must function to panic in case Parse returns an error. This is especially useful for templates initialized in the global scope."},
+    {text: "Alternatively, we can use the `template.Must` function to panic in case `Parse` returns an error. This is especially useful for templates initialized in the global scope."},
     {text: "By \"executing\" the template we generate its text with specific values for its actions. The `{{."},
     {text: "Helper function we'll use below."},
     {text: "If the data is a struct we can use the `{{.FieldName"},

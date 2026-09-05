@@ -32,10 +32,10 @@ func main() {
 }`}
   sections={[
     {text: "Here's a basic example of formatting a time according to RFC3339, using the corresponding layout constant."},
-    {text: "Time parsing uses the same layout values as Format."},
-    {text: "Format and Parse use example-based layouts. Usually you'll use a constant from time for these layouts, but you can also supply custom layouts. Layouts must use the reference time Mon Jan 2 15:04:05 MST 2006 to show the pattern with which to format/parse a given time/string. The example time must be exactly as shown: the year 2006, 15 for the hour, Monday for the day of the week, etc."},
+    {text: "Time parsing uses the same layout values as `Format`."},
+    {text: "`Format` and `Parse` use example-based layouts. Usually you'll use a constant from `time` for these layouts, but you can also supply custom layouts. Layouts must use the reference time `Mon Jan 2 15:04:05 MST 2006` to show the pattern with which to format/parse a given time/string. The example time must be exactly as shown: the year 2006, 15 for the hour, Monday for the day of the week, etc."},
     {text: "For purely numeric representations you can also use standard string formatting with the extracted components of the time value."},
-    {text: "Parse will return an error on malformed input explaining the parsing problem."},
+    {text: "`Parse` will return an error on malformed input explaining the parsing problem."},
     {text: "Saída:\n$ go run time-formatting-parsing.go \n2014-04-15T18:00:15-07:00\n2012-11-01 22:08:41 +0000 +0000\n6:00PM\nTue Apr 15 18:00:15 2014\n2014-04-15T18:00:15.161182-07:00\n0000-01-01 20:41:00 +0000 UTC\n2014-04-15T18:00:15-00:00\nparsing time \"8:41PM\" as \"Mon Jan _2 15:04:05 2006\": ..."}
   ]}
 />

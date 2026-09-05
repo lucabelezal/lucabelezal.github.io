@@ -52,15 +52,15 @@ func main() {
 }`}
   sections={[
     {text: "Unlike arrays, slices are typed only by the elements they contain (not the number of elements). An uninitialized slice equals to nil and has length 0."},
-    {text: "To create a slice with non-zero length, use the builtin make. Here we make a slice of strings of length 3 (initially zero-valued). By default a new slice's capacity is equal to its length; if we know the slice is going to grow ahead of time, it's possible to pass a capacity explicitly as an additional parameter to make."},
+    {text: "To create a slice with non-zero length, use the builtin `make`. Here we make a slice of `string`s of length `3` (initially zero-valued). By default a new slice's capacity is equal to its length; if we know the slice is going to grow ahead of time, it's possible to pass a capacity explicitly as an additional parameter to `make`."},
     {text: "We can set and get just like with arrays."},
-    {text: "len returns the length of the slice as expected."},
-    {text: "In addition to these basic operations, slices support several more that make them richer than arrays. One is the builtin append, which returns a slice containing one or more new values. Note that we need to accept a return value from append as we may get a new slice value."},
-    {text: "Slices support a \"slice\" operator with the syntax slice[low:high]. For example, this gets a slice of the elements s[2], s[3], and s[4]."},
-    {text: "This slices up to (but excluding) s[5]."},
-    {text: "And this slices up from (and including) s[2]."},
+    {text: "`len` returns the length of the slice as expected."},
+    {text: "In addition to these basic operations, slices support several more that make them richer than arrays. One is the builtin `append`, which returns a slice containing one or more new values. Note that we need to accept a return value from `append` as we may get a new slice value."},
+    {text: "Slices support a \"slice\" operator with the syntax `slice[low:high]`. For example, this gets a slice of the elements `s[2]`, `s[3]`, and `s[4]`."},
+    {text: "This slices up to (but excluding) `s[5]`."},
+    {text: "And this slices up from (and including) `s[2]`."},
     {text: "We can declare and initialize a variable for slice in a single line as well."},
-    {text: "The slices package contains a number of useful utility functions for slices."},
+    {text: "The `slices` package contains a number of useful utility functions for slices."},
     {text: "Slices can be composed into multi-dimensional data structures. The length of the inner slices can vary, unlike with multi-dimensional arrays."},
     {text: "Saída:\n# Note that while slices are different types than arrays,\n# they are rendered similarly by `fmt.Println`.\n$ go run slices.go\nuninit: [] true true\nemp: [  ] len: 3 cap: 3\nset: [a b c]\nget: c\nlen: 3\napd: [a b c d e f]\ncpy: [a b c d e f]\nsl1: [c d e]\nsl2: [a b c d e]\nsl3: [c d e f]\ndcl: [g h i]\nt == t2\n2d:  [[0] [1 2] [2 3 4]]\n\n# Check out this [great blog post](https://go.dev/blog/slices-intro)\n# by the Go team for more details on the design and\n# implementation of slices in Go.\n\n# Now that we've seen arrays and slices we'll look at\n# Go's other key builtin data structure: maps."}
   ]}

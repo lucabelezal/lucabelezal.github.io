@@ -35,16 +35,16 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Set key/value pairs using typical name[key] = val syntax."},
-    {text: "Printing a map with e.g. fmt.Println will show all of its key/value pairs."},
-    {text: "Get a value for a key with name[key]."},
-    {text: "If the key doesn't exist, the [zero value](https://go.dev/ref/spec#Thezerovalue) of the value type is returned."},
-    {text: "The builtin len returns the number of key/value pairs when called on a map."},
-    {text: "The builtin delete removes key/value pairs from a map."},
-    {text: "To remove *all* key/value pairs from a map, use the clear builtin."},
-    {text: "The optional second return value when getting a value from a map indicates if the key was present in the map. This can be used to disambiguate between missing keys and keys with zero values like 0 or \"\". Here we didn't need the value itself, so we ignored it with the blank identifier _."},
+    {text: "Set key/value pairs using typical `name[key] = val` syntax."},
+    {text: "Printing a map with e.g. `fmt.Println` will show all of its key/value pairs."},
+    {text: "Get a value for a key with `name[key]`."},
+    {text: "If the key doesn't exist, the [zero value](https://go.dev/ref/spec#The_zero_value) of the value type is returned."},
+    {text: "The builtin `len` returns the number of key/value pairs when called on a map."},
+    {text: "The builtin `delete` removes key/value pairs from a map."},
+    {text: "To remove *all* key/value pairs from a map, use the `clear` builtin."},
+    {text: "The optional second return value when getting a value from a map indicates if the key was present in the map. This can be used to disambiguate between missing keys and keys with zero values like `0` or `\"\"`. Here we didn't need the value itself, so we ignored it with the _blank identifier_ `_`."},
     {text: "You can also declare and initialize a new map in the same line with this syntax."},
-    {text: "The maps package contains a number of useful utility functions for maps."},
+    {text: "The `maps` package contains a number of useful utility functions for maps."},
     {text: "Saída:\n# Note that maps appear in the form `map[k:v k:v]` when\n# printed with `fmt.Println`.\n$ go run maps.go \nmap: map[k1:7 k2:13]\nv1: 7\nv3: 0\nlen: 2\nmap: map[k1:7]\nmap: map[]\nprs: false\nmap: map[bar:2 foo:1]\nn == n2"}
   ]}
 />

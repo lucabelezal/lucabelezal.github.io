@@ -35,16 +35,16 @@ func main() {
 }`}
   sections={[
     {text: "The Go standard library provides straightforward tools for outputting logs from Go programs, with the [log](https://pkg.go.dev/log) package for free-form output and the [log/slog](https://pkg.go.dev/log/slog) package for structured output."},
-    {text: "Simply invoking functions like Println from the log package uses the standard logger, which is already pre-configured for reasonable logging output to os.Stderr. Additional methods like Fatal* or Panic* will exit the program after logging."},
-    {text: "Loggers can be configured with flags to set their output format. By default, the standard logger has the log.Ldate and log.Ltime flags set, and these are collected in log.LstdFlags. We can change its flags to emit time with microsecond accuracy, for example."},
-    {text: "It also supports emitting the file name and line from which the log function is called."},
-    {text: "It may be useful to create a custom logger and pass it around. When creating a new logger, we can set a prefix to distinguish its output from other loggers."},
-    {text: "We can set the prefix on existing loggers (including the standard one) with the SetPrefix method."},
-    {text: "Loggers can have custom output targets; any io.Writer works."},
-    {text: "This call writes the log output into buf."},
+    {text: "Simply invoking functions like `Println` from the `log` package uses the _standard_ logger, which is already pre-configured for reasonable logging output to `os.Stderr`. Additional methods like `Fatal*` or `Panic*` will exit the program after logging."},
+    {text: "Loggers can be configured with _flags_ to set their output format. By default, the standard logger has the `log.Ldate` and `log.Ltime` flags set, and these are collected in `log.LstdFlags`. We can change its flags to emit time with microsecond accuracy, for example."},
+    {text: "It also supports emitting the file name and line from which the `log` function is called."},
+    {text: "It may be useful to create a custom logger and pass it around. When creating a new logger, we can set a _prefix_ to distinguish its output from other loggers."},
+    {text: "We can set the prefix on existing loggers (including the standard one) with the `SetPrefix` method."},
+    {text: "Loggers can have custom output targets; any `io.Writer` works."},
+    {text: "This call writes the log output into `buf`."},
     {text: "This will actually show it on standard output."},
-    {text: "The slog package provides structured log output. For example, logging in JSON format is straightforward."},
-    {text: "In addition to the message, slog output can contain an arbitrary number of key=value pairs."},
+    {text: "The `slog` package provides _structured_ log output. For example, logging in JSON format is straightforward."},
+    {text: "In addition to the message, `slog` output can contain an arbitrary number of key=value pairs."},
     {text: "Saída:\n# Sample output; the date and time\n# emitted will depend on when the example ran.\n$ go run logging.go\n2023/08/22 10:45:16 standard logger\n2023/08/22 10:45:16.904141 with micro\n2023/08/22 10:45:16 logging.go:40: with file/line\nmy:2023/08/22 10:45:16 from mylog\nohmy:2023/08/22 10:45:16 from mylog\nfrom buflog:buf:2023/08/22 10:45:16 hello\n\n# These are wrapped for clarity of presentation\n# on the website; in reality they are emitted\n# on a single line.\n{\"time\":\"2023-08-22T10:45:16.904166391-07:00\",\n \"level\":\"INFO\",\"msg\":\"hi there\"}\n{\"time\":\"2023-08-22T10:45:16.904178985-07:00\",\n\\t\"level\":\"INFO\",\"msg\":\"hello again\",\n\\t\"key\":\"val\",\"age\":25}"}
   ]}
 />

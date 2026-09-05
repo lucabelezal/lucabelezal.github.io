@@ -26,7 +26,7 @@ func main() {
     fmt.Println("perim:", rp.perim())
 }`}
   sections={[
-    {text: "This area method has a receiver type of *rect."},
+    {text: "This `area` method has a _receiver type_ of `*rect`."},
     {text: "Methods can be defined for either pointer or value receiver types. Here's an example of a value receiver."},
     {text: "Here we call the 2 methods defined for our struct."},
     {text: "Go automatically handles conversion between values and pointers for method calls. You may want to use a pointer receiver type to avoid copying on method calls or to allow the method to mutate the receiving struct."},

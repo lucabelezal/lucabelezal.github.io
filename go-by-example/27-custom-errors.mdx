@@ -35,9 +35,9 @@ func main() {
 }`}
   sections={[
     {text: "A custom error type usually has the suffix \"Error\"."},
-    {text: "Adding this Error method makes argError implement the error interface."},
+    {text: "Adding this `Error` method makes `argError` implement the `error` interface."},
     {text: "Return our custom error."},
-    {text: "errors.AsType is a more advanced version of errors.Is. It checks that a given error (or any error in its chain) matches a specific error type and converts to a value of that type, also returning true. If there's no match, the second return value is false."},
+    {text: "`errors.AsType` is a more advanced version of `errors.Is`. It checks that a given error (or any error in its chain) matches a specific error type and converts to a value of that type, also returning `true`. If there's no match, the second return value is `false`."},
     {text: "Saída:\n$ go run custom-errors.go\n42\ncan't work with it"}
   ]}
 />

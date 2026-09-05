@@ -32,8 +32,8 @@ func main() {
     {text: "This is the function we'll run in every goroutine."},
     {text: "Sleep to simulate an expensive task."},
     {text: "This WaitGroup is used to wait for all the goroutines launched here to finish. Note: if a WaitGroup is explicitly passed into functions, it should be done *by pointer*."},
-    {text: "Launch several goroutines using WaitGroup.Go"},
-    {text: "Block until all the goroutines started by wg are done. A goroutine is done when the function it invokes returns."},
+    {text: "Launch several goroutines using `WaitGroup.Go`"},
+    {text: "Block until all the goroutines started by `wg` are done. A goroutine is done when the function it invokes returns."},
     {text: "Note that this approach has no straightforward way to propagate errors from workers. For more advanced use cases, consider using the [errgroup package](https://pkg.go.dev/golang.org/x/sync/errgroup)."},
     {text: "Saída:\n$ go run waitgroups.go\nWorker 5 starting\nWorker 3 starting\nWorker 4 starting\nWorker 1 starting\nWorker 2 starting\nWorker 4 done\nWorker 1 done\nWorker 2 done\nWorker 5 done\nWorker 3 done\n\n# The order of workers starting up and finishing\n# is likely to be different for each invocation."}
   ]}

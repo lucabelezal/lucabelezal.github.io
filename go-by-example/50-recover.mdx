@@ -23,9 +23,9 @@ func main() {
 }`}
   sections={[
     {text: "This function panics."},
-    {text: "recover must be called within a deferred function. When the enclosing function panics, the defer will activate and a recover call within it will catch the panic."},
-    {text: "The return value of recover is the error raised in the call to panic."},
-    {text: "This code will not run, because mayPanic panics. The execution of main stops at the point of the panic and resumes in the deferred closure."},
+    {text: "`recover` must be called within a deferred function. When the enclosing function panics, the defer will activate and a `recover` call within it will catch the panic."},
+    {text: "The return value of `recover` is the error raised in the call to `panic`."},
+    {text: "This code will not run, because `mayPanic` panics. The execution of `main` stops at the point of the panic and resumes in the deferred closure."},
     {text: "Saída:\n$ go run recover.go\nRecovered. Error:\n a problem"}
   ]}
 />
