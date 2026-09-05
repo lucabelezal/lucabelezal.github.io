@@ -74,7 +74,7 @@ import SeriesNav from '@site/src/components/blog/SeriesNav';
 
 </Summary>
 
-<NextSteps href="/blog/retries-e-backoff" title="Retries e Exponential Backoff">
+<NextSteps href="/retries-e-backoff" title="Retries e Exponential Backoff">
 Você já sabe tornar uma operação idempotente. Agora entenda como o cliente decide _quando_ repetir.
 </NextSteps>
 
@@ -82,8 +82,8 @@ Você já sabe tornar uma operação idempotente. Agora entenda como o cliente d
 
 <SeriesNav
   seriesName="Backend Engineering — 03/12"
-  prev={{title: "REST API Design", href: "/blog/rest-api-design"}}
-  next={{title: "Retries e Backoff", href: "/blog/retries-e-backoff"}}
+  prev={{title: "REST API Design", href: "/rest-api-design"}}
+  next={{title: "Retries e Backoff", href: "/retries-e-backoff"}}
 />
 ```
 

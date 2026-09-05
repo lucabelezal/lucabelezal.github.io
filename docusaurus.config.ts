@@ -37,6 +37,7 @@ const config: Config = {
       {
         docs: false,
         blog: {
+          routeBasePath: '/',
           showReadingTime: true,
           feedOptions: {
             type: ['rss', 'atom'],
@@ -71,7 +72,7 @@ const config: Config = {
         src: 'img/logo.svg',
       },
       items: [
-        {to: '/blog', label: 'Blog', position: 'left'},
+        {to: '/', label: 'Blog', position: 'left'},
         {
           href: 'https://github.com/lucabelezal',
           label: 'GitHub',
@@ -87,7 +88,7 @@ const config: Config = {
           items: [
             {
               label: 'Posts',
-              to: '/blog',
+              to: '/',
             },
           ],
         },
