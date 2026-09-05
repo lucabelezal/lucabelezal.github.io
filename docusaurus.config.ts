@@ -63,14 +63,11 @@ const config: Config = {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
     colorMode: {
+      defaultMode: 'dark',
       respectPrefersColorScheme: true,
     },
     navbar: {
       title: 'Luca Belezal',
-      logo: {
-        alt: 'Luca Belezal Logo',
-        src: 'img/logo.svg',
-      },
       items: [
         {to: '/', label: 'Blog', position: 'left'},
         {
