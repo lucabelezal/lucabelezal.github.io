@@ -1,25 +1,15 @@
-import {useEffect, useState} from 'react';
 import {useLocation} from '@docusaurus/router';
-import {isGoRoute, PROGRESS_EVENT, readProgress} from '../CompletionTracker/progress';
+import {isGoRoute, useProgress} from '../CompletionTracker/progress';
 import styles from './styles.module.css';
 
 export default function ProgressIndicator() {
   const {pathname} = useLocation();
-  const [completed, setCompleted] = useState(0);
-
-  useEffect(() => {
-    if (!isGoRoute(pathname)) return;
-    const update = () => {
-      setCompleted(Object.keys(readProgress()).filter(isGoRoute).length);
-    };
-    update();
-    window.addEventListener(PROGRESS_EVENT, update);
-    return () => window.removeEventListener(PROGRESS_EVENT, update);
-  }, [pathname]);
+  const {progress} = useProgress();
 
   if (!isGoRoute(pathname)) return null;
 
   const total = 87;
+  const completed = Object.keys(progress).filter(isGoRoute).length;
   const percentage = Math.min(100, Math.round((completed / total) * 100));
 
   return (
