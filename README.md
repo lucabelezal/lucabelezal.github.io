@@ -28,9 +28,15 @@ src/css/custom.css             # tema
 ```bash
 npm install
 npm run start   # http://localhost:3000  (blog já na /)
+npm run start:en # http://localhost:3000/en (desenvolvimento em inglês)
+npm run start:es # http://localhost:3000/es (desenvolvimento em espanhol)
 npm run build   # build 3 locales
-npm run serve   # preview do build
+npm run serve   # preview do build com todas as locales
 ```
+
+O servidor de desenvolvimento carrega uma locale por vez. Para acessar `/en`
+ou `/es`, use o comando correspondente acima. Depois de `npm run build`,
+`npm run serve` disponibiliza as três locales no mesmo servidor.
 
 ## Escrevendo
 
