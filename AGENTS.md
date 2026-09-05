@@ -32,6 +32,13 @@ Harness: muitas skills no projeto (~67). AGENTS.md é roteador leve; detalhes fi
 - `i18n/<locale>/docusaurus-plugin-content-blog/` — traduções (en/es).
 - `src/pages/` — páginas React; `src/css/custom.css` — tema (Infima).
 
+## Área Go
+
+- `/go` é a home editorial da área: lista conteúdos em ordem cronológica.
+- `sidebarsGo.ts` deve listar apenas conteúdos editoriais por ano; não incluir o catálogo do Go by Example.
+- Go by Example permanece como referência acessível por link, fora da navegação editorial principal.
+- Ao publicar conteúdo novo de Go, adicionar a entrada mais recente em `src/components/GoHome/index.tsx` e ao ano correspondente no sidebar, quando aplicável.
+
 ## Regras de escrita
 
 - Idioma canônico: **pt-BR**. Posts novos nascem em `blog/`.

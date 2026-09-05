@@ -1,6 +1,7 @@
 import React, {type ReactNode} from 'react';
 import clsx from 'clsx';
 import {useWindowSize} from '@docusaurus/theme-common';
+import {useLocation} from '@docusaurus/router';
 import {useDoc} from '@docusaurus/plugin-content-docs/client';
 import DocItemPaginator from '@theme/DocItem/Paginator';
 import DocVersionBanner from '@theme/DocVersionBanner';
@@ -13,6 +14,7 @@ import DocBreadcrumbs from '@theme/DocBreadcrumbs';
 import ContentVisibility from '@theme/ContentVisibility';
 import ProgressIndicator from '@site/src/components/ProgressIndicator';
 import type {Props} from '@theme/DocItem/Layout';
+import {isGoHome} from '@site/src/components/CompletionTracker/progress';
 
 import styles from './styles.module.css';
 
@@ -35,6 +37,8 @@ function useDocTOC() {
 export default function DocItemLayout({children}: Props): ReactNode {
   const docTOC = useDocTOC();
   const {metadata} = useDoc();
+  const {pathname} = useLocation();
+  const isHome = isGoHome(pathname);
 
   return (
     <div className="row">
@@ -43,13 +47,13 @@ export default function DocItemLayout({children}: Props): ReactNode {
         <DocVersionBanner />
         <div className={styles.docItemContainer}>
           <article>
-            <DocBreadcrumbs />
+            {!isHome && <DocBreadcrumbs />}
             <DocVersionBadge />
             {docTOC.mobile}
             <DocItemContent>{children}</DocItemContent>
-            <DocItemFooter />
+            {!isHome && <DocItemFooter />}
           </article>
-          <DocItemPaginator />
+          {!isHome && <DocItemPaginator />}
         </div>
       </div>
       <div className="col col--3">

@@ -25,6 +25,10 @@ export function isGoRoute(pathname: string) {
   return /^\/(?:en\/|es\/)?go(?:\/|$)/.test(pathname);
 }
 
+export function isGoHome(pathname: string) {
+  return /^\/(?:en\/|es\/)?go\/?$/.test(pathname);
+}
+
 export function ProgressProvider({children}: {children: ReactNode}) {
   const [progress, setProgress] = useState<Progress>({});
 

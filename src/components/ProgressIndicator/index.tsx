@@ -1,12 +1,12 @@
 import {useLocation} from '@docusaurus/router';
-import {isGoRoute, useProgress} from '../CompletionTracker/progress';
+import {isGoHome, isGoRoute, useProgress} from '../CompletionTracker/progress';
 import styles from './styles.module.css';
 
 export default function ProgressIndicator() {
   const {pathname} = useLocation();
   const {progress, reset} = useProgress();
 
-  if (!isGoRoute(pathname)) return null;
+  if (!isGoRoute(pathname) || isGoHome(pathname)) return null;
 
   const total = 87;
   const completed = Object.keys(progress).filter(isGoRoute).length;

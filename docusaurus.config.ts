@@ -76,10 +76,9 @@ const config: Config = {
       title: 'Lucas Nascimento',
       items: [
         {
-          type: 'docSidebar',
-          sidebarId: 'goSidebar',
+          to: '/go',
           position: 'left',
-          label: 'Go by Example',
+          label: 'Go',
         },
         {
           type: 'localeDropdown',

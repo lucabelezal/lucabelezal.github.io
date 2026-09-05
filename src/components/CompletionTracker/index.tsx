@@ -1,6 +1,6 @@
 import {useLocation} from '@docusaurus/router';
 import styles from './styles.module.css';
-import {isGoRoute, useProgress} from './progress';
+import {isGoHome, isGoRoute, useProgress} from './progress';
 
 export default function CompletionTracker() {
   const {pathname} = useLocation();
@@ -8,9 +8,9 @@ export default function CompletionTracker() {
 
   const isGoPage = isGoRoute(pathname);
   const routeKey = pathname.replace(/\/+$/, '') || '/';
-  const isIndex = /^\/(?:en\/|es\/)?go$/.test(routeKey);
+  const isIndex = isGoHome(routeKey);
 
-  if (!isGoPage) {
+  if (!isGoPage || isIndex) {
     return null;
   }
 
