@@ -7,12 +7,14 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Range over Iterators"}
   code={`package main
+
 import (
     "fmt"
     "iter"
     "slices"
     "strings"
 )
+
 type List[T any] struct {
     head, tail *element[T]
 }

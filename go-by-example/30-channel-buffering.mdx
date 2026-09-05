@@ -7,7 +7,9 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Channel Buffering"}
   code={`package main
+
 import "fmt"
+
 func main() {
     messages := make(chan string, 2)
     messages <- "buffered"

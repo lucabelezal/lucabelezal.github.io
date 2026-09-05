@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Panic"}
   code={`package main
+
 import (
     "os"
     "path/filepath"
 )
+
 func main() {
     panic("a problem")
     path := filepath.Join(os.TempDir(), "file")

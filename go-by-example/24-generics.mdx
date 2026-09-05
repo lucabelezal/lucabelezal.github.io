@@ -7,7 +7,9 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Generics"}
   code={`package main
+
 import "fmt"
+
 func SlicesIndex[S ~[]E, E comparable](s S, v E) int {
     for i := range s {
         if v == s[i] {
@@ -16,6 +18,7 @@ func SlicesIndex[S ~[]E, E comparable](s S, v E) int {
     }
     return -1
 }
+
 type List[T any] struct {
     head, tail *element[T]
 }
@@ -23,6 +26,7 @@ type element[T any] struct {
     next *element[T]
     val  T
 }
+
 func (lst *List[T]) Push(v T) {
     if lst.tail == nil {
         lst.head = &element[T]{val: v}

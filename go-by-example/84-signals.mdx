@@ -7,12 +7,14 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Signals"}
   code={`package main
+
 import (
     "context"
     "fmt"
     "os/signal"
     "syscall"
 )
+
 func main() {
     ctx, stop := signal.NotifyContext(
         context.Background(), syscall.SIGINT, syscall.SIGTERM)

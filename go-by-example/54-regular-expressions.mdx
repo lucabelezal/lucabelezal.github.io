@@ -7,11 +7,13 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Regular Expressions"}
   code={`package main
+
 import (
     "bytes"
     "fmt"
     "regexp"
 )
+
 func main() {
     match, _ := regexp.MatchString("p([a-z]+)ch", "peach")
     fmt.Println(match)

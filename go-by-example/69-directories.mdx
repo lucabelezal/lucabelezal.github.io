@@ -7,12 +7,14 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Directories"}
   code={`package main
+
 import (
     "fmt"
     "io/fs"
     "os"
     "path/filepath"
 )
+
 func check(e error) {
     if e != nil {
         panic(e)

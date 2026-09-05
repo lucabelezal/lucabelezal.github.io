@@ -7,7 +7,9 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Closures"}
   code={`package main
+
 import "fmt"
+
 func intSeq() func() int {
     i := 0
     return func() int {

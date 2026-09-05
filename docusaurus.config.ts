@@ -82,6 +82,10 @@ const config: Config = {
           label: 'Go by Example',
         },
         {
+          type: 'localeDropdown',
+          position: 'right',
+        },
+        {
           href: 'https://github.com/lucabelezal',
           label: 'GitHub',
           position: 'right',

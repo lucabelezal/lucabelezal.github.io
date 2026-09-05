@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Timers"}
   code={`package main
+
 import (
     "fmt"
     "time"
 )
+
 func main() {
     timer1 := time.NewTimer(2 * time.Second)
     <-timer1.C

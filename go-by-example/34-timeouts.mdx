@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Timeouts"}
   code={`package main
+
 import (
     "fmt"
     "time"
 )
+
 func main() {
     c1 := make(chan string, 1)
     go func() {

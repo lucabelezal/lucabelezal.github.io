@@ -7,12 +7,14 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"JSON"}
   code={`package main
+
 import (
     "bytes"
     "encoding/json/v2"
     "fmt"
     "strings"
 )
+
 type response1 struct {
     Page   int
     Fruits []string
@@ -21,6 +23,7 @@ type response2 struct {
     Page   int      \`json:"page"\`
     Fruits []string \`json:"fruits"\`
 }
+
 func main() {
     bolB, _ := json.Marshal(true)
     fmt.Println(string(bolB))

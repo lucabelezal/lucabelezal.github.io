@@ -7,11 +7,13 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Exec"}
   code={`package main
+
 import (
     "os"
     "os/exec"
     "syscall"
 )
+
 func main() {
     binary, lookErr := exec.LookPath("ls")
     if lookErr != nil {

@@ -7,7 +7,9 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Channels"}
   code={`package main
+
 import "fmt"
+
 func main() {
     messages := make(chan string)
     go func() { messages <- "ping" }()

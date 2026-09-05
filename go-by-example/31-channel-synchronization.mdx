@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Channel Synchronization"}
   code={`package main
+
 import (
     "fmt"
     "time"
 )
+
 func worker(done chan bool) {
     fmt.Print("working...")
     time.Sleep(time.Second)

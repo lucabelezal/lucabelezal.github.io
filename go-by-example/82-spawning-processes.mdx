@@ -7,12 +7,14 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Spawning Processes"}
   code={`package main
+
 import (
     "errors"
     "fmt"
     "io"
     "os/exec"
 )
+
 func main() {
     dateCmd := exec.Command("date")
     _, err = exec.Command("date", "-x").Output()

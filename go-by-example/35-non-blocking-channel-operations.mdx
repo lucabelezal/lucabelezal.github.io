@@ -7,7 +7,9 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Non-Blocking Channel Operations"}
   code={`package main
+
 import "fmt"
+
 func main() {
     messages := make(chan string)
     signals := make(chan bool)

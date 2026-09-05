@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Exit"}
   code={`package main
+
 import (
     "fmt"
     "os"
 )
+
 func main() {
     defer fmt.Println("!")
     os.Exit(3)

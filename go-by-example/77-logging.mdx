@@ -7,13 +7,15 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Logging"}
   code={`package main
+
 import (
     "bytes"
     "fmt"
     "log"
-    "os"
     "log/slog"
+    "os"
 )
+
 func main() {
     log.Println("standard logger")
     log.SetFlags(log.LstdFlags | log.Lmicroseconds)

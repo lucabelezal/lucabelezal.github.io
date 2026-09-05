@@ -7,14 +7,17 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Mutexes"}
   code={`package main
+
 import (
     "fmt"
     "sync"
 )
+
 type Container struct {
     mu       sync.Mutex
     counters map[string]int
 }
+
 func (c *Container) inc(name string) {
     c.mu.Lock()
     defer c.mu.Unlock()

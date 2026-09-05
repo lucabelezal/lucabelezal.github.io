@@ -7,17 +7,17 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"WaitGroups"}
   code={`package main
+
 import (
     "fmt"
     "sync"
     "time"
 )
+
 func worker(id int) {
-    fmt.Printf("Worker %d starting\
-", id)
+    fmt.Printf("Worker %d starting\n", id)
     time.Sleep(time.Second)
-    fmt.Printf("Worker %d done\
-", id)
+    fmt.Printf("Worker %d done\n", id)
 }
 func main() {
     var wg sync.WaitGroup

@@ -7,11 +7,13 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Defer"}
   code={`package main
+
 import (
     "fmt"
     "os"
     "path/filepath"
 )
+
 func main() {
     path := filepath.Join(os.TempDir(), "defer.txt")
     f := createFile(path)

@@ -7,16 +7,21 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Embed Directive"}
   code={`package main
+
 import (
     "embed"
 )
+
 //go:embed folder/single_file.txt
 var fileString string
+
 //go:embed folder/single_file.txt
 var fileByte []byte
+
 //go:embed folder/single_file.txt
 //go:embed folder/*.hash
 var folder embed.FS
+
 func main() {
     print(fileString)
     print(string(fileByte))

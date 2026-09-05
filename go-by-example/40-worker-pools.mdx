@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Worker Pools"}
   code={`package main
+
 import (
     "fmt"
     "time"
 )
+
 func worker(id int, jobs <-chan int, results chan<- int) {
     for j := range jobs {
         fmt.Println("worker", id, "started  job", j)

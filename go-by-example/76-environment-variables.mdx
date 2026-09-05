@@ -7,11 +7,13 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Environment Variables"}
   code={`package main
+
 import (
     "fmt"
     "os"
     "strings"
 )
+
 func main() {
     os.Setenv("FOO", "1")
     fmt.Println("FOO:", os.Getenv("FOO"))

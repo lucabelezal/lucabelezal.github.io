@@ -196,6 +196,48 @@
       ],
       "method": "copy",
       "global": false
+    },
+    "code-blog-ui": {
+      "name": "code-blog-ui",
+      "source": "local",
+      "contentHash": "f90a4f8aa2d29c61b1e9335fd47cf2555f41f443e67b0f7265dce1ee8524c2c5",
+      "installedAt": "2026-09-05T17:12:27.098916Z",
+      "updatedAt": "2026-09-05T17:12:27.098916Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "code-blog-content": {
+      "name": "code-blog-content",
+      "source": "local",
+      "contentHash": "9593ec4f4e996e5fc5c6009eb66e1a539ea1d90051e3fb32768dbf7403aa2c26",
+      "installedAt": "2026-09-05T17:12:27.098916Z",
+      "updatedAt": "2026-09-05T17:12:27.098916Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "code-blog-docusaurus": {
+      "name": "code-blog-docusaurus",
+      "source": "local",
+      "contentHash": "1611de105a734a7b24e33e3ee74808eed888d8cfeb3114c0ecb0f968c247f210",
+      "installedAt": "2026-09-05T17:12:27.098916Z",
+      "updatedAt": "2026-09-05T17:12:27.098916Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
     }
   }
 }

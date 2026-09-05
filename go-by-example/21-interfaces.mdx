@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Interfaces"}
   code={`package main
+
 import (
     "fmt"
     "math"
 )
+
 type geometry interface {
     area() float64
     perim() float64
@@ -21,6 +23,7 @@ type rect struct {
 type circle struct {
     radius float64
 }
+
 func (r rect) area() float64 {
     return r.width * r.height
 }

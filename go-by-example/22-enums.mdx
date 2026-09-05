@@ -7,20 +7,25 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Enums"}
   code={`package main
+
 import "fmt"
+
 type ServerState int
+
 const (
     StateIdle ServerState = iota
     StateConnected
     StateError
     StateRetrying
 )
+
 var stateName = map[ServerState]string{
     StateIdle:      "idle",
     StateConnected: "connected",
     StateError:     "error",
     StateRetrying:  "retrying",
 }
+
 func (ss ServerState) String() string {
     return stateName[ss]
 }

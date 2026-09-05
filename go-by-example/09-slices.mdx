@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Slices"}
   code={`package main
+
 import (
     "fmt"
     "slices"
 )
+
 func main() {
     var s []string
     fmt.Println("uninit:", s, s == nil, len(s) == 0)

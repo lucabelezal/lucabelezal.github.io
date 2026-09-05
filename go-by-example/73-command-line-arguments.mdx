@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Command-Line Arguments"}
   code={`package main
+
 import (
     "fmt"
     "os"
 )
+
 func main() {
     argsWithProg := os.Args
     argsWithoutProg := os.Args[1:]

@@ -187,3 +187,19 @@ code {
 [data-theme='dark'] {
   --go-code-bg: #161b22;
 }
+
+/* Go by Example — largura tipo VSCode (mais espaço para código) */
+@media (min-width: 997px) {
+  /* Aumenta container docs para /go ter mais respiro */
+  .theme-doc-markdown,
+  [class*="docItemContainer"] {
+    max-width: 1680px;
+  }
+  /* Remove limite estreito da coluna principal quando em docs */
+  .container {
+    max-width: 1680px !important;
+  }
+}
+.prism-code {
+  tab-size: 4;
+}

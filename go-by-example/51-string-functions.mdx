@@ -7,11 +7,14 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"String Functions"}
   code={`package main
+
 import (
     "fmt"
     s "strings"
 )
+
 var p = fmt.Println
+
 func main() {
     p("Contains:  ", s.Contains("test", "es"))
     p("Count:     ", s.Count("test", "t"))

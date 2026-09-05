@@ -7,12 +7,14 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Base64 Encoding"}
   code={`package main
+
 import (
     b64 "encoding/base64"
     "fmt"
 )
+
 func main() {
-    data := "abc123!?\$*&()'-=@~"
+    data := "abc123!?$*&()'-=@~"
     sEnc := b64.StdEncoding.EncodeToString([]byte(data))
     fmt.Println(sEnc)
     sDec, _ := b64.StdEncoding.DecodeString(sEnc)

@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Tickers"}
   code={`package main
+
 import (
     "fmt"
     "time"
 )
+
 func main() {
     ticker := time.NewTicker(500 * time.Millisecond)
     done := make(chan bool)

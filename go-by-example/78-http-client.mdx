@@ -7,11 +7,13 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"HTTP Client"}
   code={`package main
+
 import (
     "bufio"
     "fmt"
     "net/http"
 )
+
 func main() {
     resp, err := http.Get("https://gobyexample.com")
     if err != nil {

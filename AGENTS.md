@@ -9,6 +9,23 @@ Blog de aprendizados em engenharia de software, feito com Docusaurus.
 - Checar tipos: `npm run typecheck`
 - Preview do build: `npm run serve`
 
+## Skills — roteamento
+
+Carregue a skill certa antes de agir. Fonte canônica: `skills/` → sync para `.claude/skills/` e `.agents/skills/`.
+
+| Intenção do usuário | Skill | Onde |
+|---|---|---|
+| Analisar screenshot/Figma/URL e transformar em spec implementável | `code-blog-ui` | `skills/code-blog-ui/SKILL.md` |
+| Criar/editar post técnico, aplicar esqueleto editorial, revisar estrutura | `code-blog-content` | `skills/code-blog-content/SKILL.md` |
+| Implementar spec em Docusaurus/React/TS (tokens, layout, componente) | `code-blog-docusaurus` | `skills/code-blog-docusaurus/SKILL.md` |
+| Frontend genérico (design system, blueprint, audit) | `frontend-design`, `frontend-blueprint`, `web-design-guidelines`, `web-quality-audit`, `perf-web-optimization` | `.claude/skills/` |
+| SEO/docs | `seo`, `ai-seo`, `docs-writer` | `.claude/skills/` |
+| Go / backend (trilhas `go-by-example/`) | `golang-*` (50 skills: code-style, concurrency, testing, etc) | `.agents/skills/` |
+
+Fluxo blog: `referência visual → code-blog-ui (spec) → code-blog-content (estrutura) → code-blog-docusaurus (código) → npm run build`.
+
+Harness: muitas skills no projeto (~67). AGENTS.md é roteador leve; detalhes ficam nas skills. Avalie harness com `harness-eval` (`.claude/skills/harness-eval/SKILL.md`) — Track A sempre, B/C sob demanda.
+
 ## Estrutura
 
 - `blog/` — posts canônicos em **pt-BR** (frontmatter + `.mdx`).

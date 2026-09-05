@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Goroutines"}
   code={`package main
+
 import (
     "fmt"
     "time"
 )
+
 func f(from string) {
     for i := range 3 {
         fmt.Println(from, ":", i)

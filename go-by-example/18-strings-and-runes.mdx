@@ -7,10 +7,12 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Strings and Runes"}
   code={`package main
+
 import (
     "fmt"
     "unicode/utf8"
 )
+
 func main() {
     const s = "สวัสดี"
     fmt.Println("Len:", len(s))
@@ -20,15 +22,12 @@ func main() {
     fmt.Println()
     fmt.Println("Rune count:", utf8.RuneCountInString(s))
     for idx, runeValue := range s {
-        fmt.Printf("%#U starts at %d\
-", runeValue, idx)
+        fmt.Printf("%#U starts at %d\n", runeValue, idx)
     }
-    fmt.Println("\
-Using DecodeRuneInString")
+    fmt.Println("\nUsing DecodeRuneInString")
     for i, w := 0, 0; i < len(s); i += w {
         runeValue, width := utf8.DecodeRuneInString(s[i:])
-        fmt.Printf("%#U starts at %d\
-", runeValue, i)
+        fmt.Printf("%#U starts at %d\n", runeValue, i)
         w = width
         examineRune(runeValue)
     }

@@ -7,14 +7,17 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"Custom Errors"}
   code={`package main
+
 import (
     "errors"
     "fmt"
 )
+
 type argError struct {
     arg     int
     message string
 }
+
 func (e *argError) Error() string {
     return fmt.Sprintf("%d - %s", e.arg, e.message)
 }

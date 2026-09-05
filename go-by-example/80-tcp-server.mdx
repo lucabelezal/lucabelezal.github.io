@@ -7,6 +7,7 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"TCP Server"}
   code={`package main
+
 import (
     "bufio"
     "fmt"
@@ -14,6 +15,7 @@ import (
     "net"
     "strings"
 )
+
 func main() {
     listener, err := net.Listen("tcp", ":8090")
     if err != nil {
@@ -32,15 +34,13 @@ func main() {
 func handleConnection(conn net.Conn) {
     defer conn.Close()
     reader := bufio.NewReader(conn)
-    message, err := reader.ReadString('\
-')
+    message, err := reader.ReadString('\n')
     if err != nil {
         log.Printf("Read error: %v", err)
         return
     }
     ackMsg := strings.ToUpper(strings.TrimSpace(message))
-    response := fmt.Sprintf("ACK: %s\
-", ackMsg)
+    response := fmt.Sprintf("ACK: %s\n", ackMsg)
     _, err = conn.Write([]byte(response))
     if err != nil {
         log.Printf("Server write error: %v", err)

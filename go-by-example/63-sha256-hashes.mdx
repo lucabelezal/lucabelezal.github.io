@@ -7,18 +7,19 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 <CodeExplanation
   title={"SHA256 Hashes"}
   code={`package main
+
 import (
     "crypto/sha256"
     "fmt"
 )
+
 func main() {
     s := "sha256 this string"
     h := sha256.New()
     h.Write([]byte(s))
     bs := h.Sum(nil)
     fmt.Println(s)
-    fmt.Printf("%x\
-", bs)
+    fmt.Printf("%x\n", bs)
 }`}
   sections={[
     {text: "Go implements several hash functions in various `crypto/*` packages."},
