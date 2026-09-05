@@ -1,0 +1,42 @@
+---
+title: "Demo: Scrollycoding (Code Hike style)"
+---
+
+import Scrollycoding from '@site/src/components/Scrollycoding';
+
+# Scrollycoding — como no clone SwiftUI e Fumadocs + Code Hike
+
+Texto à esquerda, código à direita que troca com o scroll. Inspirado em [clone-swiftui-tutorial](https://clone-swiftui-tutorial.vercel.app) e [ch-with-fumadocs/scrollycoding](https://ch-with-fumadocs.vercel.app/docs/scrollycoding).
+
+<Scrollycoding
+  steps={[
+    {
+      title: "Intro",
+      content: "Welcome! Este é o estilo Code Hike. Ao rolar, o código à direita muda o foco. Útil para tutoriais passo a passo.",
+      code: `package main\n\nimport "fmt"\n\nfunc main() {\n    fmt.Println("hello")\n}`,
+      language: "go",
+    },
+    {
+      title: "A Game of Thrones",
+      content: "Primeiro livro da série — introduz famílias e o Norte. No código, focamos no array houses.",
+      code: `const houses = [\n  "Stark",\n  "Lannister",\n  "Baratheon",\n  "Targaryen",\n]`,
+      language: "js",
+      focus: "1:5",
+    },
+    {
+      title: "A Clash of Kings",
+      content: "Os Sete Reinos em guerra, Daenerys retorna com dragões. Focamos no sorteio.",
+      code: `const winner =\n  houses[\n    Math.floor(\n      Math.random() * houses.length,\n    )\n  ]\n\nconsole.log(\`Iron Throne: \${winner}\`)`,
+      language: "js",
+      focus: "1:6",
+    },
+    {
+      title: "Customização",
+      content: "No seu site, cada Step pode ter título, texto, imagem e código com highlight de linhas. O Docusaurus já fornece CodeBlock com título, copy e temas github/oneDark.",
+      code: `// highlight-next-line\nfmt.Println("linha destacada")\nfmt.Println("normal")`,
+      language: "go",
+    },
+  ]}
+/>
+
+> Este componente é **nativo Docusaurus** (sem `codehike` externo) para evitar conflito com React 19. Se quiser o Code Hike real, precisaríamos migrar para Fumadocs/Next.js (como no seu segundo link) — te mostro quando quiser.
