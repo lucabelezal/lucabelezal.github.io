@@ -37,16 +37,16 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Set key/value pairs using typical `name[key] = val` syntax."},
-    {text: "Printing a map with e.g. `fmt.Println` will show all of its key/value pairs."},
-    {text: "Get a value for a key with `name[key]`."},
-    {text: "If the key doesn't exist, the [zero value](https://go.dev/ref/spec#The_zero_value) of the value type is returned."},
-    {text: "The builtin `len` returns the number of key/value pairs when called on a map."},
-    {text: "The builtin `delete` removes key/value pairs from a map."},
-    {text: "To remove *all* key/value pairs from a map, use the `clear` builtin."},
-    {text: "The optional second return value when getting a value from a map indicates if the key was present in the map. This can be used to disambiguate between missing keys and keys with zero values like `0` or `\"\"`. Here we didn't need the value itself, so we ignored it with the _blank identifier_ `_`."},
-    {text: "You can also declare and initialize a new map in the same line with this syntax."},
-    {text: "The `maps` package contains a number of useful utility functions for maps."},
+    {text: "Define pares clave/valor usando la sintaxis habitual `name[key] = val`."},
+    {text: "Imprimir un mapa con, por ejemplo, `fmt.Println` muestra todos sus pares clave/valor."},
+    {text: "Obtén el valor de una clave con `name[key]`."},
+    {text: "Si la clave no existe, se devuelve el [valor cero](https://go.dev/ref/spec#The_zero_value) del tipo del valor."},
+    {text: "La función incorporada `len` devuelve el número de pares clave/valor cuando se llama sobre un mapa."},
+    {text: "La función incorporada `delete` elimina pares clave/valor de un mapa."},
+    {text: "Para eliminar *todos* los pares clave/valor de un mapa, usa la función incorporada `clear`."},
+    {text: "El segundo valor de retorno opcional al obtener un valor de un mapa indica si la clave estaba presente. Esto permite distinguir entre claves ausentes y claves con valores cero como `0` o `\"\"`. Aquí no necesitábamos el valor, así que lo ignoramos con el _identificador en blanco_ `_`."},
+    {text: "También puedes declarar e inicializar un mapa nuevo en la misma línea con esta sintaxis."},
+    {text: "El paquete `maps` contiene varias funciones de utilidad para mapas."},
     {text: "Saída:\n# Note that maps appear in the form `map[k:v k:v]` when\n# printed with `fmt.Println`.\n$ go run maps.go \nmap: map[k1:7 k2:13]\nv1: 7\nv3: 0\nlen: 2\nmap: map[k1:7]\nmap: map[]\nprs: false\nmap: map[bar:2 foo:1]\nn == n2"}
   ]}
 />
@@ -55,4 +55,4 @@ func main() {
   Run on go.dev/play
 </a>
 
-Próximo: [Functions](/go/functions).
+Siguiente: [Funciones](/go/functions).

@@ -1,11 +1,11 @@
 ---
-title: Constants
+title: Constantes
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Constants"}
+  title={"Constantes"}
   code={`package main
 
 import (
@@ -24,11 +24,11 @@ func main() {
     fmt.Println(math.Sin(n))
 }`}
   sections={[
-    {text: "`const` declares a constant value."},
-    {text: "A `const` statement can also appear inside a function body."},
-    {text: "Constant expressions perform arithmetic with arbitrary precision."},
-    {text: "A numeric constant has no type until it's given one, such as by an explicit conversion."},
-    {text: "A number can be given a type by using it in a context that requires one, such as a variable assignment or function call. For example, here `math.Sin` expects a `float64`."},
+    {text: "`const` declara un valor constante."},
+    {text: "Una declaración `const` también puede aparecer dentro del cuerpo de una función."},
+    {text: "Las expresiones constantes realizan operaciones aritméticas con precisión arbitraria."},
+    {text: "Una constante numérica no tiene tipo hasta que se le asigna uno, por ejemplo mediante una conversión explícita."},
+    {text: "Un número puede recibir un tipo al usarse en un contexto que lo requiere, como una asignación de variable o una llamada a función. Por ejemplo, aquí `math.Sin` espera un `float64`."},
     {text: "Salida:\n$ go run constant.go \nconstant\n6e+11\n600000000000\n-0.28470407323754404"}
   ]}
 />
