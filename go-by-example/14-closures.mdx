@@ -2,26 +2,38 @@
 title: Closures
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Closures" playHash="NpgpzS8ZG8y" next={{title: "Recursion", href: "/go/recursion"}}>
+<CodeExplanation
+  title={"Closures"}
+  code={`package main
+import "fmt"
+func intSeq() func() int {
+    i := 0
+    return func() int {
+        i++
+        return i
+    }
+}
+func main() {
+    nextInt := intSeq()
+    fmt.Println(nextInt())
+    fmt.Println(nextInt())
+    fmt.Println(nextInt())
+    newInts := intSeq()
+    fmt.Println(newInts())
+}`}
+  sections={[
+    {text: "This function intSeq returns another function, which we define anonymously in the body of intSeq. The returned function closes over the variable i to form a closure."},
+    {text: "We call intSeq, assigning the result (a function) to nextInt. This function value captures its own i value, which will be updated each time we call nextInt."},
+    {text: "See the effect of the closure by calling nextInt a few times."},
+    {text: "To confirm that the state is unique to that particular function, create and test a new one."},
+    {text: "Saída:\n$ go run closures.go\n1\n2\n3\n1\n\n# The last feature of functions we'll look at for now is\n# recursion."}
+  ]}
+/>
 
-<GoExampleRow docs={"Go supports [_anonymous functions_](https://en.wikipedia.org/wiki/Anonymous_function), which can form <a href=\"https://en.wikipedia.org/wiki/Closure_(computer_science)\"><em>closures</em></a>. Anonymous functions are useful when you want to define a function inline without having to name it."} empty code="" />
+<a href="https://go.dev/play/p/NpgpzS8ZG8y" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"closures.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={"This function `intSeq` returns another function, which we define anonymously in the body of `intSeq`. The returned function _closes over_ the variable `i` to form a closure."} language="go" code={"func intSeq() func() int {\n    i := 0\n    return func() int {\n        i++\n        return i\n    }\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"We call `intSeq`, assigning the result (a function) to `nextInt`. This function value captures its own `i` value, which will be updated each time we call `nextInt`."} language="go" code={"    nextInt := intSeq()"} />
-
-<GoExampleRow docs={"See the effect of the closure by calling `nextInt` a few times."} language="go" code={"    fmt.Println(nextInt())\n    fmt.Println(nextInt())\n    fmt.Println(nextInt())"} />
-
-<GoExampleRow docs={"To confirm that the state is unique to that particular function, create and test a new one."} language="go" code={"    newInts := intSeq()\n    fmt.Println(newInts())\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run closures.go\n1\n2\n3\n1\n\n# The last feature of functions we'll look at for now is\n# recursion."} />
-
-</GoExample>
+Próximo: [Recursion](/go/recursion).

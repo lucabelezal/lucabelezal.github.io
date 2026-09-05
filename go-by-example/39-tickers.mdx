@@ -2,24 +2,42 @@
 title: Tickers
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Tickers" playHash="gs6zoJP-Pl9" next={{title: "Worker Pools", href: "/go/worker-pools"}}>
+<CodeExplanation
+  title={"Tickers"}
+  code={`package main
+import (
+    "fmt"
+    "time"
+)
+func main() {
+    ticker := time.NewTicker(500 * time.Millisecond)
+    done := make(chan bool)
+    go func() {
+        for {
+            select {
+            case <-done:
+                return
+            case t := <-ticker.C:
+                fmt.Println("Tick at", t)
+            }
+        }
+    }()
+    time.Sleep(1600 * time.Millisecond)
+    ticker.Stop()
+    done <- true
+    fmt.Println("Ticker stopped")
+}`}
+  sections={[
+    {text: "Tickers use a similar mechanism to timers: a channel that is sent values. Here we'll use the select builtin on the channel to await the values as they arrive every 500ms."},
+    {text: "Tickers can be stopped like timers. Once a ticker is stopped it won't receive any more values on its channel. We'll stop ours after 1600ms."},
+    {text: "Saída:\n# When we run this program the ticker should tick 3 times\n# before we stop it.\n$ go run tickers.go\nTick at 2012-09-23 11:29:56.487625 -0700 PDT\nTick at 2012-09-23 11:29:56.988063 -0700 PDT\nTick at 2012-09-23 11:29:57.488076 -0700 PDT\nTicker stopped"}
+  ]}
+/>
 
-<GoExampleRow docs={"[Timers](timers) are for when you want to do something once in the future - _tickers_ are for when you want to do something repeatedly at regular intervals. Here's an example of a ticker that ticks periodically until we stop it."} empty code="" />
+<a href="https://go.dev/play/p/gs6zoJP-Pl9" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"tickers.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"time\"\n)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"Tickers use a similar mechanism to timers: a channel that is sent values. Here we'll use the `select` builtin on the channel to await the values as they arrive every 500ms."} language="go" code={"    ticker := time.NewTicker(500 * time.Millisecond)\n    done := make(chan bool)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"    go func() {\n        for {\n            select {\n            case <-done:\n                return\n            case t := <-ticker.C:\n                fmt.Println(\"Tick at\", t)\n            }\n        }\n    }()"} />
-
-<GoExampleRow docs={"Tickers can be stopped like timers. Once a ticker is stopped it won't receive any more values on its channel. We'll stop ours after 1600ms."} language="go" code={"    time.Sleep(1600 * time.Millisecond)\n    ticker.Stop()\n    done <- true\n    fmt.Println(\"Ticker stopped\")\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"# When we run this program the ticker should tick 3 times\n# before we stop it.\n$ go run tickers.go\nTick at 2012-09-23 11:29:56.487625 -0700 PDT\nTick at 2012-09-23 11:29:56.988063 -0700 PDT\nTick at 2012-09-23 11:29:57.488076 -0700 PDT\nTicker stopped"} />
-
-</GoExample>
+Próximo: [Worker Pools](/go/worker-pools).

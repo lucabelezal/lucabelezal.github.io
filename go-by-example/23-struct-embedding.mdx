@@ -2,36 +2,52 @@
 title: Struct Embedding
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Struct Embedding" playHash="-LOu1L0i2tR" next={{title: "Generics", href: "/go/generics"}}>
+<CodeExplanation
+  title={"Struct Embedding"}
+  code={`package main
+import "fmt"
+type base struct {
+    num int
+}
+func (b base) describe() string {
+    return fmt.Sprintf("base with num=%v", b.num)
+}
+type container struct {
+    base
+    str string
+}
+func main() {
+    co := container{
+        base: base{
+            num: 1,
+        },
+        str: "some name",
+    }
+    fmt.Printf("co={num: %v, str: %v}\
+", co.num, co.str)
+    fmt.Println("also num:", co.base.num)
+    fmt.Println("describe:", co.describe())
+    type describer interface {
+        describe() string
+    }
+    var d describer = co
+    fmt.Println("describer:", d.describe())
+}`}
+  sections={[
+    {text: "A container embeds a base. An embedding looks like a field without a name."},
+    {text: "When creating structs with literals, we have to initialize the embedding explicitly; here the embedded type serves as the field name."},
+    {text: "We can access the base's fields directly on co, e.g. co.num."},
+    {text: "Alternatively, we can spell out the full path using the embedded type name."},
+    {text: "Since container embeds base, the methods of base also become methods of a container. Here we invoke a method that was embedded from base directly on co."},
+    {text: "Embedding structs with methods may be used to bestow interface implementations onto other structs. Here we see that a container now implements the describer interface because it embeds base."},
+    {text: "Saída:\n$ go run struct-embedding.go\nco={num: 1, str: some name}\nalso num: 1\ndescribe: base with num=1\ndescriber: base with num=1"}
+  ]}
+/>
 
-<GoExampleRow docs={"Go supports _embedding_ of structs and interfaces to express a more seamless _composition_ of types. This is not to be confused with [`//go:embed`](embed-directive) which is a go directive introduced in Go version 1.16+ to embed files and folders into the application binary."} empty code="" />
+<a href="https://go.dev/play/p/-LOu1L0i2tR" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"struct-embedding.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={undefined} language="go" code={"type base struct {\n    num int\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func (b base) describe() string {\n    return fmt.Sprintf(\"base with num=%v\", b.num)\n}"} />
-
-<GoExampleRow docs={"A `container` _embeds_ a `base`. An embedding looks like a field without a name."} language="go" code={"type container struct {\n    base\n    str string\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"When creating structs with literals, we have to initialize the embedding explicitly; here the embedded type serves as the field name."} language="go" code={"    co := container{\n        base: base{\n            num: 1,\n        },\n        str: \"some name\",\n    }"} />
-
-<GoExampleRow docs={"We can access the base's fields directly on `co`, e.g. `co.num`."} language="go" code={"    fmt.Printf(\"co={num: %v, str: %v}\\n\", co.num, co.str)"} />
-
-<GoExampleRow docs={"Alternatively, we can spell out the full path using the embedded type name."} language="go" code={"    fmt.Println(\"also num:\", co.base.num)"} />
-
-<GoExampleRow docs={"Since `container` embeds `base`, the methods of `base` also become methods of a `container`. Here we invoke a method that was embedded from `base` directly on `co`."} language="go" code={"    fmt.Println(\"describe:\", co.describe())"} />
-
-<GoExampleRow docs={undefined} language="go" code={"    type describer interface {\n        describe() string\n    }"} />
-
-<GoExampleRow docs={"Embedding structs with methods may be used to bestow interface implementations onto other structs. Here we see that a `container` now implements the `describer` interface because it embeds `base`."} language="go" code={"    var d describer = co\n    fmt.Println(\"describer:\", d.describe())\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run struct-embedding.go\nco={num: 1, str: some name}\nalso num: 1\ndescribe: base with num=1\ndescriber: base with num=1"} />
-
-</GoExample>
+Próximo: [Generics](/go/generics).

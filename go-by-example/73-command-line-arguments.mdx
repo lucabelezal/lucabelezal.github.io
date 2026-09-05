@@ -2,24 +2,32 @@
 title: Command-Line Arguments
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Command-Line Arguments" playHash="UYCEvh9d2Zb" next={{title: "Command-Line Flags", href: "/go/command-line-flags"}}>
+<CodeExplanation
+  title={"Command-Line Arguments"}
+  code={`package main
+import (
+    "fmt"
+    "os"
+)
+func main() {
+    argsWithProg := os.Args
+    argsWithoutProg := os.Args[1:]
+    arg := os.Args[3]
+    fmt.Println(argsWithProg)
+    fmt.Println(argsWithoutProg)
+    fmt.Println(arg)
+}`}
+  sections={[
+    {text: "os.Args provides access to raw command-line arguments. Note that the first value in this slice is the path to the program, and os.Args[1:] holds the arguments to the program."},
+    {text: "You can get individual args with normal indexing."},
+    {text: "Saída:\n# To experiment with command-line arguments it's best to\n# build a binary with `go build` first.\n$ go build command-line-arguments.go\n$ ./command-line-arguments a b c d\n[./command-line-arguments a b c d]       \n[a b c d]\nc\n\n# Next we'll look at more advanced command-line processing\n# with flags."}
+  ]}
+/>
 
-<GoExampleRow docs={"[_Command-line arguments_](https://en.wikipedia.org/wiki/Command-line_interface#Arguments) are a common way to parameterize execution of programs. For example, `go run hello.go` uses `run` and `hello.go` arguments to the `go` program."} empty code="" />
+<a href="https://go.dev/play/p/UYCEvh9d2Zb" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"command-line-arguments.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"os\"\n)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"`os.Args` provides access to raw command-line arguments. Note that the first value in this slice is the path to the program, and `os.Args[1:]` holds the arguments to the program."} language="go" code={"    argsWithProg := os.Args\n    argsWithoutProg := os.Args[1:]"} />
-
-<GoExampleRow docs={"You can get individual args with normal indexing."} language="go" code={"    arg := os.Args[3]"} />
-
-<GoExampleRow docs={undefined} language="go" code={"    fmt.Println(argsWithProg)\n    fmt.Println(argsWithoutProg)\n    fmt.Println(arg)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"# To experiment with command-line arguments it's best to\n# build a binary with `go build` first.\n$ go build command-line-arguments.go\n$ ./command-line-arguments a b c d\n[./command-line-arguments a b c d]       \n[a b c d]\nc\n\n# Next we'll look at more advanced command-line processing\n# with flags."} />
-
-</GoExample>
+Próximo: [Command-Line Flags](/go/command-line-flags).

@@ -2,34 +2,53 @@
 title: Arrays
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Arrays" playHash="-NFSggT7dFH" next={{title: "Slices", href: "/go/slices"}}>
+<CodeExplanation
+  title={"Arrays"}
+  code={`package main
+import "fmt"
+func main() {
+    var a [5]int
+    fmt.Println("emp:", a)
+    a[4] = 100
+    fmt.Println("set:", a)
+    fmt.Println("get:", a[4])
+    fmt.Println("len:", len(a))
+    b := [5]int{1, 2, 3, 4, 5}
+    fmt.Println("dcl:", b)
+    b = [...]int{1, 2, 3, 4, 5}
+    fmt.Println("dcl:", b)
+    b = [...]int{100, 3: 400, 500}
+    fmt.Println("idx:", b)
+    var twoD [2][3]int
+    for i := range 2 {
+        for j := range 3 {
+            twoD[i][j] = i + j
+        }
+    }
+    fmt.Println("2d: ", twoD)
+    twoD = [2][3]int{
+        {1, 2, 3},
+        {1, 2, 3},
+    }
+    fmt.Println("2d: ", twoD)
+}`}
+  sections={[
+    {text: "Here we create an array a that will hold exactly 5 ints. The type of elements and length are both part of the array's type. By default an array is zero-valued, which for ints means 0s."},
+    {text: "We can set a value at an index using the array[index] = value syntax, and get a value with array[index]."},
+    {text: "The builtin len returns the length of an array."},
+    {text: "Use this syntax to declare and initialize an array in one line."},
+    {text: "You can also have the compiler count the number of elements for you with ..."},
+    {text: "If you specify the index with :, the elements in between will be zeroed."},
+    {text: "Array types are one-dimensional, but you can compose types to build multi-dimensional data structures."},
+    {text: "You can create and initialize multi-dimensional arrays at once too."},
+    {text: "Saída:\n# Note that arrays appear in the form `[v1 v2 v3 ...]`\n# when printed with `fmt.Println`.\n$ go run arrays.go\nemp: [0 0 0 0 0]\nset: [0 0 0 0 100]\nget: 100\nlen: 5\ndcl: [1 2 3 4 5]\ndcl: [1 2 3 4 5]\nidx: [100 0 0 400 500]\n2d:  [[0 1 2] [1 2 3]]\n2d:  [[1 2 3] [1 2 3]]"}
+  ]}
+/>
 
-<GoExampleRow docs={"In Go, an _array_ is a numbered sequence of elements of a specific length. In typical Go code, [slices](slices) are much more common; arrays are useful in some special scenarios."} empty code="" />
+<a href="https://go.dev/play/p/-NFSggT7dFH" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"arrays.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"Here we create an array `a` that will hold exactly 5 `int`s. The type of elements and length are both part of the array's type. By default an array is zero-valued, which for `int`s means `0`s."} language="go" code={"    var a [5]int\n    fmt.Println(\"emp:\", a)"} />
-
-<GoExampleRow docs={"We can set a value at an index using the `array[index] = value` syntax, and get a value with `array[index]`."} language="go" code={"    a[4] = 100\n    fmt.Println(\"set:\", a)\n    fmt.Println(\"get:\", a[4])"} />
-
-<GoExampleRow docs={"The builtin `len` returns the length of an array."} language="go" code={"    fmt.Println(\"len:\", len(a))"} />
-
-<GoExampleRow docs={"Use this syntax to declare and initialize an array in one line."} language="go" code={"    b := [5]int{1, 2, 3, 4, 5}\n    fmt.Println(\"dcl:\", b)"} />
-
-<GoExampleRow docs={"You can also have the compiler count the number of elements for you with `...`"} language="go" code={"    b = [...]int{1, 2, 3, 4, 5}\n    fmt.Println(\"dcl:\", b)"} />
-
-<GoExampleRow docs={"If you specify the index with `:`, the elements in between will be zeroed."} language="go" code={"    b = [...]int{100, 3: 400, 500}\n    fmt.Println(\"idx:\", b)"} />
-
-<GoExampleRow docs={"Array types are one-dimensional, but you can compose types to build multi-dimensional data structures."} language="go" code={"    var twoD [2][3]int\n    for i := range 2 {\n        for j := range 3 {\n            twoD[i][j] = i + j\n        }\n    }\n    fmt.Println(\"2d: \", twoD)"} />
-
-<GoExampleRow docs={"You can create and initialize multi-dimensional arrays at once too."} language="go" code={"    twoD = [2][3]int{\n        {1, 2, 3},\n        {1, 2, 3},\n    }\n    fmt.Println(\"2d: \", twoD)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"# Note that arrays appear in the form `[v1 v2 v3 ...]`\n# when printed with `fmt.Println`.\n$ go run arrays.go\nemp: [0 0 0 0 0]\nset: [0 0 0 0 100]\nget: 100\nlen: 5\ndcl: [1 2 3 4 5]\ndcl: [1 2 3 4 5]\nidx: [100 0 0 400 500]\n2d:  [[0 1 2] [1 2 3]]\n2d:  [[1 2 3] [1 2 3]]"} />
-
-</GoExample>
+Próximo: [Slices](/go/slices).

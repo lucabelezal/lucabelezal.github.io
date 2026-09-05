@@ -2,34 +2,91 @@
 title: Stateful Goroutines
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Stateful Goroutines" playHash="uwnybdsnOSa" next={{title: "Sorting", href: "/go/sorting"}}>
+<CodeExplanation
+  title={"Stateful Goroutines"}
+  code={`package main
+import (
+    "fmt"
+    "math/rand"
+    "sync/atomic"
+    "time"
+)
+type readOp struct {
+    key  int
+    resp chan int
+}
+type writeOp struct {
+    key  int
+    val  int
+    resp chan bool
+}
+func main() {
+    var readOps uint64
+    var writeOps uint64
+    reads := make(chan readOp)
+    writes := make(chan writeOp)
+    go func() {
+        var state = make(map[int]int)
+        for {
+            select {
+            case read := <-reads:
+                read.resp <- state[read.key]
+            case write := <-writes:
+                state[write.key] = write.val
+                write.resp <- true
+            }
+        }
+    }()
+    for range 100 {
+        go func() {
+            for {
+                read := readOp{
+                    key:  rand.Intn(5),
+                    resp: make(chan int)}
+                reads <- read
+                <-read.resp
+                atomic.AddUint64(&readOps, 1)
+                time.Sleep(time.Millisecond)
+            }
+        }()
+    }
+    for range 10 {
+        go func() {
+            for {
+                write := writeOp{
+                    key:  rand.Intn(5),
+                    val:  rand.Intn(100),
+                    resp: make(chan bool)}
+                writes <- write
+                <-write.resp
+                atomic.AddUint64(&writeOps, 1)
+                time.Sleep(time.Millisecond)
+            }
+        }()
+    }
+    time.Sleep(time.Second)
+    readOpsFinal := atomic.LoadUint64(&readOps)
+    fmt.Println("readOps:", readOpsFinal)
+    writeOpsFinal := atomic.LoadUint64(&writeOps)
+    fmt.Println("writeOps:", writeOpsFinal)
+}`}
+  sections={[
+    {text: "In this example our state will be owned by a single goroutine. This will guarantee that the data is never corrupted with concurrent access. In order to read or write that state, other goroutines will send messages to the owning goroutine and receive corresponding replies. These readOp and writeOp structs encapsulate those requests and a way for the owning goroutine to respond."},
+    {text: "As before we'll count how many operations we perform."},
+    {text: "The reads and writes channels will be used by other goroutines to issue read and write requests, respectively."},
+    {text: "Here is the goroutine that owns the state, which is a map as in the previous example but now private to the stateful goroutine. This goroutine repeatedly selects on the reads and writes channels, responding to requests as they arrive. A response is executed by first performing the requested operation and then sending a value on the response channel resp to indicate success (and the desired value in the case of reads)."},
+    {text: "This starts 100 goroutines to issue reads to the state-owning goroutine via the reads channel. Each read requires constructing a readOp, sending it over the reads channel, and then receiving the result over the provided resp channel."},
+    {text: "We start 10 writes as well, using a similar approach."},
+    {text: "Let the goroutines work for a second."},
+    {text: "Finally, capture and report the op counts."},
+    {text: "Saída:\n# Running our program shows that the goroutine-based\n# state management example completes about 80,000\n# total operations.\n$ go run stateful-goroutines.go\nreadOps: 71708\nwriteOps: 7177\n\n# For this particular case the goroutine-based approach\n# was a bit more involved than the mutex-based one. It\n# might be useful in certain cases though, for example\n# where you have other channels involved or when managing\n# multiple such mutexes would be error-prone. You should\n# use whichever approach feels most natural, especially\n# with respect to understanding the correctness of your\n# program."}
+  ]}
+/>
 
-<GoExampleRow docs={"In the previous example we used explicit locking with [mutexes](mutexes) to synchronize access to shared state across multiple goroutines. Another option is to use the built-in synchronization features of  goroutines and channels to achieve the same result. This channel-based approach aligns with Go's ideas of sharing memory by communicating and having each piece of data owned by exactly one goroutine."} empty code="" />
+<a href="https://go.dev/play/p/uwnybdsnOSa" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"stateful-goroutines.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"math/rand\"\n    \"sync/atomic\"\n    \"time\"\n)"} />
-
-<GoExampleRow docs={"In this example our state will be owned by a single goroutine. This will guarantee that the data is never corrupted with concurrent access. In order to read or write that state, other goroutines will send messages to the owning goroutine and receive corresponding replies. These `readOp` and `writeOp` `struct`s encapsulate those requests and a way for the owning goroutine to respond."} language="go" code={"type readOp struct {\n    key  int\n    resp chan int\n}\ntype writeOp struct {\n    key  int\n    val  int\n    resp chan bool\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"As before we'll count how many operations we perform."} language="go" code={"    var readOps uint64\n    var writeOps uint64"} />
-
-<GoExampleRow docs={"The `reads` and `writes` channels will be used by other goroutines to issue read and write requests, respectively."} language="go" code={"    reads := make(chan readOp)\n    writes := make(chan writeOp)"} />
-
-<GoExampleRow docs={"Here is the goroutine that owns the `state`, which is a map as in the previous example but now private to the stateful goroutine. This goroutine repeatedly selects on the `reads` and `writes` channels, responding to requests as they arrive. A response is executed by first performing the requested operation and then sending a value on the response channel `resp` to indicate success (and the desired value in the case of `reads`)."} language="go" code={"    go func() {\n        var state = make(map[int]int)\n        for {\n            select {\n            case read := <-reads:\n                read.resp <- state[read.key]\n            case write := <-writes:\n                state[write.key] = write.val\n                write.resp <- true\n            }\n        }\n    }()"} />
-
-<GoExampleRow docs={"This starts 100 goroutines to issue reads to the state-owning goroutine via the `reads` channel. Each read requires constructing a `readOp`, sending it over the `reads` channel, and then receiving the result over the provided `resp` channel."} language="go" code={"    for range 100 {\n        go func() {\n            for {\n                read := readOp{\n                    key:  rand.Intn(5),\n                    resp: make(chan int)}\n                reads <- read\n                <-read.resp\n                atomic.AddUint64(&readOps, 1)\n                time.Sleep(time.Millisecond)\n            }\n        }()\n    }"} />
-
-<GoExampleRow docs={"We start 10 writes as well, using a similar approach."} language="go" code={"    for range 10 {\n        go func() {\n            for {\n                write := writeOp{\n                    key:  rand.Intn(5),\n                    val:  rand.Intn(100),\n                    resp: make(chan bool)}\n                writes <- write\n                <-write.resp\n                atomic.AddUint64(&writeOps, 1)\n                time.Sleep(time.Millisecond)\n            }\n        }()\n    }"} />
-
-<GoExampleRow docs={"Let the goroutines work for a second."} language="go" code={"    time.Sleep(time.Second)"} />
-
-<GoExampleRow docs={"Finally, capture and report the op counts."} language="go" code={"    readOpsFinal := atomic.LoadUint64(&readOps)\n    fmt.Println(\"readOps:\", readOpsFinal)\n    writeOpsFinal := atomic.LoadUint64(&writeOps)\n    fmt.Println(\"writeOps:\", writeOpsFinal)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"# Running our program shows that the goroutine-based\n# state management example completes about 80,000\n# total operations.\n$ go run stateful-goroutines.go\nreadOps: 71708\nwriteOps: 7177\n\n# For this particular case the goroutine-based approach\n# was a bit more involved than the mutex-based one. It\n# might be useful in certain cases though, for example\n# where you have other channels involved or when managing\n# multiple such mutexes would be error-prone. You should\n# use whichever approach feels most natural, especially\n# with respect to understanding the correctness of your\n# program."} />
-
-</GoExample>
+Próximo: [Sorting](/go/sorting).

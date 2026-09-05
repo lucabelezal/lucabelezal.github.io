@@ -2,30 +2,43 @@
 title: Pointers
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Pointers" playHash="B928SrV-F9M" next={{title: "Strings and Runes", href: "/go/strings-and-runes"}}>
+<CodeExplanation
+  title={"Pointers"}
+  code={`package main
+import "fmt"
+func zeroval(ival int) {
+    ival = 0
+}
+func zeroptr(iptr *int) {
+    *iptr = 0
+}
+func main() {
+    i := 1
+    fmt.Println("initial:", i)
+    zeroval(i)
+    fmt.Println("zeroval:", i)
+    zeroptr(&i)
+    fmt.Println("zeroptr:", i)
+    fmt.Println("pointer:", &i)
+    p := new(42)
+    fmt.Println("value at *p:", *p)
+    zeroptr(p)
+    fmt.Println("value at *p:", *p)
+}`}
+  sections={[
+    {text: "We'll show how pointers work in contrast to values with 2 functions: zeroval and zeroptr. zeroval has an int parameter, so arguments will be passed to it by value. zeroval will get a copy of ival distinct from the one in the calling function."},
+    {text: "zeroptr in contrast has an *int parameter, meaning that it takes an int pointer. The *iptr code in the function body then dereferences the pointer from its memory address to the current value at that address. Assigning a value to a dereferenced pointer changes the value at the referenced address."},
+    {text: "The &i syntax gives the memory address of i, i.e. a pointer to i."},
+    {text: "Pointers can be printed too."},
+    {text: "A new pointer to a value can be created with the builtin function new."},
+    {text: "Saída:\n# `zeroval` doesn't change the `i` in `main`, but\n# `zeroptr` does because it has a reference to\n# the memory address for that variable.\n$ go run pointers.go\ninitial: 1\nzeroval: 1\nzeroptr: 0\npointer: 0x42131100\nvalue at *p: 42\nvalue at *p: 0"}
+  ]}
+/>
 
-<GoExampleRow docs={"Go supports <em><a href=\"https://en.wikipedia.org/wiki/Pointer_(computer_programming)\">pointers</a></em>, allowing you to pass references to values and records within your program."} empty code="" />
+<a href="https://go.dev/play/p/B928SrV-F9M" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"pointers.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={"We'll show how pointers work in contrast to values with 2 functions: `zeroval` and `zeroptr`. `zeroval` has an `int` parameter, so arguments will be passed to it by value. `zeroval` will get a copy of `ival` distinct from the one in the calling function."} language="go" code={"func zeroval(ival int) {\n    ival = 0\n}"} />
-
-<GoExampleRow docs={"`zeroptr` in contrast has an `*int` parameter, meaning that it takes an `int` pointer. The `*iptr` code in the function body then _dereferences_ the pointer from its memory address to the current value at that address. Assigning a value to a dereferenced pointer changes the value at the referenced address."} language="go" code={"func zeroptr(iptr *int) {\n    *iptr = 0\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {\n    i := 1\n    fmt.Println(\"initial:\", i)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"    zeroval(i)\n    fmt.Println(\"zeroval:\", i)"} />
-
-<GoExampleRow docs={"The `&i` syntax gives the memory address of `i`, i.e. a pointer to `i`."} language="go" code={"    zeroptr(&i)\n    fmt.Println(\"zeroptr:\", i)"} />
-
-<GoExampleRow docs={"Pointers can be printed too."} language="go" code={"    fmt.Println(\"pointer:\", &i)"} />
-
-<GoExampleRow docs={"A new pointer to a value can be created with the builtin function `new`."} language="go" code={"    p := new(42)\n    fmt.Println(\"value at *p:\", *p)\n    zeroptr(p)\n    fmt.Println(\"value at *p:\", *p)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"# `zeroval` doesn't change the `i` in `main`, but\n# `zeroptr` does because it has a reference to\n# the memory address for that variable.\n$ go run pointers.go\ninitial: 1\nzeroval: 1\nzeroptr: 0\npointer: 0x42131100\nvalue at *p: 42\nvalue at *p: 0"} />
-
-</GoExample>
+Próximo: [Strings and Runes](/go/strings-and-runes).

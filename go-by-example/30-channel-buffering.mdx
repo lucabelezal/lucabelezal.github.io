@@ -2,24 +2,29 @@
 title: Channel Buffering
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Channel Buffering" playHash="3BRCdRnRszb" next={{title: "Channel Synchronization", href: "/go/channel-synchronization"}}>
+<CodeExplanation
+  title={"Channel Buffering"}
+  code={`package main
+import "fmt"
+func main() {
+    messages := make(chan string, 2)
+    messages <- "buffered"
+    messages <- "channel"
+    fmt.Println(<-messages)
+    fmt.Println(<-messages)
+}`}
+  sections={[
+    {text: "Here we make a channel of strings buffering up to 2 values."},
+    {text: "Because this channel is buffered, we can send these values into the channel without a corresponding concurrent receive."},
+    {text: "Later we can receive these two values as usual."},
+    {text: "Saída:\n$ go run channel-buffering.go \nbuffered\nchannel"}
+  ]}
+/>
 
-<GoExampleRow docs={"By default channels are _unbuffered_, meaning that they will only accept sends (`chan <-`) if there is a corresponding receive (`<- chan`) ready to receive the sent value. _Buffered channels_ accept a limited number of  values without a corresponding receiver for those values."} empty code="" />
+<a href="https://go.dev/play/p/3BRCdRnRszb" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"channel-buffering.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"Here we `make` a channel of strings buffering up to 2 values."} language="go" code={"    messages := make(chan string, 2)"} />
-
-<GoExampleRow docs={"Because this channel is buffered, we can send these values into the channel without a corresponding concurrent receive."} language="go" code={"    messages <- \"buffered\"\n    messages <- \"channel\""} />
-
-<GoExampleRow docs={"Later we can receive these two values as usual."} language="go" code={"    fmt.Println(<-messages)\n    fmt.Println(<-messages)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run channel-buffering.go \nbuffered\nchannel"} />
-
-</GoExample>
+Próximo: [Channel Synchronization](/go/channel-synchronization).

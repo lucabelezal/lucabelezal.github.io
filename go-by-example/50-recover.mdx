@@ -2,30 +2,36 @@
 title: Recover
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Recover" playHash="Sk-SVdofEIZ" next={{title: "String Functions", href: "/go/string-functions"}}>
+<CodeExplanation
+  title={"Recover"}
+  code={`package main
+import "fmt"
+func mayPanic() {
+    panic("a problem")
+}
+func main() {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println("Recovered. Error:\
+", r)
+        }
+    }()
+    mayPanic()
+    fmt.Println("After mayPanic()")
+}`}
+  sections={[
+    {text: "This function panics."},
+    {text: "recover must be called within a deferred function. When the enclosing function panics, the defer will activate and a recover call within it will catch the panic."},
+    {text: "The return value of recover is the error raised in the call to panic."},
+    {text: "This code will not run, because mayPanic panics. The execution of main stops at the point of the panic and resumes in the deferred closure."},
+    {text: "Saída:\n$ go run recover.go\nRecovered. Error:\n a problem"}
+  ]}
+/>
 
-<GoExampleRow docs={"Go makes it possible to _recover_ from a panic, by using the `recover` built-in function. A `recover` can stop a `panic` from aborting the program and let it continue with execution instead."} empty code="" />
+<a href="https://go.dev/play/p/Sk-SVdofEIZ" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={"An example of where this can be useful: a server wouldn't want to crash if one of the client connections exhibits a critical error. Instead, the server would want to close that connection and continue serving other clients. In fact, this is what Go's `net/http` does by default for HTTP servers."} empty code="" />
-
-<GoExampleRow docs={undefined} language="go" title={"recover.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={"This function panics."} language="go" code={"func mayPanic() {\n    panic(\"a problem\")\n}"} />
-
-<GoExampleRow docs={"`recover` must be called within a deferred function. When the enclosing function panics, the defer will activate and a `recover` call within it will catch the panic."} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"The return value of `recover` is the error raised in the call to `panic`."} language="go" code={"    defer func() {\n        if r := recover(); r != nil {"} />
-
-<GoExampleRow docs={undefined} language="go" code={"            fmt.Println(\"Recovered. Error:\\n\", r)\n        }\n    }()"} />
-
-<GoExampleRow docs={undefined} language="go" code={"    mayPanic()"} />
-
-<GoExampleRow docs={"This code will not run, because `mayPanic` panics. The execution of `main` stops at the point of the panic and resumes in the deferred closure."} language="go" code={"    fmt.Println(\"After mayPanic()\")\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run recover.go\nRecovered. Error:\n a problem"} />
-
-</GoExample>
+Próximo: [String Functions](/go/string-functions).

@@ -2,24 +2,41 @@
 title: HTTP Client
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="HTTP Client" playHash="vFW_el7oHMk" next={{title: "HTTP Server", href: "/go/http-server"}}>
+<CodeExplanation
+  title={"HTTP Client"}
+  code={`package main
+import (
+    "bufio"
+    "fmt"
+    "net/http"
+)
+func main() {
+    resp, err := http.Get("https://gobyexample.com")
+    if err != nil {
+        panic(err)
+    }
+    defer resp.Body.Close()
+    fmt.Println("Response status:", resp.Status)
+    scanner := bufio.NewScanner(resp.Body)
+    for i := 0; scanner.Scan() && i < 5; i++ {
+        fmt.Println(scanner.Text())
+    }
+    if err := scanner.Err(); err != nil {
+        panic(err)
+    }
+}`}
+  sections={[
+    {text: "The Go standard library comes with excellent support for HTTP clients and servers in the net/http package. In this example we'll use it to issue simple HTTP requests."},
+    {text: "Issue an HTTP GET request to a server. http.Get is a convenient shortcut around creating an http.Client object and calling its Get method; it uses the http.DefaultClient object which has useful default settings."},
+    {text: "Print the HTTP response status."},
+    {text: "Print the first 5 lines of the response body."}
+  ]}
+/>
 
-<GoExampleRow docs={"The Go standard library comes with excellent support for HTTP clients and servers in the `net/http` package. In this example we'll use it to issue simple HTTP requests."} language="go" title={"http-client.go"} code={"package main"} />
+<a href="https://go.dev/play/p/vFW_el7oHMk" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"bufio\"\n    \"fmt\"\n    \"net/http\"\n)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"Issue an HTTP GET request to a server. `http.Get` is a convenient shortcut around creating an `http.Client` object and calling its `Get` method; it uses the `http.DefaultClient` object which has useful default settings."} language="go" code={"    resp, err := http.Get(\"https://gobyexample.com\")\n    if err != nil {\n        panic(err)\n    }\n    defer resp.Body.Close()"} />
-
-<GoExampleRow docs={"Print the HTTP response status."} language="go" code={"    fmt.Println(\"Response status:\", resp.Status)"} />
-
-<GoExampleRow docs={"Print the first 5 lines of the response body."} language="go" code={"    scanner := bufio.NewScanner(resp.Body)\n    for i := 0; scanner.Scan() && i < 5; i++ {\n        fmt.Println(scanner.Text())\n    }"} />
-
-<GoExampleRow docs={undefined} language="go" code={"    if err := scanner.Err(); err != nil {\n        panic(err)\n    }\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run http-clients.go\nResponse status: 200 OK\n<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <title>Go by Example</title>"} />
-
-</GoExample>
+Próximo: [HTTP Server](/go/http-server).

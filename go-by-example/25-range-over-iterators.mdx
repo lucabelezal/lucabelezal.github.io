@@ -2,42 +2,82 @@
 title: Range over Iterators
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Range over Iterators" playHash="lHX3uDqdfUB" next={{title: "Errors", href: "/go/errors"}}>
+<CodeExplanation
+  title={"Range over Iterators"}
+  code={`package main
+import (
+    "fmt"
+    "iter"
+    "slices"
+    "strings"
+)
+type List[T any] struct {
+    head, tail *element[T]
+}
+type element[T any] struct {
+    next *element[T]
+    val  T
+}
+func (lst *List[T]) Push(v T) {
+    if lst.tail == nil {
+        lst.head = &element[T]{val: v}
+        lst.tail = lst.head
+    } else {
+        lst.tail.next = &element[T]{val: v}
+        lst.tail = lst.tail.next
+    }
+}
+func (lst *List[T]) All() iter.Seq[T] {
+    return func(yield func(T) bool) {
+        for e := lst.head; e != nil; e = e.next {
+            if !yield(e.val) {
+                return
+            }
+        }
+    }
+}
+func genFib() iter.Seq[int] {
+    return func(yield func(int) bool) {
+        a, b := 0, 1
+        for {
+            if !yield(a) {
+                return
+            }
+            a, b = b, a+b
+        }
+    }
+}
+func main() {
+    lst := List[int]{}
+    lst.Push(10)
+    lst.Push(13)
+    lst.Push(23)
+    for e := range lst.All() {
+        fmt.Println(e)
+    }
+    all := slices.Collect(lst.All())
+    fmt.Println("all:", all)
+    for part := range strings.SplitSeq("go-by-example", "-") {
+        fmt.Printf("part: %s\
+", part)
+    }
+    for n := range genFib() {`}
+  sections={[
+    {text: "Let's look at the List type from the [previous example](generics) again. In that example we had an AllElements method that returned a slice of all elements in the list. With Go iterators, we can do it better - as shown below."},
+    {text: "All returns an iterator, which in Go is a function with a [special signature](https://pkg.go.dev/iter#Seq)."},
+    {text: "The iterator function takes another function as a parameter, called yield by convention (but the name can be arbitrary). It will call yield for every element we want to iterate over, and note yield's return value for a potential early termination."},
+    {text: "Iteration doesn't require an underlying data structure, and doesn't even have to be finite! Here's a function returning an iterator over Fibonacci numbers: it keeps running as long as yield keeps returning true."},
+    {text: "Since List.All returns an iterator, we can use it in a regular range loop."},
+    {text: "Packages like [slices](https://pkg.go.dev/slices) have a number of useful functions to work with iterators. For example, Collect takes any iterator and collects all its values into a slice."},
+    {text: "Standard library packages now expose iterator helpers too. For example, strings.SplitSeq iterates over parts of a byte slice without first building a result slice."},
+    {text: "Saída:\n$ go run range-over-iterators.go\n10\n13\n23\nall: [10 13 23]\npart: go\npart: by\npart: example\n0\n1\n1\n2\n3\n5\n8"}
+  ]}
+/>
 
-<GoExampleRow docs={"Starting with version 1.23, Go has added support for [iterators](https://go.dev/blog/range-functions), which lets us range over pretty much anything!"} empty code="" />
+<a href="https://go.dev/play/p/lHX3uDqdfUB" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"range-over-iterators.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"iter\"\n    \"slices\"\n    \"strings\"\n)"} />
-
-<GoExampleRow docs={"Let's look at the `List` type from the [previous example](generics) again. In that example we had an `AllElements` method that returned a slice of all elements in the list. With Go iterators, we can do it better - as shown below."} language="go" code={"type List[T any] struct {\n    head, tail *element[T]\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"type element[T any] struct {\n    next *element[T]\n    val  T\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func (lst *List[T]) Push(v T) {\n    if lst.tail == nil {\n        lst.head = &element[T]{val: v}\n        lst.tail = lst.head\n    } else {\n        lst.tail.next = &element[T]{val: v}\n        lst.tail = lst.tail.next\n    }\n}"} />
-
-<GoExampleRow docs={"All returns an _iterator_, which in Go is a function with a [special signature](https://pkg.go.dev/iter#Seq)."} language="go" code={"func (lst *List[T]) All() iter.Seq[T] {\n    return func(yield func(T) bool) {"} />
-
-<GoExampleRow docs={"The iterator function takes another function as a parameter, called `yield` by convention (but the name can be arbitrary). It will call `yield` for every element we want to iterate over, and note `yield`'s return value for a potential early termination."} language="go" code={"        for e := lst.head; e != nil; e = e.next {\n            if !yield(e.val) {\n                return\n            }\n        }\n    }\n}"} />
-
-<GoExampleRow docs={"Iteration doesn't require an underlying data structure, and doesn't even have to be finite! Here's a function returning an iterator over Fibonacci numbers: it keeps running as long as `yield` keeps returning `true`."} language="go" code={"func genFib() iter.Seq[int] {\n    return func(yield func(int) bool) {\n        a, b := 0, 1"} />
-
-<GoExampleRow docs={undefined} language="go" code={"        for {\n            if !yield(a) {\n                return\n            }\n            a, b = b, a+b\n        }\n    }\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {\n    lst := List[int]{}\n    lst.Push(10)\n    lst.Push(13)\n    lst.Push(23)"} />
-
-<GoExampleRow docs={"Since `List.All` returns an iterator, we can use it in a regular `range` loop."} language="go" code={"    for e := range lst.All() {\n        fmt.Println(e)\n    }"} />
-
-<GoExampleRow docs={"Packages like [slices](https://pkg.go.dev/slices) have a number of useful functions to work with iterators. For example, `Collect` takes any iterator and collects all its values into a slice."} language="go" code={"    all := slices.Collect(lst.All())\n    fmt.Println(\"all:\", all)"} />
-
-<GoExampleRow docs={"Standard library packages now expose iterator helpers too. For example, `strings.SplitSeq` iterates over parts of a byte slice without first building a result slice."} language="go" code={"    for part := range strings.SplitSeq(\"go-by-example\", \"-\") {\n        fmt.Printf(\"part: %s\\n\", part)\n    }"} />
-
-<GoExampleRow docs={undefined} language="go" code={"    for n := range genFib() {"} />
-
-<GoExampleRow docs={"Once the loop hits `break` or an early return, the `yield` function passed to the iterator will return `false`."} language="go" code={"        if n >= 10 {\n            break\n        }\n        fmt.Println(n)\n    }\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run range-over-iterators.go\n10\n13\n23\nall: [10 13 23]\npart: go\npart: by\npart: example\n0\n1\n1\n2\n3\n5\n8"} />
-
-</GoExample>
+Próximo: [Errors](/go/errors).

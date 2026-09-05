@@ -2,24 +2,32 @@
 title: Multiple Return Values
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Multiple Return Values" playHash="vZdUvLB1WbK" next={{title: "Variadic Functions", href: "/go/variadic-functions"}}>
+<CodeExplanation
+  title={"Multiple Return Values"}
+  code={`package main
+import "fmt"
+func vals() (int, int) {
+    return 3, 7
+}
+func main() {
+    a, b := vals()
+    fmt.Println(a)
+    fmt.Println(b)
+    _, c := vals()
+    fmt.Println(c)
+}`}
+  sections={[
+    {text: "The (int, int) in this function signature shows that the function returns 2 ints."},
+    {text: "Here we use the 2 different return values from the call with multiple assignment."},
+    {text: "If you only want a subset of the returned values, use the blank identifier _."},
+    {text: "Saída:\n$ go run multiple-return-values.go\n3\n7\n7\n\n# Accepting a variable number of arguments is another nice\n# feature of Go functions; we'll look at this next."}
+  ]}
+/>
 
-<GoExampleRow docs={"Go has built-in support for _multiple return values_. This feature is used often in idiomatic Go, for example to return both result and error values from a function."} empty code="" />
+<a href="https://go.dev/play/p/vZdUvLB1WbK" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"multiple-return-values.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={"The `(int, int)` in this function signature shows that the function returns 2 `int`s."} language="go" code={"func vals() (int, int) {\n    return 3, 7\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"Here we use the 2 different return values from the call with _multiple assignment_."} language="go" code={"    a, b := vals()\n    fmt.Println(a)\n    fmt.Println(b)"} />
-
-<GoExampleRow docs={"If you only want a subset of the returned values, use the blank identifier `_`."} language="go" code={"    _, c := vals()\n    fmt.Println(c)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run multiple-return-values.go\n3\n7\n7\n\n# Accepting a variable number of arguments is another nice\n# feature of Go functions; we'll look at this next."} />
-
-</GoExample>
+Próximo: [Variadic Functions](/go/variadic-functions).

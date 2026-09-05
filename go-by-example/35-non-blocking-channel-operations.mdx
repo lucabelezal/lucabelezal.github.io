@@ -2,24 +2,47 @@
 title: Non-Blocking Channel Operations
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Non-Blocking Channel Operations" playHash="TFv6-7OVNVq" next={{title: "Closing Channels", href: "/go/closing-channels"}}>
+<CodeExplanation
+  title={"Non-Blocking Channel Operations"}
+  code={`package main
+import "fmt"
+func main() {
+    messages := make(chan string)
+    signals := make(chan bool)
+    select {
+    case msg := <-messages:
+        fmt.Println("received message", msg)
+    default:
+        fmt.Println("no message received")
+    }
+    msg := "hi"
+    select {
+    case messages <- msg:
+        fmt.Println("sent message", msg)
+    default:
+        fmt.Println("no message sent")
+    }
+    select {
+    case msg := <-messages:
+        fmt.Println("received message", msg)
+    case sig := <-signals:
+        fmt.Println("received signal", sig)
+    default:
+        fmt.Println("no activity")
+    }
+}`}
+  sections={[
+    {text: "Here's a non-blocking receive. If a value is available on messages then select will take the <-messages case with that value. If not it will immediately take the default case."},
+    {text: "A non-blocking send works similarly. Here msg cannot be sent to the messages channel, because the channel has no buffer and there is no receiver. Therefore the default case is selected."},
+    {text: "We can use multiple cases above the default clause to implement a multi-way non-blocking select. Here we attempt non-blocking receives on both messages and signals."},
+    {text: "Saída:\n$ go run non-blocking-channel-operations.go \nno message received\nno message sent\nno activity"}
+  ]}
+/>
 
-<GoExampleRow docs={"Basic sends and receives on channels are blocking. However, we can use `select` with a `default` clause to implement _non-blocking_ sends, receives, and even non-blocking multi-way `select`s."} empty code="" />
+<a href="https://go.dev/play/p/TFv6-7OVNVq" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"non-blocking-channel-operations.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {\n    messages := make(chan string)\n    signals := make(chan bool)"} />
-
-<GoExampleRow docs={"Here's a non-blocking receive. If a value is available on `messages` then `select` will take the `<-messages` `case` with that value. If not it will immediately take the `default` case."} language="go" code={"    select {\n    case msg := <-messages:\n        fmt.Println(\"received message\", msg)\n    default:\n        fmt.Println(\"no message received\")\n    }"} />
-
-<GoExampleRow docs={"A non-blocking send works similarly. Here `msg` cannot be sent to the `messages` channel, because the channel has no buffer and there is no receiver. Therefore the `default` case is selected."} language="go" code={"    msg := \"hi\"\n    select {\n    case messages <- msg:\n        fmt.Println(\"sent message\", msg)\n    default:\n        fmt.Println(\"no message sent\")\n    }"} />
-
-<GoExampleRow docs={"We can use multiple `case`s above the `default` clause to implement a multi-way non-blocking select. Here we attempt non-blocking receives on both `messages` and `signals`."} language="go" code={"    select {\n    case msg := <-messages:\n        fmt.Println(\"received message\", msg)\n    case sig := <-signals:\n        fmt.Println(\"received signal\", sig)\n    default:\n        fmt.Println(\"no activity\")\n    }\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run non-blocking-channel-operations.go \nno message received\nno message sent\nno activity"} />
-
-</GoExample>
+Próximo: [Closing Channels](/go/closing-channels).

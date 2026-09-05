@@ -2,28 +2,36 @@
 title: Variables
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Variables" playHash="N5rWndIliJW" next={{title: "Constants", href: "/go/constants"}}>
+<CodeExplanation
+  title={"Variables"}
+  code={`package main
+import "fmt"
+func main() {
+    var a = "initial"
+    fmt.Println(a)
+    var b, c int = 1, 2
+    fmt.Println(b, c)
+    var d = true
+    fmt.Println(d)
+    var e int
+    fmt.Println(e)
+    f := "apple"
+    fmt.Println(f)
+}`}
+  sections={[
+    {text: "var declares 1 or more variables."},
+    {text: "You can declare multiple variables at once."},
+    {text: "Go will infer the type of initialized variables."},
+    {text: "Variables declared without a corresponding initialization are zero-valued. For example, the zero value for an int is 0."},
+    {text: "The := syntax is shorthand for declaring and initializing a variable, e.g. for var f string = \"apple\" in this case. This syntax is only available inside functions."},
+    {text: "Saída:\n$ go run variables.go\ninitial\n1 2\ntrue\n0\napple"}
+  ]}
+/>
 
-<GoExampleRow docs={"In Go, _variables_ are explicitly declared and used by the compiler to e.g. check type-correctness of function calls."} empty code="" />
+<a href="https://go.dev/play/p/N5rWndIliJW" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"variables.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"`var` declares 1 or more variables."} language="go" code={"    var a = \"initial\"\n    fmt.Println(a)"} />
-
-<GoExampleRow docs={"You can declare multiple variables at once."} language="go" code={"    var b, c int = 1, 2\n    fmt.Println(b, c)"} />
-
-<GoExampleRow docs={"Go will infer the type of initialized variables."} language="go" code={"    var d = true\n    fmt.Println(d)"} />
-
-<GoExampleRow docs={"Variables declared without a corresponding initialization are _zero-valued_. For example, the zero value for an `int` is `0`."} language="go" code={"    var e int\n    fmt.Println(e)"} />
-
-<GoExampleRow docs={"The `:=` syntax is shorthand for declaring and initializing a variable, e.g. for `var f string = \"apple\"` in this case. This syntax is only available inside functions."} language="go" code={"    f := \"apple\"\n    fmt.Println(f)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run variables.go\ninitial\n1 2\ntrue\n0\napple"} />
-
-</GoExample>
+Próximo: [Constants](/go/constants).

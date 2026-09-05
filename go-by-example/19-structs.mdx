@@ -2,42 +2,61 @@
 title: Structs
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Structs" playHash="56SPo-L2nMN" next={{title: "Methods", href: "/go/methods"}}>
+<CodeExplanation
+  title={"Structs"}
+  code={`package main
+import "fmt"
+type person struct {
+    name string
+    age  int
+}
+func newPerson(name string) *person {
+    p := person{name: name}
+    p.age = 42
+    return &p
+}
+func main() {
+    fmt.Println(person{"Bob", 20})
+    fmt.Println(person{name: "Alice", age: 30})
+    fmt.Println(person{name: "Fred"})
+    fmt.Println(&person{name: "Ann", age: 40})
+    fmt.Println(newPerson("Jon"))
+    s := person{name: "Sean", age: 50}
+    fmt.Println(s.name)
+    sp := &s
+    fmt.Println(sp.age)
+    sp.age = 51
+    fmt.Println(sp.age)
+    dog := struct {
+        name   string
+        isGood bool
+    }{
+        "Rex",
+        true,
+    }
+    fmt.Println(dog)
+}`}
+  sections={[
+    {text: "This person struct type has name and age fields."},
+    {text: "newPerson constructs a new person struct with the given name."},
+    {text: "Go is a garbage collected language; you can safely return a pointer to a local variable - it will only be cleaned up by the garbage collector when there are no active references to it."},
+    {text: "This syntax creates a new struct."},
+    {text: "You can name the fields when initializing a struct."},
+    {text: "Omitted fields will be zero-valued."},
+    {text: "An & prefix yields a pointer to the struct."},
+    {text: "It's idiomatic to encapsulate new struct creation in constructor functions"},
+    {text: "Access struct fields with a dot."},
+    {text: "You can also use dots with struct pointers - the pointers are automatically dereferenced."},
+    {text: "Structs are mutable."},
+    {text: "If a struct type is only used for a single value, we don't have to give it a name. The value can have an anonymous struct type. This technique is commonly used for [table-driven tests](testing-and-benchmarking)."},
+    {text: "Saída:\n$ go run structs.go\n{Bob 20}\n{Alice 30}\n{Fred 0}\n&{Ann 40}\n&{Jon 42}\nSean\n50\n51\n{Rex true}"}
+  ]}
+/>
 
-<GoExampleRow docs={"Go's _structs_ are typed collections of fields. They're useful for grouping data together to form records."} empty code="" />
+<a href="https://go.dev/play/p/56SPo-L2nMN" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"structs.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={"This `person` struct type has `name` and `age` fields."} language="go" code={"type person struct {\n    name string\n    age  int\n}"} />
-
-<GoExampleRow docs={"`newPerson` constructs a new person struct with the given name."} language="go" code={"func newPerson(name string) *person {"} />
-
-<GoExampleRow docs={"Go is a garbage collected language; you can safely return a pointer to a local variable - it will only be cleaned up by the garbage collector when there are no active references to it."} language="go" code={"    p := person{name: name}\n    p.age = 42\n    return &p\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"This syntax creates a new struct."} language="go" code={"    fmt.Println(person{\"Bob\", 20})"} />
-
-<GoExampleRow docs={"You can name the fields when initializing a struct."} language="go" code={"    fmt.Println(person{name: \"Alice\", age: 30})"} />
-
-<GoExampleRow docs={"Omitted fields will be zero-valued."} language="go" code={"    fmt.Println(person{name: \"Fred\"})"} />
-
-<GoExampleRow docs={"An `&` prefix yields a pointer to the struct."} language="go" code={"    fmt.Println(&person{name: \"Ann\", age: 40})"} />
-
-<GoExampleRow docs={"It's idiomatic to encapsulate new struct creation in constructor functions"} language="go" code={"    fmt.Println(newPerson(\"Jon\"))"} />
-
-<GoExampleRow docs={"Access struct fields with a dot."} language="go" code={"    s := person{name: \"Sean\", age: 50}\n    fmt.Println(s.name)"} />
-
-<GoExampleRow docs={"You can also use dots with struct pointers - the pointers are automatically dereferenced."} language="go" code={"    sp := &s\n    fmt.Println(sp.age)"} />
-
-<GoExampleRow docs={"Structs are mutable."} language="go" code={"    sp.age = 51\n    fmt.Println(sp.age)"} />
-
-<GoExampleRow docs={"If a struct type is only used for a single value, we don't have to give it a name. The value can have an anonymous struct type. This technique is commonly used for [table-driven tests](testing-and-benchmarking)."} language="go" code={"    dog := struct {\n        name   string\n        isGood bool\n    }{\n        \"Rex\",\n        true,\n    }\n    fmt.Println(dog)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run structs.go\n{Bob 20}\n{Alice 30}\n{Fred 0}\n&{Ann 40}\n&{Jon 42}\nSean\n50\n51\n{Rex true}"} />
-
-</GoExample>
+Próximo: [Methods](/go/methods).

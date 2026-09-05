@@ -2,40 +2,80 @@
 title: Reading Files
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Reading Files" playHash="J710-KJyC8z" next={{title: "Writing Files", href: "/go/writing-files"}}>
+<CodeExplanation
+  title={"Reading Files"}
+  code={`package main
+import (
+    "bufio"
+    "fmt"
+    "io"
+    "os"
+    "path/filepath"
+)
+func check(e error) {
+    if e != nil {
+        panic(e)
+    }
+}
+func main() {
+    path := filepath.Join(os.TempDir(), "dat")
+    dat, err := os.ReadFile(path)
+    check(err)
+    fmt.Print(string(dat))
+    f, err := os.Open(path)
+    check(err)
+    b1 := make([]byte, 5)
+    n1, err := f.Read(b1)
+    check(err)
+    fmt.Printf("%d bytes: %s\
+", n1, string(b1[:n1]))
+    o2, err := f.Seek(6, io.SeekStart)
+    check(err)
+    b2 := make([]byte, 2)
+    n2, err := f.Read(b2)
+    check(err)
+    fmt.Printf("%d bytes @ %d: ", n2, o2)
+    fmt.Printf("%v\
+", string(b2[:n2]))
+    _, err = f.Seek(2, io.SeekCurrent)
+    check(err)
+    _, err = f.Seek(-4, io.SeekEnd)
+    check(err)
+    o3, err := f.Seek(6, io.SeekStart)
+    check(err)
+    b3 := make([]byte, 2)
+    n3, err := io.ReadAtLeast(f, b3, 2)
+    check(err)
+    fmt.Printf("%d bytes @ %d: %s\
+", n3, o3, string(b3))
+    _, err = f.Seek(0, io.SeekStart)
+    check(err)
+    r4 := bufio.NewReader(f)
+    b4, err := r4.Peek(5)
+    check(err)
+    fmt.Printf("5 bytes: %s\
+", string(b4))
+    f.Close()
+}`}
+  sections={[
+    {text: "Reading files requires checking most calls for errors. This helper will streamline our error checks below."},
+    {text: "Perhaps the most basic file reading task is slurping a file's entire contents into memory."},
+    {text: "You'll often want more control over how and what parts of a file are read. For these tasks, start by Opening a file to obtain an os.File value."},
+    {text: "Read some bytes from the beginning of the file. Allow up to 5 to be read but also note how many actually were read."},
+    {text: "You can also Seek to a known location in the file and Read from there."},
+    {text: "Other methods of seeking are relative to the current cursor position,"},
+    {text: "and relative to the end of the file."},
+    {text: "The io package provides some functions that may be helpful for file reading. For example, reads like the ones above can be more robustly implemented with ReadAtLeast."},
+    {text: "There is no built-in rewind, but Seek(0, io.SeekStart) accomplishes this."},
+    {text: "The bufio package implements a buffered reader that may be useful both for its efficiency with many small reads and because of the additional reading methods it provides."},
+    {text: "Close the file when you're done (usually this would be scheduled immediately after Opening with defer)."}
+  ]}
+/>
 
-<GoExampleRow docs={"Reading and writing files are basic tasks needed for many Go programs. First we'll look at some examples of reading files."} empty code="" />
+<a href="https://go.dev/play/p/J710-KJyC8z" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"reading-files.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"bufio\"\n    \"fmt\"\n    \"io\"\n    \"os\"\n    \"path/filepath\"\n)"} />
-
-<GoExampleRow docs={"Reading files requires checking most calls for errors. This helper will streamline our error checks below."} language="go" code={"func check(e error) {\n    if e != nil {\n        panic(e)\n    }\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"Perhaps the most basic file reading task is slurping a file's entire contents into memory."} language="go" code={"    path := filepath.Join(os.TempDir(), \"dat\")\n    dat, err := os.ReadFile(path)\n    check(err)\n    fmt.Print(string(dat))"} />
-
-<GoExampleRow docs={"You'll often want more control over how and what parts of a file are read. For these tasks, start by `Open`ing a file to obtain an `os.File` value."} language="go" code={"    f, err := os.Open(path)\n    check(err)"} />
-
-<GoExampleRow docs={"Read some bytes from the beginning of the file. Allow up to 5 to be read but also note how many actually were read."} language="go" code={"    b1 := make([]byte, 5)\n    n1, err := f.Read(b1)\n    check(err)\n    fmt.Printf(\"%d bytes: %s\\n\", n1, string(b1[:n1]))"} />
-
-<GoExampleRow docs={"You can also `Seek` to a known location in the file and `Read` from there."} language="go" code={"    o2, err := f.Seek(6, io.SeekStart)\n    check(err)\n    b2 := make([]byte, 2)\n    n2, err := f.Read(b2)\n    check(err)\n    fmt.Printf(\"%d bytes @ %d: \", n2, o2)\n    fmt.Printf(\"%v\\n\", string(b2[:n2]))"} />
-
-<GoExampleRow docs={"Other methods of seeking are relative to the current cursor position,"} language="go" code={"    _, err = f.Seek(2, io.SeekCurrent)\n    check(err)"} />
-
-<GoExampleRow docs={"and relative to the end of the file."} language="go" code={"    _, err = f.Seek(-4, io.SeekEnd)\n    check(err)"} />
-
-<GoExampleRow docs={"The `io` package provides some functions that may be helpful for file reading. For example, reads like the ones above can be more robustly implemented with `ReadAtLeast`."} language="go" code={"    o3, err := f.Seek(6, io.SeekStart)\n    check(err)\n    b3 := make([]byte, 2)\n    n3, err := io.ReadAtLeast(f, b3, 2)\n    check(err)\n    fmt.Printf(\"%d bytes @ %d: %s\\n\", n3, o3, string(b3))"} />
-
-<GoExampleRow docs={"There is no built-in rewind, but `Seek(0, io.SeekStart)` accomplishes this."} language="go" code={"    _, err = f.Seek(0, io.SeekStart)\n    check(err)"} />
-
-<GoExampleRow docs={"The `bufio` package implements a buffered reader that may be useful both for its efficiency with many small reads and because of the additional reading methods it provides."} language="go" code={"    r4 := bufio.NewReader(f)\n    b4, err := r4.Peek(5)\n    check(err)\n    fmt.Printf(\"5 bytes: %s\\n\", string(b4))"} />
-
-<GoExampleRow docs={"Close the file when you're done (usually this would be scheduled immediately after `Open`ing with `defer`)."} language="go" code={"    f.Close()\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ echo \"hello\" > /tmp/dat\n$ echo \"go\" >>   /tmp/dat\n$ go run reading-files.go\nhello\ngo\n5 bytes: hello\n2 bytes @ 6: go\n2 bytes @ 6: go\n5 bytes: hello\n\n# Next we'll look at writing files."} />
-
-</GoExample>
+Próximo: [Writing Files](/go/writing-files).

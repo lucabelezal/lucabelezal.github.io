@@ -2,26 +2,65 @@
 title: Switch
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Switch" playHash="0bvw1aIeuFM" next={{title: "Arrays", href: "/go/arrays"}}>
+<CodeExplanation
+  title={"Switch"}
+  code={`package main
+import (
+    "fmt"
+    "time"
+)
+func main() {
+    i := 2
+    fmt.Print("Write ", i, " as ")
+    switch i {
+    case 1:
+        fmt.Println("one")
+    case 2:
+        fmt.Println("two")
+    case 3:
+        fmt.Println("three")
+    }
+    switch time.Now().Weekday() {
+    case time.Saturday, time.Sunday:
+        fmt.Println("It's the weekend")
+    default:
+        fmt.Println("It's a weekday")
+    }
+    t := time.Now()
+    switch {
+    case t.Hour() < 12:
+        fmt.Println("It's before noon")
+    default:
+        fmt.Println("It's after noon")
+    }
+    whatAmI := func(i any) {
+        switch t := i.(type) {
+        case bool:
+            fmt.Println("I'm a bool")
+        case int:
+            fmt.Println("I'm an int")
+        default:
+            fmt.Printf("Don't know type %T\
+", t)
+        }
+    }
+    whatAmI(true)
+    whatAmI(1)
+    whatAmI("hey")
+}`}
+  sections={[
+    {text: "Here's a basic switch."},
+    {text: "You can use commas to separate multiple expressions in the same case statement. We use the optional default case in this example as well."},
+    {text: "switch without an expression is an alternate way to express if/else logic. Here we also show how the case expressions can be non-constants."},
+    {text: "A type switch compares types instead of values.  You can use this to discover the type of an interface value.  In this example, the variable t will have the type corresponding to its clause."},
+    {text: "Saída:\n$ go run switch.go \nWrite 2 as two\nIt's a weekday\nIt's after noon\nI'm a bool\nI'm an int\nDon't know type string"}
+  ]}
+/>
 
-<GoExampleRow docs={"_Switch statements_ express conditionals across many branches."} empty code="" />
+<a href="https://go.dev/play/p/0bvw1aIeuFM" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"switch.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"time\"\n)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"Here's a basic `switch`."} language="go" code={"    i := 2\n    fmt.Print(\"Write \", i, \" as \")\n    switch i {\n    case 1:\n        fmt.Println(\"one\")\n    case 2:\n        fmt.Println(\"two\")\n    case 3:\n        fmt.Println(\"three\")\n    }"} />
-
-<GoExampleRow docs={"You can use commas to separate multiple expressions in the same `case` statement. We use the optional `default` case in this example as well."} language="go" code={"    switch time.Now().Weekday() {\n    case time.Saturday, time.Sunday:\n        fmt.Println(\"It's the weekend\")\n    default:\n        fmt.Println(\"It's a weekday\")\n    }"} />
-
-<GoExampleRow docs={"`switch` without an expression is an alternate way to express if/else logic. Here we also show how the `case` expressions can be non-constants."} language="go" code={"    t := time.Now()\n    switch {\n    case t.Hour() < 12:\n        fmt.Println(\"It's before noon\")\n    default:\n        fmt.Println(\"It's after noon\")\n    }"} />
-
-<GoExampleRow docs={"A type `switch` compares types instead of values.  You can use this to discover the type of an interface value.  In this example, the variable `t` will have the type corresponding to its clause."} language="go" code={"    whatAmI := func(i any) {\n        switch t := i.(type) {\n        case bool:\n            fmt.Println(\"I'm a bool\")\n        case int:\n            fmt.Println(\"I'm an int\")\n        default:\n            fmt.Printf(\"Don't know type %T\\n\", t)\n        }\n    }\n    whatAmI(true)\n    whatAmI(1)\n    whatAmI(\"hey\")\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run switch.go \nWrite 2 as two\nIt's a weekday\nIt's after noon\nI'm a bool\nI'm an int\nDon't know type string"} />
-
-</GoExample>
+Próximo: [Arrays](/go/arrays).

@@ -2,32 +2,49 @@
 title: Spawning Processes
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Spawning Processes" playHash="IxGAEXe0I7U" next={{title: "Exec'ing Processes", href: "/go/execing-processes"}}>
+<CodeExplanation
+  title={"Spawning Processes"}
+  code={`package main
+import (
+    "errors"
+    "fmt"
+    "io"
+    "os/exec"
+)
+func main() {
+    dateCmd := exec.Command("date")
+    _, err = exec.Command("date", "-x").Output()
+    if err != nil {
+        if e, ok := errors.AsType[*exec.Error](err); ok {
+            fmt.Println("failed executing:", e)
+        } else if e, ok := errors.AsType[*exec.ExitError](err); ok {
+            exitCode := e.ExitCode()
+            fmt.Println("command exit rc =", exitCode)
+        } else {
+            panic(err)
+        }
+    }
+    grepCmd := exec.Command("grep", "hello")
+    grepIn, _ := grepCmd.StdinPipe()
+    grepOut, _ := grepCmd.StdoutPipe()
+    grepCmd.Start()
+    grepIn.Write([]byte("hello grep\
+goodbye grep"))
+    grepIn.Close()
+    grepBytes, _ := io.ReadAll(grepOut)
+    grepCmd.Wait()`}
+  sections={[
+    {text: "We'll start with a simple command that takes no arguments or input and just prints something to stdout. The exec.Command helper creates an object to represent this external process."},
+    {text: "Output and other methods of Command will return *exec.Error if there was a problem executing the command (e.g. wrong path), and *exec.ExitError if the command ran but exited with a non-zero return code."},
+    {text: "Next we'll look at a slightly more involved case where we pipe data to the external process on its stdin and collect the results from its stdout."},
+    {text: "Here we explicitly grab input/output pipes, start the process, write some input to it, read the resulting output, and finally wait for the process to exit."}
+  ]}
+/>
 
-<GoExampleRow docs={"Sometimes our Go programs need to spawn other processes."} empty code="" />
+<a href="https://go.dev/play/p/IxGAEXe0I7U" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"spawning-processes.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"errors\"\n    \"fmt\"\n    \"io\"\n    \"os/exec\"\n)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"We'll start with a simple command that takes no arguments or input and just prints something to stdout. The `exec.Command` helper creates an object to represent this external process."} language="go" code={"    dateCmd := exec.Command(\"date\")"} />
-
-<GoExampleRow docs={"The `Output` method runs the command, waits for it to finish and collects its standard output.  If there were no errors, `dateOut` will hold bytes with the date info."} language="go" code={"    dateOut, err := dateCmd.Output()\n    if err != nil {\n        panic(err)\n    }\n    fmt.Println(\"> date\")\n    fmt.Println(string(dateOut))"} />
-
-<GoExampleRow docs={"`Output` and other methods of `Command` will return `*exec.Error` if there was a problem executing the command (e.g. wrong path), and `*exec.ExitError` if the command ran but exited with a non-zero return code."} language="go" code={"    _, err = exec.Command(\"date\", \"-x\").Output()\n    if err != nil {\n        if e, ok := errors.AsType[*exec.Error](err); ok {\n            fmt.Println(\"failed executing:\", e)\n        } else if e, ok := errors.AsType[*exec.ExitError](err); ok {\n            exitCode := e.ExitCode()\n            fmt.Println(\"command exit rc =\", exitCode)\n        } else {\n            panic(err)\n        }\n    }"} />
-
-<GoExampleRow docs={"Next we'll look at a slightly more involved case where we pipe data to the external process on its `stdin` and collect the results from its `stdout`."} language="go" code={"    grepCmd := exec.Command(\"grep\", \"hello\")"} />
-
-<GoExampleRow docs={"Here we explicitly grab input/output pipes, start the process, write some input to it, read the resulting output, and finally wait for the process to exit."} language="go" code={"    grepIn, _ := grepCmd.StdinPipe()\n    grepOut, _ := grepCmd.StdoutPipe()\n    grepCmd.Start()\n    grepIn.Write([]byte(\"hello grep\\ngoodbye grep\"))\n    grepIn.Close()\n    grepBytes, _ := io.ReadAll(grepOut)\n    grepCmd.Wait()"} />
-
-<GoExampleRow docs={"We omitted error checks in the above example, but you could use the usual `if err != nil` pattern for all of them. We also only collect the `StdoutPipe` results, but you could collect the `StderrPipe` in exactly the same way."} language="go" code={"    fmt.Println(\"> grep hello\")\n    fmt.Println(string(grepBytes))"} />
-
-<GoExampleRow docs={"Note that when spawning commands we need to provide an explicitly delineated command and argument array, vs. being able to just pass in one command-line string. If you want to spawn a full command with a string, you can use `bash`'s `-c` option:"} language="go" code={"    lsCmd := exec.Command(\"bash\", \"-c\", \"ls -a -l -h\")\n    lsOut, err := lsCmd.Output()\n    if err != nil {\n        panic(err)\n    }\n    fmt.Println(\"> ls -a -l -h\")\n    fmt.Println(string(lsOut))\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"# The spawned programs return output that is the same\n# as if we had run them directly from the command-line.\n$ go run spawning-processes.go \n> date\nThu 05 May 2022 10:10:12 PM PDT\n\n# date doesn't have a `-x` flag so it will exit with\n# an error message and non-zero return code.\ncommand exit rc = 1\n> grep hello\nhello grep\n\n> ls -a -l -h\ndrwxr-xr-x  4 mark 136B Oct 3 16:29 .\ndrwxr-xr-x 91 mark 3.0K Oct 3 12:50 ..\n-rw-r--r--  1 mark 1.3K Oct 3 16:28 spawning-processes.go"} />
-
-</GoExample>
+Próximo: [Exec'ing Processes](/go/execing-processes).

@@ -2,28 +2,47 @@
 title: For
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="For" playHash="_F2rYHNilKa" next={{title: "If/Else", href: "/go/if-else"}}>
+<CodeExplanation
+  title={"For"}
+  code={`package main
+import "fmt"
+func main() {
+    i := 1
+    for i <= 3 {
+        fmt.Println(i)
+        i = i + 1
+    }
+    for j := 0; j < 3; j++ {
+        fmt.Println(j)
+    }
+    for i := range 3 {
+        fmt.Println("range", i)
+    }
+    for {
+        fmt.Println("loop")
+        break
+    }
+    for n := range 6 {
+        if n%2 == 0 {
+            continue
+        }
+        fmt.Println(n)
+    }
+}`}
+  sections={[
+    {text: "The most basic type, with a single condition."},
+    {text: "A classic initial/condition/after for loop."},
+    {text: "Another way of accomplishing the basic \"do this N times\" iteration is range over an integer."},
+    {text: "for without a condition will loop repeatedly until you break out of the loop or return from the enclosing function."},
+    {text: "You can also continue to the next iteration of the loop."},
+    {text: "Saída:\n$ go run for.go\n1\n2\n3\n0\n1\n2\nrange 0\nrange 1\nrange 2\nloop\n1\n3\n5\n\n# We'll see some other `for` forms later when we look at\n# `range` statements, channels, and other data\n# structures."}
+  ]}
+/>
 
-<GoExampleRow docs={"`for` is Go's only looping construct. Here are some basic types of `for` loops."} empty code="" />
+<a href="https://go.dev/play/p/_F2rYHNilKa" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"for.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"The most basic type, with a single condition."} language="go" code={"    i := 1\n    for i <= 3 {\n        fmt.Println(i)\n        i = i + 1\n    }"} />
-
-<GoExampleRow docs={"A classic initial/condition/after `for` loop."} language="go" code={"    for j := 0; j < 3; j++ {\n        fmt.Println(j)\n    }"} />
-
-<GoExampleRow docs={"Another way of accomplishing the basic \"do this N times\" iteration is `range` over an integer."} language="go" code={"    for i := range 3 {\n        fmt.Println(\"range\", i)\n    }"} />
-
-<GoExampleRow docs={"`for` without a condition will loop repeatedly until you `break` out of the loop or `return` from the enclosing function."} language="go" code={"    for {\n        fmt.Println(\"loop\")\n        break\n    }"} />
-
-<GoExampleRow docs={"You can also `continue` to the next iteration of the loop."} language="go" code={"    for n := range 6 {\n        if n%2 == 0 {\n            continue\n        }\n        fmt.Println(n)\n    }\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run for.go\n1\n2\n3\n0\n1\n2\nrange 0\nrange 1\nrange 2\nloop\n1\n3\n5\n\n# We'll see some other `for` forms later when we look at\n# `range` statements, channels, and other data\n# structures."} />
-
-</GoExample>
+Próximo: [If/Else](/go/if-else).

@@ -2,28 +2,42 @@
 title: Embed Directive
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Embed Directive" playHash="6m2ll-D52BB" next={{title: "Testing and Benchmarking", href: "/go/testing-and-benchmarking"}}>
+<CodeExplanation
+  title={"Embed Directive"}
+  code={`package main
+import (
+    "embed"
+)
+//go:embed folder/single_file.txt
+var fileString string
+//go:embed folder/single_file.txt
+var fileByte []byte
+//go:embed folder/single_file.txt
+//go:embed folder/*.hash
+var folder embed.FS
+func main() {
+    print(fileString)
+    print(string(fileByte))
+    content1, _ := folder.ReadFile("folder/file1.hash")
+    print(string(content1))
+    content2, _ := folder.ReadFile("folder/file2.hash")
+    print(string(content2))
+}`}
+  sections={[
+    {text: "//go:embed is a [compiler directive](https://pkg.go.dev/cmd/compile#hdr-Compiler_Directives) that allows programs to include arbitrary files and folders in the Go binary at build time. Read more about the embed directive [here](https://pkg.go.dev/embed)."},
+    {text: "Import the embed package; if you don't use any exported identifiers from this package, you can do a blank import with _ \"embed\"."},
+    {text: "embed directives accept paths relative to the directory containing the Go source file. This directive embeds the contents of the file into the string variable immediately following it."},
+    {text: "Or embed the contents of the file into a []byte."},
+    {text: "We can also embed multiple files or even folders with wildcards. This uses a variable of the [embed.FS type](https://pkg.go.dev/embed#FS), which implements a simple virtual file system."},
+    {text: "Print out the contents of single_file.txt."},
+    {text: "Retrieve some files from the embedded folder."}
+  ]}
+/>
 
-<GoExampleRow docs={"`//go:embed` is a [compiler directive](https://pkg.go.dev/cmd/compile#hdr-Compiler_Directives) that allows programs to include arbitrary files and folders in the Go binary at build time. Read more about the embed directive [here](https://pkg.go.dev/embed)."} language="go" title={"embed-directive.go"} code={"package main"} />
+<a href="https://go.dev/play/p/6m2ll-D52BB" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={"Import the `embed` package; if you don't use any exported identifiers from this package, you can do a blank import with `_ \"embed\"`."} language="go" code={"import (\n    \"embed\"\n)"} />
-
-<GoExampleRow docs={"`embed` directives accept paths relative to the directory containing the Go source file. This directive embeds the contents of the file into the `string` variable immediately following it."} language="go" code={"//go:embed folder/single_file.txt\nvar fileString string"} />
-
-<GoExampleRow docs={"Or embed the contents of the file into a `[]byte`."} language="go" code={"//go:embed folder/single_file.txt\nvar fileByte []byte"} />
-
-<GoExampleRow docs={"We can also embed multiple files or even folders with wildcards. This uses a variable of the [embed.FS type](https://pkg.go.dev/embed#FS), which implements a simple virtual file system."} language="go" code={"//go:embed folder/single_file.txt\n//go:embed folder/*.hash\nvar folder embed.FS"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"Print out the contents of `single_file.txt`."} language="go" code={"    print(fileString)\n    print(string(fileByte))"} />
-
-<GoExampleRow docs={"Retrieve some files from the embedded folder."} language="go" code={"    content1, _ := folder.ReadFile(\"folder/file1.hash\")\n    print(string(content1))"} />
-
-<GoExampleRow docs={undefined} language="go" code={"    content2, _ := folder.ReadFile(\"folder/file2.hash\")\n    print(string(content2))\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"# Use these commands to run the example.\n# (Note: due to limitation on go playground,\n# this example can only be run on your local machine.)\n$ mkdir -p folder\n$ echo \"hello go\" > folder/single_file.txt\n$ echo \"123\" > folder/file1.hash\n$ echo \"456\" > folder/file2.hash\n\n$ go run embed-directive.go\nhello go\nhello go\n123\n456"} />
-
-</GoExample>
+Próximo: [Testing and Benchmarking](/go/testing-and-benchmarking).

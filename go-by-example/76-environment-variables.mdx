@@ -2,22 +2,34 @@
 title: Environment Variables
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Environment Variables" playHash="2jmwXM264NC" next={{title: "Logging", href: "/go/logging"}}>
+<CodeExplanation
+  title={"Environment Variables"}
+  code={`package main
+import (
+    "fmt"
+    "os"
+    "strings"
+)
+func main() {
+    os.Setenv("FOO", "1")
+    fmt.Println("FOO:", os.Getenv("FOO"))
+    fmt.Println("BAR:", os.Getenv("BAR"))
+    fmt.Println()
+    for _, e := range os.Environ() {
+        pair := strings.SplitN(e, "=", 2)
+        fmt.Println(pair[0])
+    }
+}`}
+  sections={[
+    {text: "Use os.Environ to list all key/value pairs in the environment. This returns a slice of strings in the form KEY=value. You can strings.SplitN them to get the key and value. Here we print all the keys."},
+    {text: "Saída:\n# Running the program shows that we pick up the value\n# for `FOO` that we set in the program, but that\n# `BAR` is empty.\n$ go run environment-variables.go\nFOO: 1\nBAR: \n\n# The list of keys in the environment will depend on your\n# particular machine.\nTERM_PROGRAM\nPATH\nSHELL\n...\nFOO\n\n# If we set `BAR` in the environment first, the running\n# program picks that value up.\n$ BAR=2 go run environment-variables.go\nFOO: 1\nBAR: 2\n..."}
+  ]}
+/>
 
-<GoExampleRow docs={"[Environment variables](https://en.wikipedia.org/wiki/Environment_variable) are a universal mechanism for [conveying configuration information to Unix programs](https://www.12factor.net/config). Let's look at how to set, get, and list environment variables."} empty code="" />
+<a href="https://go.dev/play/p/2jmwXM264NC" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"environment-variables.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"os\"\n    \"strings\"\n)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"To set a key/value pair, use `os.Setenv`. To get a value for a key, use `os.Getenv`. This will return an empty string if the key isn't present in the environment."} language="go" code={"    os.Setenv(\"FOO\", \"1\")\n    fmt.Println(\"FOO:\", os.Getenv(\"FOO\"))\n    fmt.Println(\"BAR:\", os.Getenv(\"BAR\"))"} />
-
-<GoExampleRow docs={"Use `os.Environ` to list all key/value pairs in the environment. This returns a slice of strings in the form `KEY=value`. You can `strings.SplitN` them to get the key and value. Here we print all the keys."} language="go" code={"    fmt.Println()\n    for _, e := range os.Environ() {\n        pair := strings.SplitN(e, \"=\", 2)\n        fmt.Println(pair[0])\n    }\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"# Running the program shows that we pick up the value\n# for `FOO` that we set in the program, but that\n# `BAR` is empty.\n$ go run environment-variables.go\nFOO: 1\nBAR: \n\n# The list of keys in the environment will depend on your\n# particular machine.\nTERM_PROGRAM\nPATH\nSHELL\n...\nFOO\n\n# If we set `BAR` in the environment first, the running\n# program picks that value up.\n$ BAR=2 go run environment-variables.go\nFOO: 1\nBAR: 2\n..."} />
-
-</GoExample>
+Próximo: [Logging](/go/logging).

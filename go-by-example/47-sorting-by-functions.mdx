@@ -2,28 +2,49 @@
 title: Sorting by Functions
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Sorting by Functions" playHash="3EaTknAZHMu" next={{title: "Panic", href: "/go/panic"}}>
+<CodeExplanation
+  title={"Sorting by Functions"}
+  code={`package main
+import (
+    "cmp"
+    "fmt"
+    "slices"
+)
+func main() {
+    fruits := []string{"peach", "banana", "kiwi"}
+    lenCmp := func(a, b string) int {
+        return cmp.Compare(len(a), len(b))
+    }
+    slices.SortFunc(fruits, lenCmp)
+    fmt.Println(fruits)
+    type Person struct {
+        name string
+        age  int
+    }
+    people := []Person{
+        Person{name: "Jax", age: 37},
+        Person{name: "TJ", age: 25},
+        Person{name: "Alex", age: 72},
+    }
+    slices.SortFunc(people,
+        func(a, b Person) int {
+            return cmp.Compare(a.age, b.age)
+        })
+    fmt.Println(people)
+}`}
+  sections={[
+    {text: "We implement a comparison function for string lengths. cmp.Compare is helpful for this."},
+    {text: "Now we can call slices.SortFunc with this custom comparison function to sort fruits by name length."},
+    {text: "We can use the same technique to sort a slice of values that aren't built-in types."},
+    {text: "Sort people by age using slices.SortFunc.  Note: if the Person struct is large, you may want the slice to contain *Person instead and adjust the sorting function accordingly. If in doubt, [benchmark](testing-and-benchmarking)!"},
+    {text: "Saída:\n$ go run sorting-by-functions.go \n[kiwi peach banana]\n[{TJ 25} {Jax 37} {Alex 72}]"}
+  ]}
+/>
 
-<GoExampleRow docs={"Sometimes we'll want to sort a collection by something other than its natural order. For example, suppose we wanted to sort strings by their length instead of alphabetically. Here's an example of custom sorts in Go."} empty code="" />
+<a href="https://go.dev/play/p/3EaTknAZHMu" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"sorting-by-functions.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"cmp\"\n    \"fmt\"\n    \"slices\"\n)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {\n    fruits := []string{\"peach\", \"banana\", \"kiwi\"}"} />
-
-<GoExampleRow docs={"We implement a comparison function for string lengths. `cmp.Compare` is helpful for this."} language="go" code={"    lenCmp := func(a, b string) int {\n        return cmp.Compare(len(a), len(b))\n    }"} />
-
-<GoExampleRow docs={"Now we can call `slices.SortFunc` with this custom comparison function to sort `fruits` by name length."} language="go" code={"    slices.SortFunc(fruits, lenCmp)\n    fmt.Println(fruits)"} />
-
-<GoExampleRow docs={"We can use the same technique to sort a slice of values that aren't built-in types."} language="go" code={"    type Person struct {\n        name string\n        age  int\n    }"} />
-
-<GoExampleRow docs={undefined} language="go" code={"    people := []Person{\n        Person{name: \"Jax\", age: 37},\n        Person{name: \"TJ\", age: 25},\n        Person{name: \"Alex\", age: 72},\n    }"} />
-
-<GoExampleRow docs={"Sort `people` by age using `slices.SortFunc`.  Note: if the `Person` struct is large, you may want the slice to contain `*Person` instead and adjust the sorting function accordingly. If in doubt, [benchmark](testing-and-benchmarking)!"} language="go" code={"    slices.SortFunc(people,\n        func(a, b Person) int {\n            return cmp.Compare(a.age, b.age)\n        })\n    fmt.Println(people)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run sorting-by-functions.go \n[kiwi peach banana]\n[{TJ 25} {Jax 37} {Alex 72}]"} />
-
-</GoExample>
+Próximo: [Panic](/go/panic).

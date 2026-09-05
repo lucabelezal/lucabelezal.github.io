@@ -2,30 +2,45 @@
 title: WaitGroups
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="WaitGroups" playHash="csaELahJTWt" next={{title: "Rate Limiting", href: "/go/rate-limiting"}}>
+<CodeExplanation
+  title={"WaitGroups"}
+  code={`package main
+import (
+    "fmt"
+    "sync"
+    "time"
+)
+func worker(id int) {
+    fmt.Printf("Worker %d starting\
+", id)
+    time.Sleep(time.Second)
+    fmt.Printf("Worker %d done\
+", id)
+}
+func main() {
+    var wg sync.WaitGroup
+    for i := 1; i <= 5; i++ {
+        wg.Go(func() {
+            worker(i)
+        })
+    }
+    wg.Wait()
+}`}
+  sections={[
+    {text: "This is the function we'll run in every goroutine."},
+    {text: "Sleep to simulate an expensive task."},
+    {text: "This WaitGroup is used to wait for all the goroutines launched here to finish. Note: if a WaitGroup is explicitly passed into functions, it should be done *by pointer*."},
+    {text: "Launch several goroutines using WaitGroup.Go"},
+    {text: "Block until all the goroutines started by wg are done. A goroutine is done when the function it invokes returns."},
+    {text: "Note that this approach has no straightforward way to propagate errors from workers. For more advanced use cases, consider using the [errgroup package](https://pkg.go.dev/golang.org/x/sync/errgroup)."},
+    {text: "Saída:\n$ go run waitgroups.go\nWorker 5 starting\nWorker 3 starting\nWorker 4 starting\nWorker 1 starting\nWorker 2 starting\nWorker 4 done\nWorker 1 done\nWorker 2 done\nWorker 5 done\nWorker 3 done\n\n# The order of workers starting up and finishing\n# is likely to be different for each invocation."}
+  ]}
+/>
 
-<GoExampleRow docs={"To wait for multiple goroutines to finish, we can use a *wait group*."} empty code="" />
+<a href="https://go.dev/play/p/csaELahJTWt" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"waitgroups.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"sync\"\n    \"time\"\n)"} />
-
-<GoExampleRow docs={"This is the function we'll run in every goroutine."} language="go" code={"func worker(id int) {\n    fmt.Printf(\"Worker %d starting\\n\", id)"} />
-
-<GoExampleRow docs={"Sleep to simulate an expensive task."} language="go" code={"    time.Sleep(time.Second)\n    fmt.Printf(\"Worker %d done\\n\", id)\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"This WaitGroup is used to wait for all the goroutines launched here to finish. Note: if a WaitGroup is explicitly passed into functions, it should be done *by pointer*."} language="go" code={"    var wg sync.WaitGroup"} />
-
-<GoExampleRow docs={"Launch several goroutines using `WaitGroup.Go`"} language="go" code={"    for i := 1; i <= 5; i++ {\n        wg.Go(func() {\n            worker(i)\n        })\n    }"} />
-
-<GoExampleRow docs={"Block until all the goroutines started by `wg` are done. A goroutine is done when the function it invokes returns."} language="go" code={"    wg.Wait()"} />
-
-<GoExampleRow docs={"Note that this approach has no straightforward way to propagate errors from workers. For more advanced use cases, consider using the [errgroup package](https://pkg.go.dev/golang.org/x/sync/errgroup)."} language="go" code={"}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run waitgroups.go\nWorker 5 starting\nWorker 3 starting\nWorker 4 starting\nWorker 1 starting\nWorker 2 starting\nWorker 4 done\nWorker 1 done\nWorker 2 done\nWorker 5 done\nWorker 3 done\n\n# The order of workers starting up and finishing\n# is likely to be different for each invocation."} />
-
-</GoExample>
+Próximo: [Rate Limiting](/go/rate-limiting).

@@ -2,26 +2,35 @@
 title: SHA256 Hashes
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="SHA256 Hashes" playHash="IHM1lZVm_Jm" next={{title: "Base64 Encoding", href: "/go/base64-encoding"}}>
+<CodeExplanation
+  title={"SHA256 Hashes"}
+  code={`package main
+import (
+    "crypto/sha256"
+    "fmt"
+)
+func main() {
+    s := "sha256 this string"
+    h := sha256.New()
+    h.Write([]byte(s))
+    bs := h.Sum(nil)
+    fmt.Println(s)
+    fmt.Printf("%x\
+", bs)
+}`}
+  sections={[
+    {text: "Go implements several hash functions in various crypto/* packages."},
+    {text: "Here we start with a new hash."},
+    {text: "Write expects bytes. If you have a string s, use []byte(s) to coerce it to bytes."},
+    {text: "This gets the finalized hash result as a byte slice. The argument to Sum can be used to append to an existing byte slice: it usually isn't needed."},
+    {text: "Saída:\n# Running the program computes the hash and prints it in\n# a human-readable hex format.\n$ go run sha256-hashes.go\nsha256 this string\n1af1dfa857bf1d8814fe1af8983c18080019922e557f15a8a...\n\n\n# You can compute other hashes using a similar pattern to\n# the one shown above. For example, to compute\n# SHA512 hashes import `crypto/sha512` and use\n# `sha512.New()`.\n\n# Note that if you need cryptographically secure hashes,\n# you should carefully research\n# [hash strength](https://en.wikipedia.org/wiki/Cryptographic_hash_function)!"}
+  ]}
+/>
 
-<GoExampleRow docs={"[_SHA256 hashes_](https://en.wikipedia.org/wiki/SHA-2) are frequently used to compute short identities for binary or text blobs. For example, TLS/SSL certificates use SHA256 to compute a certificate's signature. Here's how to compute SHA256 hashes in Go."} empty code="" />
+<a href="https://go.dev/play/p/IHM1lZVm_Jm" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"sha256-hashes.go"} code={"package main"} />
-
-<GoExampleRow docs={"Go implements several hash functions in various `crypto/*` packages."} language="go" code={"import (\n    \"crypto/sha256\"\n    \"fmt\"\n)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {\n    s := \"sha256 this string\""} />
-
-<GoExampleRow docs={"Here we start with a new hash."} language="go" code={"    h := sha256.New()"} />
-
-<GoExampleRow docs={"`Write` expects bytes. If you have a string `s`, use `[]byte(s)` to coerce it to bytes."} language="go" code={"    h.Write([]byte(s))"} />
-
-<GoExampleRow docs={"This gets the finalized hash result as a byte slice. The argument to `Sum` can be used to append to an existing byte slice: it usually isn't needed."} language="go" code={"    bs := h.Sum(nil)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"    fmt.Println(s)\n    fmt.Printf(\"%x\\n\", bs)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"# Running the program computes the hash and prints it in\n# a human-readable hex format.\n$ go run sha256-hashes.go\nsha256 this string\n1af1dfa857bf1d8814fe1af8983c18080019922e557f15a8a...\n\n\n# You can compute other hashes using a similar pattern to\n# the one shown above. For example, to compute\n# SHA512 hashes import `crypto/sha512` and use\n# `sha512.New()`.\n\n# Note that if you need cryptographically secure hashes,\n# you should carefully research\n# [hash strength](https://en.wikipedia.org/wiki/Cryptographic_hash_function)!"} />
-
-</GoExample>
+Próximo: [Base64 Encoding](/go/base64-encoding).

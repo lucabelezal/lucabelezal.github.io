@@ -2,28 +2,46 @@
 title: Time Formatting / Parsing
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Time Formatting / Parsing" playHash="0dgIUsTgEYs" next={{title: "Random Numbers", href: "/go/random-numbers"}}>
+<CodeExplanation
+  title={"Time Formatting / Parsing"}
+  code={`package main
+import (
+    "fmt"
+    "time"
+)
+func main() {
+    p := fmt.Println
+    t := time.Now()
+    p(t.Format(time.RFC3339))
+    t1, _ := time.Parse(time.RFC3339, "2012-11-01T22:08:41+00:00")
+    p(t1)
+    p(t.Format("3:04PM"))
+    p(t.Format("Mon Jan _2 15:04:05 2006"))
+    p(t.Format("2006-01-02T15:04:05.999999-07:00"))
+    form := "3 04 PM"
+    t2, _ := time.Parse(form, "8 41 PM")
+    p(t2)
+    fmt.Printf("%d-%02d-%02dT%02d:%02d:%02d-00:00\
+",
+        t.Year(), t.Month(), t.Day(),
+        t.Hour(), t.Minute(), t.Second())
+    _, err := time.Parse("Mon Jan _2 15:04:05 2006", "8:41PM")
+    p(err)
+}`}
+  sections={[
+    {text: "Here's a basic example of formatting a time according to RFC3339, using the corresponding layout constant."},
+    {text: "Time parsing uses the same layout values as Format."},
+    {text: "Format and Parse use example-based layouts. Usually you'll use a constant from time for these layouts, but you can also supply custom layouts. Layouts must use the reference time Mon Jan 2 15:04:05 MST 2006 to show the pattern with which to format/parse a given time/string. The example time must be exactly as shown: the year 2006, 15 for the hour, Monday for the day of the week, etc."},
+    {text: "For purely numeric representations you can also use standard string formatting with the extracted components of the time value."},
+    {text: "Parse will return an error on malformed input explaining the parsing problem."},
+    {text: "Saída:\n$ go run time-formatting-parsing.go \n2014-04-15T18:00:15-07:00\n2012-11-01 22:08:41 +0000 +0000\n6:00PM\nTue Apr 15 18:00:15 2014\n2014-04-15T18:00:15.161182-07:00\n0000-01-01 20:41:00 +0000 UTC\n2014-04-15T18:00:15-00:00\nparsing time \"8:41PM\" as \"Mon Jan _2 15:04:05 2006\": ..."}
+  ]}
+/>
 
-<GoExampleRow docs={"Go supports time formatting and parsing via pattern-based layouts."} empty code="" />
+<a href="https://go.dev/play/p/0dgIUsTgEYs" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"time-formatting-parsing.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"time\"\n)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {\n    p := fmt.Println"} />
-
-<GoExampleRow docs={"Here's a basic example of formatting a time according to RFC3339, using the corresponding layout constant."} language="go" code={"    t := time.Now()\n    p(t.Format(time.RFC3339))"} />
-
-<GoExampleRow docs={"Time parsing uses the same layout values as `Format`."} language="go" code={"    t1, _ := time.Parse(time.RFC3339, \"2012-11-01T22:08:41+00:00\")\n    p(t1)"} />
-
-<GoExampleRow docs={"`Format` and `Parse` use example-based layouts. Usually you'll use a constant from `time` for these layouts, but you can also supply custom layouts. Layouts must use the reference time `Mon Jan 2 15:04:05 MST 2006` to show the pattern with which to format/parse a given time/string. The example time must be exactly as shown: the year 2006, 15 for the hour, Monday for the day of the week, etc."} language="go" code={"    p(t.Format(\"3:04PM\"))\n    p(t.Format(\"Mon Jan _2 15:04:05 2006\"))\n    p(t.Format(\"2006-01-02T15:04:05.999999-07:00\"))\n    form := \"3 04 PM\"\n    t2, _ := time.Parse(form, \"8 41 PM\")\n    p(t2)"} />
-
-<GoExampleRow docs={"For purely numeric representations you can also use standard string formatting with the extracted components of the time value."} language="go" code={"    fmt.Printf(\"%d-%02d-%02dT%02d:%02d:%02d-00:00\\n\",\n        t.Year(), t.Month(), t.Day(),\n        t.Hour(), t.Minute(), t.Second())"} />
-
-<GoExampleRow docs={"`Parse` will return an error on malformed input explaining the parsing problem."} language="go" code={"    _, err := time.Parse(\"Mon Jan _2 15:04:05 2006\", \"8:41PM\")\n    p(err)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run time-formatting-parsing.go \n2014-04-15T18:00:15-07:00\n2012-11-01 22:08:41 +0000 +0000\n6:00PM\nTue Apr 15 18:00:15 2014\n2014-04-15T18:00:15.161182-07:00\n0000-01-01 20:41:00 +0000 UTC\n2014-04-15T18:00:15-00:00\nparsing time \"8:41PM\" as \"Mon Jan _2 15:04:05 2006\": ..."} />
-
-</GoExample>
+Próximo: [Random Numbers](/go/random-numbers).

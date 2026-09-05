@@ -2,22 +2,39 @@
 title: String Functions
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="String Functions" playHash="wKSAzxfs96O" next={{title: "String Formatting", href: "/go/string-formatting"}}>
+<CodeExplanation
+  title={"String Functions"}
+  code={`package main
+import (
+    "fmt"
+    s "strings"
+)
+var p = fmt.Println
+func main() {
+    p("Contains:  ", s.Contains("test", "es"))
+    p("Count:     ", s.Count("test", "t"))
+    p("HasPrefix: ", s.HasPrefix("test", "te"))
+    p("HasSuffix: ", s.HasSuffix("test", "st"))
+    p("Index:     ", s.Index("test", "e"))
+    p("Join:      ", s.Join([]string{"a", "b"}, "-"))
+    p("Repeat:    ", s.Repeat("a", 5))
+    p("Replace:   ", s.Replace("foo", "o", "0", -1))
+    p("Replace:   ", s.Replace("foo", "o", "0", 1))
+    p("Split:     ", s.Split("a-b-c-d-e", "-"))
+    p("ToLower:   ", s.ToLower("TEST"))
+    p("ToUpper:   ", s.ToUpper("test"))
+}`}
+  sections={[
+    {text: "We alias fmt.Println to a shorter name as we'll use it a lot below."},
+    {text: "Here's a sample of the functions available in strings. Since these are functions from the package, not methods on the string object itself, we need to pass the string in question as the first argument to the function. You can find more functions in the [strings](https://pkg.go.dev/strings) package docs."},
+    {text: "Saída:\n$ go run string-functions.go\nContains:   true\nCount:      2\nHasPrefix:  true\nHasSuffix:  true\nIndex:      1\nJoin:       a-b\nRepeat:     aaaaa\nReplace:    f00\nReplace:    f0o\nSplit:      [a b c d e]\nToLower:    test\nToUpper:    TEST"}
+  ]}
+/>
 
-<GoExampleRow docs={"The standard library's `strings` package provides many useful string-related functions. Here are some examples to give you a sense of the package."} empty code="" />
+<a href="https://go.dev/play/p/wKSAzxfs96O" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"string-functions.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    s \"strings\"\n)"} />
-
-<GoExampleRow docs={"We alias `fmt.Println` to a shorter name as we'll use it a lot below."} language="go" code={"var p = fmt.Println"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"Here's a sample of the functions available in `strings`. Since these are functions from the package, not methods on the string object itself, we need to pass the string in question as the first argument to the function. You can find more functions in the [`strings`](https://pkg.go.dev/strings) package docs."} language="go" code={"    p(\"Contains:  \", s.Contains(\"test\", \"es\"))\n    p(\"Count:     \", s.Count(\"test\", \"t\"))\n    p(\"HasPrefix: \", s.HasPrefix(\"test\", \"te\"))\n    p(\"HasSuffix: \", s.HasSuffix(\"test\", \"st\"))\n    p(\"Index:     \", s.Index(\"test\", \"e\"))\n    p(\"Join:      \", s.Join([]string{\"a\", \"b\"}, \"-\"))\n    p(\"Repeat:    \", s.Repeat(\"a\", 5))\n    p(\"Replace:   \", s.Replace(\"foo\", \"o\", \"0\", -1))\n    p(\"Replace:   \", s.Replace(\"foo\", \"o\", \"0\", 1))\n    p(\"Split:     \", s.Split(\"a-b-c-d-e\", \"-\"))\n    p(\"ToLower:   \", s.ToLower(\"TEST\"))\n    p(\"ToUpper:   \", s.ToUpper(\"test\"))\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run string-functions.go\nContains:   true\nCount:      2\nHasPrefix:  true\nHasSuffix:  true\nIndex:      1\nJoin:       a-b\nRepeat:     aaaaa\nReplace:    f00\nReplace:    f0o\nSplit:      [a b c d e]\nToLower:    test\nToUpper:    TEST"} />
-
-</GoExample>
+Próximo: [String Formatting](/go/string-formatting).

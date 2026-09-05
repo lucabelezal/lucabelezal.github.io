@@ -2,22 +2,35 @@
 title: Channel Directions
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Channel Directions" playHash="mjNJDHwUH4R" next={{title: "Select", href: "/go/select"}}>
+<CodeExplanation
+  title={"Channel Directions"}
+  code={`package main
+import "fmt"
+func ping(pings chan<- string, msg string) {
+    pings <- msg
+}
+func pong(pings <-chan string, pongs chan<- string) {
+    msg := <-pings
+    pongs <- msg
+}
+func main() {
+    pings := make(chan string, 1)
+    pongs := make(chan string, 1)
+    ping(pings, "passed message")
+    pong(pings, pongs)
+    fmt.Println(<-pongs)
+}`}
+  sections={[
+    {text: "This ping function only accepts a channel for sending values. It would be a compile-time error to try to receive on this channel."},
+    {text: "The pong function accepts one channel for receives (pings) and a second for sends (pongs)."},
+    {text: "Saída:\n$ go run channel-directions.go\npassed message"}
+  ]}
+/>
 
-<GoExampleRow docs={"When using channels as function parameters, you can specify if a channel is meant to only send or receive values. This specificity increases the type-safety of the program."} empty code="" />
+<a href="https://go.dev/play/p/mjNJDHwUH4R" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" title={"channel-directions.go"} code={"package main"} />
-
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
-
-<GoExampleRow docs={"This `ping` function only accepts a channel for sending values. It would be a compile-time error to try to receive on this channel."} language="go" code={"func ping(pings chan<- string, msg string) {\n    pings <- msg\n}"} />
-
-<GoExampleRow docs={"The `pong` function accepts one channel for receives (`pings`) and a second for sends (`pongs`)."} language="go" code={"func pong(pings <-chan string, pongs chan<- string) {\n    msg := <-pings\n    pongs <- msg\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {\n    pings := make(chan string, 1)\n    pongs := make(chan string, 1)\n    ping(pings, \"passed message\")\n    pong(pings, pongs)\n    fmt.Println(<-pongs)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run channel-directions.go\npassed message"} />
-
-</GoExample>
+Próximo: [Select](/go/select).

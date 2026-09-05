@@ -2,26 +2,47 @@
 title: Context
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Context" playHash="7G1TlQrnbF1" next={{title: "Spawning Processes", href: "/go/spawning-processes"}}>
+<CodeExplanation
+  title={"Context"}
+  code={`package main
+import (
+    "fmt"
+    "net/http"
+    "time"
+)
+func hello(w http.ResponseWriter, req *http.Request) {
+    ctx := req.Context()
+    fmt.Println("server: hello handler started")
+    defer fmt.Println("server: hello handler ended")
+    select {
+    case <-time.After(10 * time.Second):
+        fmt.Fprintf(w, "hello\
+")
+    case <-ctx.Done():
+        err := ctx.Err()
+        fmt.Println("server:", err)
+        internalError := http.StatusInternalServerError
+        http.Error(w, err.Error(), internalError)
+    }
+}
+func main() {
+    http.HandleFunc("/hello", hello)
+    http.ListenAndServe(":8090", nil)
+}`}
+  sections={[
+    {text: "In the previous example we looked at setting up a simple [HTTP server](http-server). HTTP servers are useful for demonstrating the usage of context.Context for controlling cancellation. A Context carries deadlines, cancellation signals, and other request-scoped values across API boundaries and goroutines."},
+    {text: "A context.Context is created for each request by the net/http machinery, and is available with the Context() method."},
+    {text: "Wait for a few seconds before sending a reply to the client. This could simulate some work the server is doing. While working, keep an eye on the context's Done() channel for a signal that we should cancel the work and return as soon as possible."},
+    {text: "The context's Err() method returns an error that explains why the Done() channel was closed."},
+    {text: "As before, we register our handler on the \"/hello\" route, and start serving."},
+    {text: "Saída:\n# Run the server in the background.\n$ go run context.go &\n\n# Simulate a client request to `/hello`, hitting\n# Ctrl+C shortly after starting to signal\n# cancellation.\n$ curl localhost:8090/hello\nserver: hello handler started\n^C\nserver: context canceled\nserver: hello handler ended"}
+  ]}
+/>
 
-<GoExampleRow docs={"In the previous example we looked at setting up a simple [HTTP server](http-server). HTTP servers are useful for demonstrating the usage of `context.Context` for controlling cancellation. A `Context` carries deadlines, cancellation signals, and other request-scoped values across API boundaries and goroutines."} language="go" title={"context.go"} code={"package main"} />
+<a href="https://go.dev/play/p/7G1TlQrnbF1" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
 
-<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"net/http\"\n    \"time\"\n)"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func hello(w http.ResponseWriter, req *http.Request) {"} />
-
-<GoExampleRow docs={"A `context.Context` is created for each request by the `net/http` machinery, and is available with the `Context()` method."} language="go" code={"    ctx := req.Context()\n    fmt.Println(\"server: hello handler started\")\n    defer fmt.Println(\"server: hello handler ended\")"} />
-
-<GoExampleRow docs={"Wait for a few seconds before sending a reply to the client. This could simulate some work the server is doing. While working, keep an eye on the context's `Done()` channel for a signal that we should cancel the work and return as soon as possible."} language="go" code={"    select {\n    case <-time.After(10 * time.Second):\n        fmt.Fprintf(w, \"hello\\n\")\n    case <-ctx.Done():"} />
-
-<GoExampleRow docs={"The context's `Err()` method returns an error that explains why the `Done()` channel was closed."} language="go" code={"        err := ctx.Err()\n        fmt.Println(\"server:\", err)\n        internalError := http.StatusInternalServerError\n        http.Error(w, err.Error(), internalError)\n    }\n}"} />
-
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
-
-<GoExampleRow docs={"As before, we register our handler on the \"/hello\" route, and start serving."} language="go" code={"    http.HandleFunc(\"/hello\", hello)\n    http.ListenAndServe(\":8090\", nil)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"# Run the server in the background.\n$ go run context.go &\n\n# Simulate a client request to `/hello`, hitting\n# Ctrl+C shortly after starting to signal\n# cancellation.\n$ curl localhost:8090/hello\nserver: hello handler started\n^C\nserver: context canceled\nserver: hello handler ended"} />
-
-</GoExample>
+Próximo: [Spawning Processes](/go/spawning-processes).
