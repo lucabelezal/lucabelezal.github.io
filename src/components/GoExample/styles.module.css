@@ -1,39 +1,55 @@
 .wrapper {
-  max-width: 995px;
-  margin: 0 auto 4rem;
+  max-width: 1100px;
+  margin: 0 auto 3rem;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
+  border: none;
 }
 
-.row { }
+.row {
+  border: none;
+}
 
 .docs {
-  width: 42%;
-  min-width: 280px;
+  width: 44%;
+  min-width: 300px;
   vertical-align: top;
   text-align: left;
-  padding: 6px 12px 18px 0;
-  font-size: 15px;
-  line-height: 20px;
+  padding: 12px 20px 16px 0;
+  font-size: 16px;
+  line-height: 26px;
   color: var(--ifm-font-color-base);
+  border: none;
 }
 
 .docs p {
-  margin: 0;
+  margin: 0 0 0.6rem;
+}
+
+.docs code {
+  font-size: 0.9em;
 }
 
 .code {
-  width: 58%;
-  min-width: 320px;
+  width: 56%;
+  min-width: 340px;
   vertical-align: top;
-  padding: 0 0 8px 8px;
+  padding: 0 0 12px 8px;
+  border: none;
 }
 
 .code :global(.theme-code-block) {
   margin: 0;
+  box-shadow: none;
+  border-radius: 8px;
+}
+
+.code :global(.prism-code) {
+  font-size: 14px !important;
+  line-height: 20px !important;
 }
 
 .codeEmpty {
@@ -41,10 +57,11 @@
 }
 
 .next {
-  margin-top: 1.5rem;
+  margin-top: 2rem;
+  font-size: 0.95rem;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .table,
   .row,
   .docs,
@@ -54,9 +71,11 @@
     max-width: 100% !important;
   }
   .docs {
-    padding-bottom: 6px;
+    padding: 0 0 8px 0;
+    font-size: 15px;
   }
   .code {
-    margin-bottom: 12px;
+    margin-bottom: 16px;
+    padding-left: 0;
   }
 }

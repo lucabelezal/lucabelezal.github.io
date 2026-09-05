@@ -6,20 +6,35 @@ import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
 
 <GoExample title="Values" playHash="YnVS3LZr8pk" next={{title: "Variables", href: "/go/variables"}}>
 
-<GoExampleRow docs={"Go has various value types including strings, integers, floats, booleans, etc. Here are a few basic examples."} empty code="" />
+<GoExampleRow
+  docs={"Go tem vários tipos de valores: strings, inteiros, floats e booleans. Exemplos básicos:"}
+  language="go"
+  title="values.go"
+  code={"package main\n\nimport \"fmt\"\n\nfunc main() {"}
+/>
 
-<GoExampleRow docs={undefined} language="go" title={"values.go"} code={"package main"} />
+<GoExampleRow
+  docs={"Strings concatenadas com +."}
+  language="go"
+  code={"    fmt.Println(\"go\" + \"lang\")"}
+/>
 
-<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
+<GoExampleRow
+  docs={"Inteiros e floats."}
+  language="go"
+  code={"    fmt.Println(\"1+1 =\", 1+1)\n    fmt.Println(\"7.0/3.0 =\", 7.0/3.0)"}
+/>
 
-<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+<GoExampleRow
+  docs={"Booleans e operadores lógicos."}
+  language="go"
+  code={"    fmt.Println(true && false)\n    fmt.Println(true || false)\n    fmt.Println(!true)\n}"}
+/>
 
-<GoExampleRow docs={"Strings, which can be added together with `+`."} language="go" code={"    fmt.Println(\"go\" + \"lang\")"} />
-
-<GoExampleRow docs={"Integers and floats."} language="go" code={"    fmt.Println(\"1+1 =\", 1+1)\n    fmt.Println(\"7.0/3.0 =\", 7.0/3.0)"} />
-
-<GoExampleRow docs={"Booleans, with boolean operators as you'd expect."} language="go" code={"    fmt.Println(true && false)\n    fmt.Println(true || false)\n    fmt.Println(!true)\n}"} />
-
-<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run values.go\ngolang\n1+1 = 2\n7.0/3.0 = 2.3333333333333335\nfalse\ntrue\nfalse"} />
+<GoExampleRow
+  docs={"Saída esperada:"}
+  language="bash"
+  code={"$ go run values.go\ngolang\n1+1 = 2\n7.0/3.0 = 2.3333333333333335\nfalse\ntrue\nfalse"}
+/>
 
 </GoExample>
