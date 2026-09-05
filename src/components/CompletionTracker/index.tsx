@@ -1,23 +1,7 @@
 import {useEffect, useState} from 'react';
 import {useLocation} from '@docusaurus/router';
 import styles from './styles.module.css';
-
-const STORAGE_KEY = 'go-by-example-progress-v1';
-
-type Progress = Record<string, true>;
-
-function readProgress(): Progress {
-  try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    return saved ? (JSON.parse(saved) as Progress) : {};
-  } catch {
-    return {};
-  }
-}
-
-function isGoRoute(pathname: string) {
-  return /^\/(?:en\/|es\/)?go(?:\/|$)/.test(pathname);
-}
+import {PROGRESS_EVENT, readProgress, saveProgress, isGoRoute, type Progress, STORAGE_KEY} from './progress';
 
 export default function CompletionTracker() {
   const {pathname} = useLocation();
@@ -30,6 +14,9 @@ export default function CompletionTracker() {
   useEffect(() => {
     if (isGoPage) {
       setProgress(readProgress());
+      const update = () => setProgress(readProgress());
+      window.addEventListener(PROGRESS_EVENT, update);
+      return () => window.removeEventListener(PROGRESS_EVENT, update);
     }
   }, [isGoPage, pathname]);
 
@@ -48,7 +35,7 @@ export default function CompletionTracker() {
       next[routeKey] = true;
     }
     setProgress(next);
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    saveProgress(next);
   }
 
   function resetProgress() {
@@ -56,6 +43,7 @@ export default function CompletionTracker() {
       return;
     }
     window.localStorage.removeItem(STORAGE_KEY);
+    window.dispatchEvent(new Event(PROGRESS_EVENT));
     setProgress({});
   }
 
