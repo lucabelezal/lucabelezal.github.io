@@ -1,0 +1,201 @@
+{
+  "version": 2,
+  "skills": {
+    "ai-seo": {
+      "name": "ai-seo",
+      "source": "local",
+      "contentHash": "8ff9c7d6181c37c92fb225a8559d50ee5413c20e6a7ae240e05bb6a532d64f9b",
+      "installedAt": "2026-09-05T16:15:49.721Z",
+      "updatedAt": "2026-09-05T16:15:49.729Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "coding-guidelines": {
+      "name": "coding-guidelines",
+      "source": "local",
+      "contentHash": "28a414c715d3c41aae28a25e2f109813ec3f246f76b5567c1e7d6a128cd289ff",
+      "installedAt": "2026-09-05T16:15:54.717Z",
+      "updatedAt": "2026-09-05T16:15:54.722Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "docs-writer": {
+      "name": "docs-writer",
+      "source": "local",
+      "contentHash": "c49827c59d2e27d313731dfd36314cfde0e8dbf15be0e8f813d2f8b751546b0c",
+      "installedAt": "2026-09-05T16:16:11.102Z",
+      "updatedAt": "2026-09-05T16:16:11.109Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "frontend-blueprint": {
+      "name": "frontend-blueprint",
+      "source": "local",
+      "contentHash": "c79c5acbf69e88e1b0c848e64afb671f33091e32b6dcb1b2e6f9c78213a10ec3",
+      "installedAt": "2026-09-05T16:16:24.105Z",
+      "updatedAt": "2026-09-05T16:16:24.114Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "frontend-design": {
+      "name": "frontend-design",
+      "source": "local",
+      "contentHash": "b20162c8d6bcdd9137c4afceaeb4f9dce2c1ba3ccb57a96a3228b8cb33104ec4",
+      "installedAt": "2026-09-05T16:16:29.471Z",
+      "updatedAt": "2026-09-05T16:16:29.487Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "harness-eval": {
+      "name": "harness-eval",
+      "source": "local",
+      "contentHash": "675761f3fdb123f26103811ffe52e384adff5ffdf7c603578dfaa4eb2e54b2a2",
+      "installedAt": "2026-09-05T16:16:42.177Z",
+      "updatedAt": "2026-09-05T16:16:42.190Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "skill-architect": {
+      "name": "skill-architect",
+      "source": "local",
+      "contentHash": "349b256153447631c3ed356996c3a62fec52493d07ba75e37b12c458f9fbf6bb",
+      "installedAt": "2026-09-05T16:17:05.246Z",
+      "updatedAt": "2026-09-05T16:17:05.255Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "shopify-developer": {
+      "name": "shopify-developer",
+      "source": "local",
+      "contentHash": "10dd4806c0061bb9e89914557f6aec6badcef893e601293711ba3e8993527e9f",
+      "installedAt": "2026-09-05T16:17:10.770Z",
+      "updatedAt": "2026-09-05T16:17:10.796Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "seo": {
+      "name": "seo",
+      "source": "local",
+      "contentHash": "fc9897a3923b5e23e00545ac67f4c8c2b6903113bd5f046cda259c98a0f3cd40",
+      "installedAt": "2026-09-05T16:17:16.496Z",
+      "updatedAt": "2026-09-05T16:17:16.501Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "technical-design-doc-creator": {
+      "name": "technical-design-doc-creator",
+      "source": "local",
+      "contentHash": "d05974df076f695f96b4e4c263ad19f2aaffe8ee6248c1b07a634dd9ed0ea51e",
+      "installedAt": "2026-09-05T16:17:26.707Z",
+      "updatedAt": "2026-09-05T16:17:26.713Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "tactical-ddd": {
+      "name": "tactical-ddd",
+      "source": "local",
+      "contentHash": "c3dfaf45e8cb784f18d9c460c7f005c4ee9dbb430f21ee8af6913bbfea66a75b",
+      "installedAt": "2026-09-05T16:17:39.097Z",
+      "updatedAt": "2026-09-05T16:17:39.106Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "web-design-guidelines": {
+      "name": "web-design-guidelines",
+      "source": "local",
+      "contentHash": "213a23fff251b12ddfec648bda148bf10704ef6617e162eb9329cc83963dd138",
+      "installedAt": "2026-09-05T16:17:46.550Z",
+      "updatedAt": "2026-09-05T16:17:46.557Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "perf-web-optimization": {
+      "name": "perf-web-optimization",
+      "source": "local",
+      "contentHash": "864bb35d6ec7e7755181886b57709b76d8b5da5181a6d8480cd412dd772f1ffb",
+      "installedAt": "2026-09-05T16:17:51.884Z",
+      "updatedAt": "2026-09-05T16:17:51.892Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    },
+    "web-quality-audit": {
+      "name": "web-quality-audit",
+      "source": "local",
+      "contentHash": "8af5bd3453984bdcef903709b6ef0606b12ae1badb6dd5b5b382b930d2594d7c",
+      "installedAt": "2026-09-05T16:17:57.311Z",
+      "updatedAt": "2026-09-05T16:17:57.318Z",
+      "agents": [
+        "cursor",
+        "claude-code",
+        "windsurf"
+      ],
+      "method": "copy",
+      "global": false
+    }
+  }
+}

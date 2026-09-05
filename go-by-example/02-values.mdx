@@ -2,39 +2,28 @@
 title: Values
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Values" playHash="YnVS3LZr8pk" next={{title: "Variables", href: "/go/variables"}}>
-
-<GoExampleRow
-  docs={"Go tem vários tipos de valores: strings, inteiros, floats e booleans. Exemplos básicos:"}
-  language="go"
-  title="values.go"
+<CodeExplanation
+  title="Values"
+  explanation={"Go tem vários tipos de valores: strings, inteiros, floats e booleans. Exemplos básicos:"}
   code={"package main\n\nimport \"fmt\"\n\nfunc main() {"}
-/>
-
-<GoExampleRow
-  docs={"Strings concatenadas com +."}
   language="go"
-  code={"    fmt.Println(\"go\" + \"lang\")"}
+  locale="pt-BR"
 />
 
-<GoExampleRow
-  docs={"Inteiros e floats."}
+<CodeExplanation
+  title="Values"
+  explanation={"Go has several value types: strings, integers, floats, and booleans. Basic examples:"}
+  code={"package main\n\nimport \"fmt\"\n\nfunc main() {"}
   language="go"
-  code={"    fmt.Println(\"1+1 =\", 1+1)\n    fmt.Println(\"7.0/3.0 =\", 7.0/3.0)"}
+  locale="en"
 />
 
-<GoExampleRow
-  docs={"Booleans e operadores lógicos."}
+<CodeExplanation
+  title="Values"
+  explanation={"Go tiene varios tipos de valores: strings, enteros, flotantes y booleanos. Ejemplos básicos:"}
+  code={"package main\n\nimport \"fmt\"\n\nfunc main() {"}
   language="go"
-  code={"    fmt.Println(true && false)\n    fmt.Println(true || false)\n    fmt.Println(!true)\n}"}
+  locale="es"
 />
-
-<GoExampleRow
-  docs={"Saída esperada:"}
-  language="bash"
-  code={"$ go run values.go\ngolang\n1+1 = 2\n7.0/3.0 = 2.3333333333333335\nfalse\ntrue\nfalse"}
-/>
-
-</GoExample>

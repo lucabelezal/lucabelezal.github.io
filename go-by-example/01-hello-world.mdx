@@ -2,39 +2,34 @@
 title: Hello World
 ---
 
-import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+import CodeExplanation from '@site/src/components/CodeExplanation';
 
-<GoExample title="Hello World" playHash="NeviD0awXjt" next={{title: "Values", href: "/go/values"}}>
-
-<GoExampleRow
-  docs={"Nosso primeiro programa imprime o clássico “hello world”. Aqui está o código completo."}
-  language="go"
-  title="hello-world.go"
+<CodeExplanation
+  title="Hello World"
+  explanation={"Nosso primeiro programa imprime o clássico “hello world”. Aqui está o código completo."}
   code={"package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"hello world\")\n}"}
+  language="go"
+  locale="pt-BR"
 />
 
-<GoExampleRow
-  docs={"Para rodar o programa, salve o código em hello-world.go e use go run."}
-  language="bash"
-  code={"$ go run hello-world.go\nhello world"}
+<div style={{marginTop: 2}}>
+  <a href="https://go.dev/play/p/NeviD0axjt" target="_blank" rel="noreferrer">
+    Run on go.dev/play ↗
+  </a>
+</div>
+
+<CodeExplanation
+  title="Hello World"
+  explanation={"Our first program prints the classic hello world message. Here's the full source code."}
+  code={"package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"hello world\")\n}"}
+  language="go"
+  locale="en"
 />
 
-<GoExampleRow
-  docs={"Às vezes queremos compilar em um binário com go build."}
-  language="bash"
-  code={"$ go build hello-world.go\n$ ls\nhello-world    hello-world.go"}
+<CodeExplanation
+  title="Hello World"
+  explanation={"Nuestro primer programa imprime el clásico hello world. Aquí está el código completo."}
+  code={"package main\n\nimport \"fmt\"\n\nfunc main() {\n    fmt.Println(\"hello world\")\n}"}
+  language="go"
+  locale="es"
 />
-
-<GoExampleRow
-  docs={"E executamos o binário diretamente."}
-  language="bash"
-  code={"$ ./hello-world\nhello world"}
-/>
-
-<GoExampleRow
-  docs={"Agora que rodamos e compilamos um programa básico, vamos aprender mais sobre a linguagem."}
-  empty
-  code=""
-/>
-
-</GoExample>
