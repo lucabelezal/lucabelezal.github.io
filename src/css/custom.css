@@ -2,27 +2,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 /**
- * Tema focado em leitura longa + código.
- * Cores e tipografia ajustadas para conforto visual sem cansar a vista.
+ * Tema GitHub — escuro como preferência principal.
+ * Light = GitHub Light, Dark = GitHub Dark (preto #0d1117).
  */
 
 :root {
-  /* Paleta de acento (azul-índigo profissional) */
-  --ifm-color-primary: #2563eb;
-  --ifm-color-primary-dark: #1d4ed8;
-  --ifm-color-primary-darker: #1e40af;
-  --ifm-color-primary-darkest: #1e3a8a;
-  --ifm-color-primary-light: #3b82f6;
-  --ifm-color-primary-lighter: #60a5fa;
-  --ifm-color-primary-lightest: #93c5fd;
+  /* GitHub Light — azul #0969da */
+  --ifm-color-primary: #0969da;
+  --ifm-color-primary-dark: #0860c4;
+  --ifm-color-primary-darker: #0757b3;
+  --ifm-color-primary-darkest: #054da1;
+  --ifm-color-primary-light: #1f80eb;
+  --ifm-color-primary-lighter: #54aeff;
+  --ifm-color-primary-lightest: #80ccff;
 
-  /* Fundo e texto: branco levemente quebrado + quase-preto, sem #fff/#000 puros */
-  --ifm-background-color: #fcfcfd;
-  --ifm-background-surface-color: #ffffff;
+  --ifm-background-color: #ffffff;
+  --ifm-background-surface-color: #f6f8fa;
+  --ifm-navbar-background-color: #f6f8fa;
+  --ifm-footer-background-color: #f6f8fa;
   --ifm-font-color-base: #24292f;
-  --ifm-heading-color: #0f172a;
+  --ifm-heading-color: #1f2328;
+  --ifm-color-emphasis-200: #d0d7de;
+  --ifm-color-emphasis-300: #afb8c1;
 
-  /* Tipografia */
   --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI',
     Roboto, Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
   --ifm-font-family-monospace: 'JetBrains Mono', 'Fira Code', 'SFMono-Regular',
@@ -33,14 +35,12 @@
     'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --ifm-heading-font-weight: 700;
 
-  /* Código */
   --ifm-code-font-size: 0.875rem;
-  --ifm-code-background: #eef2f7;
-  --ifm-pre-background: #f8fafc;
+  --ifm-code-background: #f6f8fa;
+  --ifm-pre-background: #f6f8fa;
   --ifm-pre-line-height: 1.65;
 
-  /* Destaque de linha em bloco de código (light) */
-  --docusaurus-highlighted-code-line-bg: rgba(37, 99, 235, 0.12);
+  --docusaurus-highlighted-code-line-bg: rgba(9, 105, 218, 0.12);
 }
 
 /* Leitura mais confortável dentro do conteúdo */
@@ -50,18 +50,16 @@
   line-height: 1.75;
 }
 
-/* Código inline: discreto e legível */
 code {
-  border: 1px solid rgba(15, 23, 42, 0.08);
+  border: 1px solid #d0d7de;
   border-radius: 6px;
   padding: 0.15em 0.4em;
   font-weight: 500;
 }
 
-/* Blocos de código: cantos suaves, sombra leve */
 .theme-code-block {
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
   font-size: 0.9rem;
 }
 
@@ -92,10 +90,10 @@ code {
 }
 .blogSection__body ul { margin-bottom: 0; }
 .blogSection--learn { border-left-color: var(--ifm-color-primary); }
-.blogSection--prereqs { border-left-color: var(--ifm-color-emphasis-400); }
-.blogSection--summary { border-left-color: #16a34a; }
-.blogSection--next { border-left-color: #7c3aed; }
-.blogSection--skills { border-left-color: #ea580c; }
+.blogSection--prereqs { border-left-color: #8b949e; }
+.blogSection--summary { border-left-color: #238636; }
+.blogSection--next { border-left-color: #8957e5; }
+.blogSection--skills { border-left-color: #d29922; }
 
 .skillsGained__list {
   list-style: none;
@@ -107,6 +105,7 @@ code {
 }
 .skillsGained__list li {
   background: var(--ifm-color-emphasis-100);
+  border: 1px solid var(--ifm-color-emphasis-200);
   border-radius: 9999px;
   padding: 0.2rem 0.65rem;
   font-size: 0.88rem;
@@ -136,23 +135,44 @@ code {
 
 .blogNextLink { margin-top: 0.6rem; }
 
-/* Dark mode: paleta de acento mais clara, fundo slate suave (sem preto) */
+/* ── GitHub Dark — preto #0d1117 ── */
 [data-theme='dark'] {
-  --ifm-color-primary: #60a5fa;
-  --ifm-color-primary-dark: #3b82f6;
-  --ifm-color-primary-darker: #2563eb;
-  --ifm-color-primary-darkest: #1e40af;
-  --ifm-color-primary-light: #93c5fd;
-  --ifm-color-primary-lighter: #bfdbfe;
-  --ifm-color-primary-lightest: #dbeafe;
+  --ifm-color-primary: #58a6ff;
+  --ifm-color-primary-dark: #4493f8;
+  --ifm-color-primary-darker: #218bff;
+  --ifm-color-primary-darkest: #0969da;
+  --ifm-color-primary-light: #79c0ff;
+  --ifm-color-primary-lighter: #a5d6ff;
+  --ifm-color-primary-lightest: #cae8ff;
 
-  --ifm-background-color: #0f172a;
-  --ifm-background-surface-color: #1e293b;
-  --ifm-font-color-base: #e2e8f0;
-  --ifm-heading-color: #f8fafc;
+  --ifm-background-color: #0d1117;
+  --ifm-background-surface-color: #161b22;
+  --ifm-navbar-background-color: #010409;
+  --ifm-footer-background-color: #010409;
+  --ifm-font-color-base: #e6edf3;
+  --ifm-heading-color: #e6edf3;
+  --ifm-color-emphasis-100: #21262d;
+  --ifm-color-emphasis-200: #30363d;
+  --ifm-color-emphasis-300: #484f58;
 
-  --ifm-code-background: #1e293b;
-  --ifm-pre-background: #16203a;
+  --ifm-code-background: #21262d;
+  --ifm-pre-background: #161b22;
 
-  --docusaurus-highlighted-code-line-bg: rgba(96, 165, 250, 0.18);
+  --docusaurus-highlighted-code-line-bg: rgba(88, 166, 255, 0.18);
+}
+
+[data-theme='dark'] code {
+  border-color: #30363d;
+}
+
+[data-theme='dark'] .theme-code-block {
+  border-color: #30363d;
+}
+
+[data-theme='dark'] .navbar {
+  border-bottom: 1px solid #21262d;
+}
+
+[data-theme='dark'] .footer {
+  border-top: 1px solid #21262d;
 }
