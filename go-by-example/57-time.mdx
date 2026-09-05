@@ -1,0 +1,35 @@
+---
+title: Time
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Time" playHash="YAM3s1KPc8c" next={{title: "Epoch", href: "/go/epoch"}}>
+
+<GoExampleRow docs={"Go offers extensive support for times and durations; here are some examples."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"time.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"time\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {\n    p := fmt.Println"} />
+
+<GoExampleRow docs={"We'll start by getting the current time."} language="go" code={"    now := time.Now()\n    p(now)"} />
+
+<GoExampleRow docs={"You can build a `time` struct by providing the year, month, day, etc. Times are always associated with a `Location`, i.e. time zone."} language="go" code={"    then := time.Date(\n        2009, 11, 17, 20, 34, 58, 651387237, time.UTC)\n    p(then)"} />
+
+<GoExampleRow docs={"You can extract the various components of the time value as expected."} language="go" code={"    p(then.Year())\n    p(then.Month())\n    p(then.Day())\n    p(then.Hour())\n    p(then.Minute())\n    p(then.Second())\n    p(then.Nanosecond())\n    p(then.Location())"} />
+
+<GoExampleRow docs={"The Monday-Sunday `Weekday` is also available."} language="go" code={"    p(then.Weekday())"} />
+
+<GoExampleRow docs={"These methods compare two times, testing if the first occurs before, after, or at the same time as the second, respectively."} language="go" code={"    p(then.Before(now))\n    p(then.After(now))\n    p(then.Equal(now))"} />
+
+<GoExampleRow docs={"The `Sub` methods returns a `Duration` representing the interval between two times."} language="go" code={"    diff := now.Sub(then)\n    p(diff)"} />
+
+<GoExampleRow docs={"We can compute the length of the duration in various units."} language="go" code={"    p(diff.Hours())\n    p(diff.Minutes())\n    p(diff.Seconds())\n    p(diff.Nanoseconds())"} />
+
+<GoExampleRow docs={"You can use `Add` to advance a time by a given duration, or with a `-` to move backwards by a duration."} language="go" code={"    p(then.Add(diff))\n    p(then.Add(-diff))\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run time.go\n2012-10-31 15:50:13.793654 +0000 UTC\n2009-11-17 20:34:58.651387237 +0000 UTC\n2009\nNovember\n17\n20\n34\n58\n651387237\nUTC\nTuesday\ntrue\nfalse\nfalse\n25891h15m15.142266763s\n25891.25420618521\n1.5534752523711128e+06\n9.320851514226677e+07\n93208515142266763\n2012-10-31 15:50:13.793654 +0000 UTC\n2006-12-05 01:19:43.509120474 +0000 UTC\n\n# Next we'll look at the related idea of time relative to\n# the Unix epoch."} />
+
+</GoExample>

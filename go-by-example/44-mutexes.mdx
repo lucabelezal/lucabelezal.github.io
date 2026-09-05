@@ -1,0 +1,39 @@
+---
+title: Mutexes
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Mutexes" playHash="u0VAVSWRlU0" next={{title: "Stateful Goroutines", href: "/go/stateful-goroutines"}}>
+
+<GoExampleRow docs={"In the previous example we saw how to manage simple counter state using [atomic operations](atomic-counters). For more complex state we can use a [_mutex_](https://en.wikipedia.org/wiki/Mutual_exclusion) to safely access data across multiple goroutines."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"mutexes.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"sync\"\n)"} />
+
+<GoExampleRow docs={"Container holds a map of counters; since we want to update it concurrently from multiple goroutines, we add a `Mutex` to synchronize access. Note that mutexes must not be copied, so if this `struct` is passed around, it should be done by pointer."} language="go" code={"type Container struct {\n    mu       sync.Mutex\n    counters map[string]int\n}"} />
+
+<GoExampleRow docs={"Lock the mutex before accessing `counters`; unlock it at the end of the function using a [defer](defer) statement."} language="go" code={"func (c *Container) inc(name string) {"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    c.mu.Lock()\n    defer c.mu.Unlock()\n    c.counters[name]++\n}"} />
+
+<GoExampleRow docs={"Note that the zero value of a mutex is usable as-is, so no initialization is required here."} language="go" code={"func main() {\n    c := Container{"} />
+
+<GoExampleRow docs={undefined} language="go" code={"        counters: map[string]int{\"a\": 0, \"b\": 0},\n    }"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    var wg sync.WaitGroup"} />
+
+<GoExampleRow docs={"This function increments a named counter in a loop."} language="go" code={"    doIncrement := func(name string, n int) {\n        for range n {\n            c.inc(name)\n        }\n    }"} />
+
+<GoExampleRow docs={"Run several goroutines concurrently; note that they all access the same `Container`, and two of them access the same counter."} language="go" code={"    wg.Go(func() {\n        doIncrement(\"a\", 10000)\n    })"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    wg.Go(func() {\n        doIncrement(\"a\", 10000)\n    })"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    wg.Go(func() {\n        doIncrement(\"b\", 10000)\n    })"} />
+
+<GoExampleRow docs={"Wait for the goroutines to finish"} language="go" code={"    wg.Wait()\n    fmt.Println(c.counters)\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# Running the program shows that the counters\n# updated as expected.\n$ go run mutexes.go\nmap[a:20000 b:10000]\n\n# Next we'll look at implementing this same state\n# management task using only goroutines and channels."} />
+
+</GoExample>

@@ -1,0 +1,35 @@
+---
+title: Temporary Files and Directories
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Temporary Files and Directories" playHash="hVcPg9RH3_V" next={{title: "Embed Directive", href: "/go/embed-directive"}}>
+
+<GoExampleRow docs={"Throughout program execution, we often want to create data that isn't needed after the program exits. *Temporary files and directories* are useful for this purpose since they don't pollute the file system over time."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"temporary-files-and-directories.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"os\"\n    \"path/filepath\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func check(e error) {\n    if e != nil {\n        panic(e)\n    }\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"The easiest way to create a temporary file is by calling `os.CreateTemp`. It creates a file *and* opens it for reading and writing. We provide `\"\"` as the first argument, so `os.CreateTemp` will create the file in the default location for our OS."} language="go" code={"    f, err := os.CreateTemp(\"\", \"sample\")\n    check(err)"} />
+
+<GoExampleRow docs={"Display the name of the temporary file. On Unix-based OSes the directory will likely be `/tmp`. The file name starts with the prefix given as the second argument to `os.CreateTemp` and the rest is chosen automatically to ensure that concurrent calls will always create different file names."} language="go" code={"    fmt.Println(\"Temp file name:\", f.Name())"} />
+
+<GoExampleRow docs={"Clean up the file after we're done. The OS is likely to clean up temporary files by itself after some time, but it's good practice to do this explicitly."} language="go" code={"    defer os.Remove(f.Name())"} />
+
+<GoExampleRow docs={"We can write some data to the file."} language="go" code={"    _, err = f.Write([]byte{1, 2, 3, 4})\n    check(err)"} />
+
+<GoExampleRow docs={"If we intend to write many temporary files, we may prefer to create a temporary *directory*. `os.MkdirTemp`'s arguments are the same as `CreateTemp`'s, but it returns a directory *name* rather than an open file."} language="go" code={"    dname, err := os.MkdirTemp(\"\", \"sampledir\")\n    check(err)\n    fmt.Println(\"Temp dir name:\", dname)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    defer os.RemoveAll(dname)"} />
+
+<GoExampleRow docs={"Now we can synthesize temporary file names by prefixing them with our temporary directory."} language="go" code={"    fname := filepath.Join(dname, \"file1\")\n    err = os.WriteFile(fname, []byte{1, 2}, 0666)\n    check(err)\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run temporary-files-and-directories.go\nTemp file name: /tmp/sample610887201\nTemp dir name: /tmp/sampledir898854668"} />
+
+</GoExample>

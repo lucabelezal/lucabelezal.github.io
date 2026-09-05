@@ -1,0 +1,25 @@
+---
+title: Sorting
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Sorting" playHash="X7iJcIua02T" next={{title: "Sorting by Functions", href: "/go/sorting-by-functions"}}>
+
+<GoExampleRow docs={"Go's `slices` package implements sorting for builtins and user-defined types. We'll look at sorting for builtins first."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"sorting.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"slices\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"Sorting functions are generic, and work for any _ordered_ built-in type. For a list of ordered types, see [cmp.Ordered](https://pkg.go.dev/cmp#Ordered)."} language="go" code={"    strs := []string{\"c\", \"a\", \"b\"}\n    slices.Sort(strs)\n    fmt.Println(\"Strings:\", strs)"} />
+
+<GoExampleRow docs={"An example of sorting `int`s."} language="go" code={"    ints := []int{7, 2, 4}\n    slices.Sort(ints)\n    fmt.Println(\"Ints:   \", ints)"} />
+
+<GoExampleRow docs={"We can also use the `slices` package to check if a slice is already in sorted order."} language="go" code={"    s := slices.IsSorted(ints)\n    fmt.Println(\"Sorted: \", s)\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run sorting.go\nStrings: [a b c]\nInts:    [2 4 7]\nSorted:  true"} />
+
+</GoExample>

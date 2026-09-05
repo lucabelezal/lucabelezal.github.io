@@ -1,0 +1,23 @@
+---
+title: Range over Channels
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Range over Channels" playHash="8vAhX6eX1wy" next={{title: "Timers", href: "/go/timers"}}>
+
+<GoExampleRow docs={"In a [previous](range-over-built-in-types) example we saw how `for` and `range` provide iteration over basic data structures. We can also use this syntax to iterate over values received from a channel."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"range-over-channels.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"We'll iterate over 2 values in the `queue` channel."} language="go" code={"    queue := make(chan string, 2)\n    queue <- \"one\"\n    queue <- \"two\"\n    close(queue)"} />
+
+<GoExampleRow docs={"This `range` iterates over each element as it's received from `queue`. Because we `close`d the channel above, the iteration terminates after receiving the 2 elements."} language="go" code={"    for elem := range queue {\n        fmt.Println(elem)\n    }\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run range-over-channels.go\none\ntwo\n\n# This example also showed that it's possible to close\n# a non-empty channel but still have the remaining\n# values be received."} />
+
+</GoExample>

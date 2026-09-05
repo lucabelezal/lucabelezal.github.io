@@ -6,25 +6,12 @@ import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
 
 <GoExample title="Hello World" playHash="NeviD0awXjt" next={{title: "Values", href: "/go/values"}}>
 
-<GoExampleRow docs={<>Nosso primeiro programa imprime o clássico “hello world”. Aqui está o código completo.</>} code={`package main
+<GoExampleRow docs={"Our first program will print the classic \"hello world\" message. Here's the full source code."} language="go" title={"hello-world.go"} code={"package main"} />
 
-import "fmt"
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
 
-func main() {`} />
+<GoExampleRow docs={undefined} language="go" code={"func main() {\n    fmt.Println(\"hello world\")\n}"} />
 
-<GoExampleRow docs={<></>} code={`    fmt.Println("hello world")
-}`} />
-
-<GoExampleRow docs={<>Para rodar o programa, salve o código em `hello-world.go` e use `go run`.</>} code={`$ go run hello-world.go
-hello world`} />
-
-<GoExampleRow docs={<>Às vezes queremos compilar em um binário.</>} code={`$ go build hello-world.go
-$ ls
-hello-world    hello-world.go`} />
-
-<GoExampleRow docs={<>E executamos o binário diretamente.</>} code={`$ ./hello-world
-hello world`} />
-
-<GoExampleRow docs={<>Agora que rodamos e compilamos um programa básico, vamos aprender mais sobre a linguagem.</>} empty code={``} />
+<GoExampleRow docs={"Saída:"} language="bash" code={"# To run the program, put the code in `hello-world.go` and\n# use `go run`.\n$ go run hello-world.go\nhello world\n\n# Sometimes we'll want to build our programs into\n# binaries. We can do this using `go build`.\n$ go build hello-world.go\n$ ls\nhello-world\thello-world.go\n\n# We can then execute the built binary directly.\n$ ./hello-world\nhello world\n\n# Now that we can run and build basic Go programs, let's\n# learn more about the language."} />
 
 </GoExample>

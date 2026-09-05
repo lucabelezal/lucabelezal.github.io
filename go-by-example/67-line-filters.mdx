@@ -1,0 +1,29 @@
+---
+title: Line Filters
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Line Filters" playHash="kNcupWRsYPP" next={{title: "File Paths", href: "/go/file-paths"}}>
+
+<GoExampleRow docs={"A _line filter_ is a common type of program that reads input on stdin, processes it, and then prints some derived result to stdout. `grep` and `sed` are common line filters."} empty code="" />
+
+<GoExampleRow docs={"Here's an example line filter in Go that writes a capitalized version of all input text. You can use this pattern to write your own Go line filters."} language="go" title={"line-filters.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n    \"strings\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"Wrapping the unbuffered `os.Stdin` with a buffered scanner gives us a convenient `Scan` method that advances the scanner to the next token; which is the next line in the default scanner."} language="go" code={"    scanner := bufio.NewScanner(os.Stdin)"} />
+
+<GoExampleRow docs={"`Text` returns the current token, here the next line, from the input."} language="go" code={"    for scanner.Scan() {"} />
+
+<GoExampleRow docs={undefined} language="go" code={"        ucl := strings.ToUpper(scanner.Text())"} />
+
+<GoExampleRow docs={"Write out the uppercased line."} language="go" code={"        fmt.Println(ucl)\n    }"} />
+
+<GoExampleRow docs={"Check for errors during `Scan`. End of file is expected and not reported by `Scan` as an error."} language="go" code={"    if err := scanner.Err(); err != nil {\n        fmt.Fprintln(os.Stderr, \"error:\", err)\n        os.Exit(1)\n    }\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# To try out our line filter, first make a file with a few\n# lowercase lines.\n$ echo 'hello'   > /tmp/lines\n$ echo 'filter' >> /tmp/lines\n\n# Then use the line filter to get uppercase lines.\n$ cat /tmp/lines | go run line-filters.go\nHELLO\nFILTER"} />
+
+</GoExample>

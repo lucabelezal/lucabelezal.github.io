@@ -1,0 +1,23 @@
+---
+title: Channel Directions
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Channel Directions" playHash="mjNJDHwUH4R" next={{title: "Select", href: "/go/select"}}>
+
+<GoExampleRow docs={"When using channels as function parameters, you can specify if a channel is meant to only send or receive values. This specificity increases the type-safety of the program."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"channel-directions.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
+
+<GoExampleRow docs={"This `ping` function only accepts a channel for sending values. It would be a compile-time error to try to receive on this channel."} language="go" code={"func ping(pings chan<- string, msg string) {\n    pings <- msg\n}"} />
+
+<GoExampleRow docs={"The `pong` function accepts one channel for receives (`pings`) and a second for sends (`pongs`)."} language="go" code={"func pong(pings <-chan string, pongs chan<- string) {\n    msg := <-pings\n    pongs <- msg\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {\n    pings := make(chan string, 1)\n    pongs := make(chan string, 1)\n    ping(pings, \"passed message\")\n    pong(pings, pongs)\n    fmt.Println(<-pongs)\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run channel-directions.go\npassed message"} />
+
+</GoExample>

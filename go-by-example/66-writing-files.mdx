@@ -1,0 +1,39 @@
+---
+title: Writing Files
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Writing Files" playHash="iuKQDnKfl2T" next={{title: "Line Filters", href: "/go/line-filters"}}>
+
+<GoExampleRow docs={"Writing files in Go follows similar patterns to the ones we saw earlier for reading."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"writing-files.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"bufio\"\n    \"fmt\"\n    \"os\"\n    \"path/filepath\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func check(e error) {\n    if e != nil {\n        panic(e)\n    }\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"To start, here's how to dump a string (or just bytes) into a file."} language="go" code={"    d1 := []byte(\"hello\\ngo\\n\")\n    path1 := filepath.Join(os.TempDir(), \"dat1\")\n    err := os.WriteFile(path1, d1, 0644)\n    check(err)"} />
+
+<GoExampleRow docs={"For more granular writes, open a file for writing."} language="go" code={"    path2 := filepath.Join(os.TempDir(), \"dat2\")\n    f, err := os.Create(path2)\n    check(err)"} />
+
+<GoExampleRow docs={"It's idiomatic to defer a `Close` immediately after opening a file."} language="go" code={"    defer f.Close()"} />
+
+<GoExampleRow docs={"You can `Write` byte slices as you'd expect."} language="go" code={"    d2 := []byte{115, 111, 109, 101, 10}\n    n2, err := f.Write(d2)\n    check(err)\n    fmt.Printf(\"wrote %d bytes\\n\", n2)"} />
+
+<GoExampleRow docs={"A `WriteString` is also available."} language="go" code={"    n3, err := f.WriteString(\"writes\\n\")\n    check(err)\n    fmt.Printf(\"wrote %d bytes\\n\", n3)"} />
+
+<GoExampleRow docs={"Issue a `Sync` to flush writes to stable storage."} language="go" code={"    f.Sync()"} />
+
+<GoExampleRow docs={"`bufio` provides buffered writers in addition to the buffered readers we saw earlier."} language="go" code={"    w := bufio.NewWriter(f)\n    n4, err := w.WriteString(\"buffered\\n\")\n    check(err)\n    fmt.Printf(\"wrote %d bytes\\n\", n4)"} />
+
+<GoExampleRow docs={"Use `Flush` to ensure all buffered operations have been applied to the underlying writer."} language="go" code={"    w.Flush()"} />
+
+<GoExampleRow docs={undefined} language="go" code={"}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# Try running the file-writing code.\n$ go run writing-files.go \nwrote 5 bytes\nwrote 7 bytes\nwrote 9 bytes\n\n# Then check the contents of the written files.\n$ cat /tmp/dat1\nhello\ngo\n$ cat /tmp/dat2\nsome\nwrites\nbuffered\n\n# Next we'll look at applying some of the file I/O ideas\n# we've just seen to the `stdin` and `stdout` streams."} />
+
+</GoExample>

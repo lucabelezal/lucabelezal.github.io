@@ -1,0 +1,31 @@
+---
+title: Number Parsing
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Number Parsing" playHash="ZAMEid6Fpmu" next={{title: "URL Parsing", href: "/go/url-parsing"}}>
+
+<GoExampleRow docs={"Parsing numbers from strings is a basic but common task in many programs; here's how to do it in Go."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"number-parsing.go"} code={"package main"} />
+
+<GoExampleRow docs={"The built-in package `strconv` provides the number parsing."} language="go" code={"import (\n    \"fmt\"\n    \"strconv\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"With `ParseFloat`, this `64` tells how many bits of precision to parse."} language="go" code={"    f, _ := strconv.ParseFloat(\"1.234\", 64)\n    fmt.Println(f)"} />
+
+<GoExampleRow docs={"For `ParseInt`, the `0` means infer the base from the string. `64` requires that the result fit in 64 bits."} language="go" code={"    i, _ := strconv.ParseInt(\"123\", 0, 64)\n    fmt.Println(i)"} />
+
+<GoExampleRow docs={"`ParseInt` will recognize hex-formatted numbers."} language="go" code={"    d, _ := strconv.ParseInt(\"0x1c8\", 0, 64)\n    fmt.Println(d)"} />
+
+<GoExampleRow docs={"A `ParseUint` is also available."} language="go" code={"    u, _ := strconv.ParseUint(\"789\", 0, 64)\n    fmt.Println(u)"} />
+
+<GoExampleRow docs={"`Atoi` is a convenience function for basic base-10 `int` parsing."} language="go" code={"    k, _ := strconv.Atoi(\"135\")\n    fmt.Println(k)"} />
+
+<GoExampleRow docs={"Parse functions return an error on bad input."} language="go" code={"    _, e := strconv.Atoi(\"wat\")\n    fmt.Println(e)\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run number-parsing.go \n1.234\n123\n456\n789\n135\nstrconv.ParseInt: parsing \"wat\": invalid syntax\n\n# Next we'll look at another common parsing task: URLs."} />
+
+</GoExample>

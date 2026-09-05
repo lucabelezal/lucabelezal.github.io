@@ -6,28 +6,20 @@ import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
 
 <GoExample title="Values" playHash="YnVS3LZr8pk" next={{title: "Variables", href: "/go/variables"}}>
 
-<GoExampleRow docs={<>Go tem vários tipos de valores incluindo strings, inteiros, floats, booleans etc. Alguns exemplos básicos.</>} code={`package main
+<GoExampleRow docs={"Go has various value types including strings, integers, floats, booleans, etc. Here are a few basic examples."} empty code="" />
 
-import "fmt"
+<GoExampleRow docs={undefined} language="go" title={"values.go"} code={"package main"} />
 
-func main() {`} />
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
 
-<GoExampleRow docs={<>Strings podem ser concatenadas com `+`.</>} code={`    fmt.Println("go" + "lang")`} />
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
 
-<GoExampleRow docs={<>Inteiros e floats.</>} code={`    fmt.Println("1+1 =", 1+1)
-    fmt.Println("7.0/3.0 =", 7.0/3.0)`} />
+<GoExampleRow docs={"Strings, which can be added together with `+`."} language="go" code={"    fmt.Println(\"go\" + \"lang\")"} />
 
-<GoExampleRow docs={<>Booleans com operadores lógicos.</>} code={`    fmt.Println(true && false)
-    fmt.Println(true || false)
-    fmt.Println(!true)
-}`} />
+<GoExampleRow docs={"Integers and floats."} language="go" code={"    fmt.Println(\"1+1 =\", 1+1)\n    fmt.Println(\"7.0/3.0 =\", 7.0/3.0)"} />
 
-<GoExampleRow docs={<>Saída esperada:</>} code={`$ go run values.go
-golang
-1+1 = 2
-7.0/3.0 = 2.3333333333333335
-false
-true
-false`} />
+<GoExampleRow docs={"Booleans, with boolean operators as you'd expect."} language="go" code={"    fmt.Println(true && false)\n    fmt.Println(true || false)\n    fmt.Println(!true)\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run values.go\ngolang\n1+1 = 2\n7.0/3.0 = 2.3333333333333335\nfalse\ntrue\nfalse"} />
 
 </GoExample>

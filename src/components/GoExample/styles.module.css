@@ -29,47 +29,15 @@
   width: 58%;
   min-width: 320px;
   vertical-align: top;
-  background: var(--go-code-bg);
-  border-radius: 6px;
-  padding: 6px 8px;
-  position: relative;
-  font-size: 14px;
-  line-height: 18px;
+  padding: 0 0 8px 8px;
 }
 
-.code pre {
+.code :global(.theme-code-block) {
   margin: 0;
-  background: transparent !important;
-  padding: 0;
 }
 
 .codeEmpty {
   background: transparent !important;
-}
-
-.codeLeading {
-  padding-bottom: 12px;
-}
-
-.actions {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  display: flex;
-  gap: 6px;
-}
-
-.run,
-.copy {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-  opacity: 0.7;
-}
-
-.run:hover,
-.copy:hover {
-  opacity: 1;
 }
 
 .next {

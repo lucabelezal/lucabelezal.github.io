@@ -1,0 +1,25 @@
+---
+title: Signals
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Signals" playHash="F3Wm7JT8wgn" next={{title: "Exit", href: "/go/exit"}}>
+
+<GoExampleRow docs={"Sometimes we'd like our Go programs to intelligently handle [Unix signals](https://en.wikipedia.org/wiki/Unix_signal). For example, we might want a server to gracefully shutdown when it receives a `SIGTERM`, or a command-line tool to stop processing input if it receives a `SIGINT`. Here's a modern way to handle signals using contexts."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"signals.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"context\"\n    \"fmt\"\n    \"os/signal\"\n    \"syscall\"\n)"} />
+
+<GoExampleRow docs={"`signal.NotifyContext` returns a context that's canceled when one of the listed signals arrives."} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    ctx, stop := signal.NotifyContext(\n        context.Background(), syscall.SIGINT, syscall.SIGTERM)\n    defer stop()"} />
+
+<GoExampleRow docs={"The program will wait here until one of the configured signals is received."} language="go" code={"    fmt.Println(\"awaiting signal\")\n    <-ctx.Done()"} />
+
+<GoExampleRow docs={"`context.Cause` reports why the context was canceled. For a signal-triggered cancellation, this includes the signal value."} language="go" code={"    fmt.Println()\n    fmt.Println(context.Cause(ctx))\n    fmt.Println(\"exiting\")\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# When we run this program it will block waiting for a\n# signal. By typing `ctrl-C` (which the\n# terminal shows as `^C`) we can send a `SIGINT` signal,\n# causing the program to print the cancellation cause and then exit.\n$ go run signals.go\nawaiting signal\n^C\ninterrupt signal received\nexiting"} />
+
+</GoExample>

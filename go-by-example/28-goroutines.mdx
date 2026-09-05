@@ -1,0 +1,29 @@
+---
+title: Goroutines
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Goroutines" playHash="0fx_WokYVFO" next={{title: "Channels", href: "/go/channels"}}>
+
+<GoExampleRow docs={"A _goroutine_ is a lightweight thread of execution."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"goroutines.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"time\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func f(from string) {\n    for i := range 3 {\n        fmt.Println(from, \":\", i)\n    }\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"Suppose we have a function call `f(s)`. Here's how we'd call that in the usual way, running it synchronously."} language="go" code={"    f(\"direct\")"} />
+
+<GoExampleRow docs={"To invoke this function in a goroutine, use `go f(s)`. This new goroutine will execute concurrently with the calling one."} language="go" code={"    go f(\"goroutine\")"} />
+
+<GoExampleRow docs={"You can also start a goroutine for an anonymous function call."} language="go" code={"    go func(msg string) {\n        fmt.Println(msg)\n    }(\"going\")"} />
+
+<GoExampleRow docs={"Our two function calls are running asynchronously in separate goroutines now. Wait for them to finish (for a more robust approach, use a [WaitGroup](waitgroups))."} language="go" code={"    time.Sleep(time.Second)\n    fmt.Println(\"done\")\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# When we run this program, we see the output of the\n# blocking call first, then the output of the two\n# goroutines. The goroutines' output may be interleaved,\n# because goroutines are being run concurrently by the\n# Go runtime.\n$ go run goroutines.go\ndirect : 0\ndirect : 1\ndirect : 2\ngoroutine : 0\ngoing\ngoroutine : 1\ngoroutine : 2\ndone\n\n# Next we'll look at a complement to goroutines in\n# concurrent Go programs: channels."} />
+
+</GoExample>

@@ -1,0 +1,25 @@
+---
+title: Non-Blocking Channel Operations
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Non-Blocking Channel Operations" playHash="TFv6-7OVNVq" next={{title: "Closing Channels", href: "/go/closing-channels"}}>
+
+<GoExampleRow docs={"Basic sends and receives on channels are blocking. However, we can use `select` with a `default` clause to implement _non-blocking_ sends, receives, and even non-blocking multi-way `select`s."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"non-blocking-channel-operations.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {\n    messages := make(chan string)\n    signals := make(chan bool)"} />
+
+<GoExampleRow docs={"Here's a non-blocking receive. If a value is available on `messages` then `select` will take the `<-messages` `case` with that value. If not it will immediately take the `default` case."} language="go" code={"    select {\n    case msg := <-messages:\n        fmt.Println(\"received message\", msg)\n    default:\n        fmt.Println(\"no message received\")\n    }"} />
+
+<GoExampleRow docs={"A non-blocking send works similarly. Here `msg` cannot be sent to the `messages` channel, because the channel has no buffer and there is no receiver. Therefore the `default` case is selected."} language="go" code={"    msg := \"hi\"\n    select {\n    case messages <- msg:\n        fmt.Println(\"sent message\", msg)\n    default:\n        fmt.Println(\"no message sent\")\n    }"} />
+
+<GoExampleRow docs={"We can use multiple `case`s above the `default` clause to implement a multi-way non-blocking select. Here we attempt non-blocking receives on both `messages` and `signals`."} language="go" code={"    select {\n    case msg := <-messages:\n        fmt.Println(\"received message\", msg)\n    case sig := <-signals:\n        fmt.Println(\"received signal\", sig)\n    default:\n        fmt.Println(\"no activity\")\n    }\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run non-blocking-channel-operations.go \nno message received\nno message sent\nno activity"} />
+
+</GoExample>

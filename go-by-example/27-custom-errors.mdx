@@ -1,0 +1,29 @@
+---
+title: Custom Errors
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Custom Errors" playHash="0WHh8JFOjQq" next={{title: "Goroutines", href: "/go/goroutines"}}>
+
+<GoExampleRow docs={"It's possible to define custom error types by implementing the `Error()` method on them. Here's a variant on the example above that uses a custom type to explicitly represent an argument error."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"custom-errors.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"errors\"\n    \"fmt\"\n)"} />
+
+<GoExampleRow docs={"A custom error type usually has the suffix \"Error\"."} language="go" code={"type argError struct {\n    arg     int\n    message string\n}"} />
+
+<GoExampleRow docs={"Adding this `Error` method makes `argError` implement the `error` interface."} language="go" code={"func (e *argError) Error() string {\n    return fmt.Sprintf(\"%d - %s\", e.arg, e.message)\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func f(arg int) (int, error) {\n    if arg == 42 {"} />
+
+<GoExampleRow docs={"Return our custom error."} language="go" code={"        return -1, &argError{arg, \"can't work with it\"}\n    }\n    return arg + 3, nil\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"`errors.AsType` is a more advanced version of `errors.Is`. It checks that a given error (or any error in its chain) matches a specific error type and converts to a value of that type, also returning `true`. If there's no match, the second return value is `false`."} language="go" code={"    _, err := f(42)\n    if ae, ok := errors.AsType[*argError](err); ok {\n        fmt.Println(ae.arg)\n        fmt.Println(ae.message)\n    } else {\n        fmt.Println(\"err doesn't match argError\")\n    }\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run custom-errors.go\n42\ncan't work with it"} />
+
+</GoExample>

@@ -1,0 +1,25 @@
+---
+title: Select
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Select" playHash="dOrjUfgGwB2" next={{title: "Timeouts", href: "/go/timeouts"}}>
+
+<GoExampleRow docs={"Go's _select_ lets you wait on multiple channel operations. Combining goroutines and channels with select is a powerful feature of Go."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"select.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"time\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"For our example we'll select across two channels."} language="go" code={"    c1 := make(chan string)\n    c2 := make(chan string)"} />
+
+<GoExampleRow docs={"Each channel will receive a value after some amount of time, to simulate e.g. blocking RPC operations executing in concurrent goroutines."} language="go" code={"    go func() {\n        time.Sleep(1 * time.Second)\n        c1 <- \"one\"\n    }()\n    go func() {\n        time.Sleep(2 * time.Second)\n        c2 <- \"two\"\n    }()"} />
+
+<GoExampleRow docs={"We'll use `select` to await both of these values simultaneously, printing each one as it arrives."} language="go" code={"    for range 2 {\n        select {\n        case msg1 := <-c1:\n            fmt.Println(\"received\", msg1)\n        case msg2 := <-c2:\n            fmt.Println(\"received\", msg2)\n        }\n    }\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# We receive the values `\"one\"` and then `\"two\"` as\n# expected.\n$ time go run select.go \nreceived one\nreceived two\n\n# Note that the total execution time is only ~2 seconds\n# since both the 1 and 2 second `Sleeps` execute\n# concurrently.\nreal\t0m2.245s"} />
+
+</GoExample>

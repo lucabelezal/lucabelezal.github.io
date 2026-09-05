@@ -1,0 +1,25 @@
+---
+title: Epoch
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Epoch" playHash="lRmD1EWHHPz" next={{title: "Time Formatting / Parsing", href: "/go/time-formatting-parsing"}}>
+
+<GoExampleRow docs={"A common requirement in programs is getting the number of seconds, milliseconds, or nanoseconds since the [Unix epoch](https://en.wikipedia.org/wiki/Unix_time). Here's how to do it in Go."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"epoch.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"time\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"Use `time.Now` with `Unix`, `UnixMilli` or `UnixNano` to get elapsed time since the Unix epoch in seconds, milliseconds or nanoseconds, respectively."} language="go" code={"    now := time.Now()\n    fmt.Println(now)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    fmt.Println(now.Unix())\n    fmt.Println(now.UnixMilli())\n    fmt.Println(now.UnixNano())"} />
+
+<GoExampleRow docs={"You can also convert integer seconds or nanoseconds since the epoch into the corresponding `time`."} language="go" code={"    fmt.Println(time.Unix(now.Unix(), 0))\n    fmt.Println(time.Unix(0, now.UnixNano()))\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run epoch.go \n2012-10-31 16:13:58.292387 +0000 UTC\n1351700038\n1351700038292\n1351700038292387000\n2012-10-31 16:13:58 +0000 UTC\n2012-10-31 16:13:58.292387 +0000 UTC\n\n# Next we'll look at another time-related task: time\n# parsing and formatting."} />
+
+</GoExample>

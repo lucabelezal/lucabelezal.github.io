@@ -1,0 +1,29 @@
+---
+title: HTTP Server
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="HTTP Server" playHash="s3xMMt9Ytry" next={{title: "TCP Server", href: "/go/tcp-server"}}>
+
+<GoExampleRow docs={"Writing a basic HTTP server is easy using the `net/http` package."} language="go" title={"http-server.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"net/http\"\n)"} />
+
+<GoExampleRow docs={"A fundamental concept in `net/http` servers is *handlers*. A handler is an object implementing the `http.Handler` interface. A common way to write a handler is by using the `http.HandlerFunc` adapter on functions with the appropriate signature."} language="go" code={"func hello(w http.ResponseWriter, req *http.Request) {"} />
+
+<GoExampleRow docs={"Functions serving as handlers take a `http.ResponseWriter` and a `http.Request` as arguments. The response writer is used to fill in the HTTP response. Here our simple response is just \"hello\\n\"."} language="go" code={"    fmt.Fprintf(w, \"hello\\n\")\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func headers(w http.ResponseWriter, req *http.Request) {"} />
+
+<GoExampleRow docs={"This handler does something a little more sophisticated by reading all the HTTP request headers and echoing them into the response body."} language="go" code={"    for name, headers := range req.Header {\n        for _, h := range headers {\n            fmt.Fprintf(w, \"%v: %v\\n\", name, h)\n        }\n    }\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"We register our handlers on server routes using the `http.HandleFunc` convenience function. It sets up the *default router* in the `net/http` package and takes a function as an argument."} language="go" code={"    http.HandleFunc(\"/hello\", hello)\n    http.HandleFunc(\"/headers\", headers)"} />
+
+<GoExampleRow docs={"Finally, we call the `ListenAndServe` with the port and a handler. `nil` tells it to use the default router we've just set up."} language="go" code={"    http.ListenAndServe(\":8090\", nil)\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# Run the server in the background.\n$ go run http-server.go &\n\n# Access the `/hello` route.\n$ curl localhost:8090/hello\nhello"} />
+
+</GoExample>

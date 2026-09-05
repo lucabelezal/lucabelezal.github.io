@@ -1,0 +1,37 @@
+---
+title: XML
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="XML" playHash="vsP5mIrNJOG" next={{title: "Time", href: "/go/time"}}>
+
+<GoExampleRow docs={"Go offers built-in support for XML and XML-like formats with the `encoding/xml` package."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"xml.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"encoding/xml\"\n    \"fmt\"\n)"} />
+
+<GoExampleRow docs={"Plant will be mapped to XML. Similarly to the JSON examples, field tags contain directives for the encoder and decoder. Here we use some special features of the XML package: the `XMLName` field name dictates the name of the XML element representing this struct; `id,attr` means that the `Id` field is an XML _attribute_ rather than a nested element."} language="go" code={"type Plant struct {\n    XMLName xml.Name `xml:\"plant\"`\n    Id      int      `xml:\"id,attr\"`\n    Name    string   `xml:\"name\"`\n    Origin  []string `xml:\"origin\"`\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func (p Plant) String() string {\n    return fmt.Sprintf(\"Plant id=%v, name=%v, origin=%v\",\n        p.Id, p.Name, p.Origin)\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {\n    coffee := &Plant{Id: 27, Name: \"Coffee\"}\n    coffee.Origin = []string{\"Ethiopia\", \"Brazil\"}"} />
+
+<GoExampleRow docs={"Emit XML representing our plant; using `MarshalIndent` to produce a more human-readable output."} language="go" code={"    out, _ := xml.MarshalIndent(coffee, \" \", \"  \")\n    fmt.Println(string(out))"} />
+
+<GoExampleRow docs={"To add a generic XML header to the output, append it explicitly."} language="go" code={"    fmt.Println(xml.Header + string(out))"} />
+
+<GoExampleRow docs={"Use `Unmarshal` to parse a stream of bytes with XML into a data structure. If the XML is malformed or cannot be mapped onto Plant, a descriptive error will be returned."} language="go" code={"    var p Plant\n    if err := xml.Unmarshal(out, &p); err != nil {\n        panic(err)\n    }\n    fmt.Println(p)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    tomato := &Plant{Id: 81, Name: \"Tomato\"}\n    tomato.Origin = []string{\"Mexico\", \"California\"}"} />
+
+<GoExampleRow docs={"The `parent>child>plant` field tag tells the encoder to nest all `plant`s under `<parent><child>...`"} language="go" code={"    type Nesting struct {\n        XMLName xml.Name `xml:\"nesting\"`\n        Plants  []*Plant `xml:\"parent>child>plant\"`\n    }"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    nesting := &Nesting{}\n    nesting.Plants = []*Plant{coffee, tomato}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    out, _ = xml.MarshalIndent(nesting, \" \", \"  \")\n    fmt.Println(string(out))\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run xml.go\n <plant id=\"27\">\n   <name>Coffee</name>\n   <origin>Ethiopia</origin>\n   <origin>Brazil</origin>\n </plant>\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n <plant id=\"27\">\n   <name>Coffee</name>\n   <origin>Ethiopia</origin>\n   <origin>Brazil</origin>\n </plant>\nPlant id=27, name=Coffee, origin=[Ethiopia Brazil]\n <nesting>\n   <parent>\n     <child>\n       <plant id=\"27\">\n         <name>Coffee</name>\n         <origin>Ethiopia</origin>\n         <origin>Brazil</origin>\n       </plant>\n       <plant id=\"81\">\n         <name>Tomato</name>\n         <origin>Mexico</origin>\n         <origin>California</origin>\n       </plant>\n     </child>\n   </parent>\n </nesting>"} />
+
+</GoExample>

@@ -1,0 +1,27 @@
+---
+title: Switch
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Switch" playHash="0bvw1aIeuFM" next={{title: "Arrays", href: "/go/arrays"}}>
+
+<GoExampleRow docs={"_Switch statements_ express conditionals across many branches."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"switch.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"time\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"Here's a basic `switch`."} language="go" code={"    i := 2\n    fmt.Print(\"Write \", i, \" as \")\n    switch i {\n    case 1:\n        fmt.Println(\"one\")\n    case 2:\n        fmt.Println(\"two\")\n    case 3:\n        fmt.Println(\"three\")\n    }"} />
+
+<GoExampleRow docs={"You can use commas to separate multiple expressions in the same `case` statement. We use the optional `default` case in this example as well."} language="go" code={"    switch time.Now().Weekday() {\n    case time.Saturday, time.Sunday:\n        fmt.Println(\"It's the weekend\")\n    default:\n        fmt.Println(\"It's a weekday\")\n    }"} />
+
+<GoExampleRow docs={"`switch` without an expression is an alternate way to express if/else logic. Here we also show how the `case` expressions can be non-constants."} language="go" code={"    t := time.Now()\n    switch {\n    case t.Hour() < 12:\n        fmt.Println(\"It's before noon\")\n    default:\n        fmt.Println(\"It's after noon\")\n    }"} />
+
+<GoExampleRow docs={"A type `switch` compares types instead of values.  You can use this to discover the type of an interface value.  In this example, the variable `t` will have the type corresponding to its clause."} language="go" code={"    whatAmI := func(i any) {\n        switch t := i.(type) {\n        case bool:\n            fmt.Println(\"I'm a bool\")\n        case int:\n            fmt.Println(\"I'm an int\")\n        default:\n            fmt.Printf(\"Don't know type %T\\n\", t)\n        }\n    }\n    whatAmI(true)\n    whatAmI(1)\n    whatAmI(\"hey\")\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run switch.go \nWrite 2 as two\nIt's a weekday\nIt's after noon\nI'm a bool\nI'm an int\nDon't know type string"} />
+
+</GoExample>

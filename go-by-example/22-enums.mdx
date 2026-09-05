@@ -1,0 +1,33 @@
+---
+title: Enums
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Enums" playHash="prQMptP_p1s" next={{title: "Struct Embedding", href: "/go/struct-embedding"}}>
+
+<GoExampleRow docs={"_Enumerated types_ (enums) are a special case of [sum types](https://en.wikipedia.org/wiki/Algebraic_data_type). An enum is a type that has a fixed number of possible values, each with a distinct name. Go doesn't have an enum type as a distinct language feature, but enums are simple to implement using existing language idioms."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"enums.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
+
+<GoExampleRow docs={"Our enum type `ServerState` has an underlying `int` type."} language="go" code={"type ServerState int"} />
+
+<GoExampleRow docs={"The possible values for `ServerState` are defined as constants. The special keyword [iota](https://go.dev/ref/spec#Iota) generates successive constant values automatically; in this case 0, 1, 2 and so on."} language="go" code={"const (\n    StateIdle ServerState = iota\n    StateConnected\n    StateError\n    StateRetrying\n)"} />
+
+<GoExampleRow docs={"By implementing the [fmt.Stringer](https://pkg.go.dev/fmt#Stringer) interface, values of `ServerState` can be printed out or converted to strings.  This can get cumbersome if there are many possible values. In such cases the [stringer tool](https://pkg.go.dev/golang.org/x/tools/cmd/stringer) can be used in conjunction with `go:generate` to automate the process. See [this post](https://eli.thegreenplace.net/2021/a-comprehensive-guide-to-go-generate) for a longer explanation."} language="go" code={"var stateName = map[ServerState]string{\n    StateIdle:      \"idle\",\n    StateConnected: \"connected\",\n    StateError:     \"error\",\n    StateRetrying:  \"retrying\",\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func (ss ServerState) String() string {\n    return stateName[ss]\n}"} />
+
+<GoExampleRow docs={"If we have a value of type `int`, we cannot pass it to `transition` - the compiler will complain about type mismatch. This provides some degree of compile-time type safety for enums."} language="go" code={"func main() {\n    ns := transition(StateIdle)\n    fmt.Println(ns)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    ns2 := transition(ns)\n    fmt.Println(ns2)\n}"} />
+
+<GoExampleRow docs={"transition emulates a state transition for a server; it takes the existing state and returns a new state."} language="go" code={"func transition(s ServerState) ServerState {\n    switch s {\n    case StateIdle:\n        return StateConnected\n    case StateConnected, StateRetrying:"} />
+
+<GoExampleRow docs={"Suppose we check some predicates here to determine the next state..."} language="go" code={"        return StateIdle\n    case StateError:\n        return StateError\n    default:\n        panic(fmt.Errorf(\"unknown state: %s\", s))\n    }\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run enums.go\nconnected\nidle"} />
+
+</GoExample>

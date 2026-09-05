@@ -1,0 +1,27 @@
+---
+title: Closing Channels
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Closing Channels" playHash="yZijZHYe22y" next={{title: "Range over Channels", href: "/go/range-over-channels"}}>
+
+<GoExampleRow docs={"_Closing_ a channel indicates that no more values will be sent on it. This can be useful to communicate completion to the channel's receivers."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"closing-channels.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
+
+<GoExampleRow docs={"In this example we'll use a `jobs` channel to communicate work to be done from the `main()` goroutine to a worker goroutine. When we have no more jobs for the worker we'll `close` the `jobs` channel."} language="go" code={"func main() {\n    jobs := make(chan int, 5)\n    done := make(chan bool)"} />
+
+<GoExampleRow docs={"Here's the worker goroutine. It repeatedly receives from `jobs` with `j, more := <-jobs`. In this special 2-value form of receive, the `more` value will be `false` if `jobs` has been `close`d and all values in the channel have already been received. We use this to notify on `done` when we've worked all our jobs."} language="go" code={"    go func() {\n        for {\n            j, more := <-jobs\n            if more {\n                fmt.Println(\"received job\", j)\n            } else {\n                fmt.Println(\"received all jobs\")\n                done <- true\n                return\n            }\n        }\n    }()"} />
+
+<GoExampleRow docs={"This sends 3 jobs to the worker over the `jobs` channel, then closes it."} language="go" code={"    for j := 1; j <= 3; j++ {\n        jobs <- j\n        fmt.Println(\"sent job\", j)\n    }\n    close(jobs)\n    fmt.Println(\"sent all jobs\")"} />
+
+<GoExampleRow docs={"We await the worker using the [synchronization](channel-synchronization) approach we saw earlier."} language="go" code={"    <-done"} />
+
+<GoExampleRow docs={"Reading from a closed channel succeeds immediately, returning the zero value of the underlying type. The optional second return value is `true` if the value received was delivered by a successful send operation to the channel, or `false` if it was a zero value generated because the channel is closed and empty."} language="go" code={"    _, ok := <-jobs\n    fmt.Println(\"received more jobs:\", ok)\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run closing-channels.go \nsent job 1\nreceived job 1\nsent job 2\nreceived job 2\nsent job 3\nreceived job 3\nsent all jobs\nreceived all jobs\nreceived more jobs: false\n\n# The idea of closed channels leads naturally to our next\n# example: `range` over channels."} />
+
+</GoExample>

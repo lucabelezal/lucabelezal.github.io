@@ -1,0 +1,22 @@
+---
+title: Testing and Benchmarking
+---
+
+# Testing and Benchmarking
+
+Exemplo de testes e benchmarks em Go. O diretório original contém `main_test.go` — veja o [gobyexample.com](https://gobyexample.com/testing-and-benchmarking) para o exemplo completo.
+
+```go title="main_test.go"
+package main
+
+import "testing"
+
+func IntMin(a, b int) int {
+    if a < b { return a }
+    return b
+}
+
+func TestIntMinBasic(t *testing.T) {
+    if IntMin(2, -2) != -2 { t.Errorf("fail") }
+}
+```

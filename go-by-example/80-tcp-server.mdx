@@ -1,0 +1,35 @@
+---
+title: TCP Server
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="TCP Server" playHash="G0k2jHMA6ei" next={{title: "Context", href: "/go/context"}}>
+
+<GoExampleRow docs={"The `net` package provides the tools we need to easily build TCP socket servers."} language="go" title={"tcp-server.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"bufio\"\n    \"fmt\"\n    \"log\"\n    \"net\"\n    \"strings\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"`net.Listen` starts the server on the given network (TCP) and address (port 8090 on all interfaces)."} language="go" code={"    listener, err := net.Listen(\"tcp\", \":8090\")\n    if err != nil {\n        log.Fatal(\"Error listening:\", err)\n    }"} />
+
+<GoExampleRow docs={"Close the listener to free the port when the application exits."} language="go" code={"    defer listener.Close()"} />
+
+<GoExampleRow docs={"Loop indefinitely to accept new client connections."} language="go" code={"    for {"} />
+
+<GoExampleRow docs={"Wait for a connection."} language="go" code={"        conn, err := listener.Accept()\n        if err != nil {\n            log.Println(\"Error accepting conn:\", err)\n            continue\n        }"} />
+
+<GoExampleRow docs={"We use a goroutine here to handle the connection so that the main loop can continue accepting more connections."} language="go" code={"        go handleConnection(conn)\n    }\n}"} />
+
+<GoExampleRow docs={"`handleConnection` handles a single client connection, reading one line of text from the client and returning a response."} language="go" code={"func handleConnection(conn net.Conn) {"} />
+
+<GoExampleRow docs={"Closing the connection releases resources when we are finished interacting with the client."} language="go" code={"    defer conn.Close()"} />
+
+<GoExampleRow docs={"Use `bufio.NewReader` to read one line of data from the client (terminated by a newline)."} language="go" code={"    reader := bufio.NewReader(conn)\n    message, err := reader.ReadString('\\n')\n    if err != nil {\n        log.Printf(\"Read error: %v\", err)\n        return\n    }"} />
+
+<GoExampleRow docs={"Create and send a response back to the client, demonstrating two-way communication."} language="go" code={"    ackMsg := strings.ToUpper(strings.TrimSpace(message))\n    response := fmt.Sprintf(\"ACK: %s\\n\", ackMsg)\n    _, err = conn.Write([]byte(response))\n    if err != nil {\n        log.Printf(\"Server write error: %v\", err)\n    }\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# Run the TCP server in the background.\n$ go run tcp-server.go &\n\n# Send data and capture the response using netcat.\n$ echo \"Hello from netcat\" | nc localhost 8090\nACK: HELLO FROM NETCAT"} />
+
+</GoExample>

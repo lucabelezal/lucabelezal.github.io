@@ -1,5 +1,5 @@
-import {useState} from 'react';
 import Link from '@docusaurus/Link';
+import CodeBlock from '@theme/CodeBlock';
 import styles from './styles.module.css';
 
 type GoExampleProps = {
@@ -13,55 +13,40 @@ type GoExampleProps = {
 export function GoExampleRow({
   docs,
   code,
+  language = 'go',
+  title,
   empty,
 }: {
   docs?: React.ReactNode;
   code: string;
+  language?: string;
+  title?: string;
   empty?: boolean;
 }) {
-  const [copied, setCopied] = useState(false);
-  const copy = async () => {
-    await navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1200);
-  };
+  const docsNode =
+    typeof docs === 'string' ? <p style={{margin: 0}}>{docs}</p> : docs;
+  if (empty) {
+    return (
+      <tr className={styles.row}>
+        <td className={styles.docs}>{docsNode}</td>
+        <td className={`${styles.code} ${styles.codeEmpty}`} />
+      </tr>
+    );
+  }
   return (
     <tr className={styles.row}>
-      <td className={styles.docs}>{docs}</td>
-      <td className={`${styles.code} ${empty ? styles.codeEmpty : ''}`}>
-        {!empty && (
-          <span className={styles.actions}>
-            <span onClick={copy} title="Copy" className={styles.copy} style={{cursor: 'pointer'}}>
-              {copied ? '✓' : '⧉'}
-            </span>
-          </span>
-        )}
-        <pre>
-          <code>{code}</code>
-        </pre>
+      <td className={styles.docs}>{docsNode}</td>
+      <td className={styles.code}>
+        <CodeBlock language={language} title={title} showLineNumbers={false}>
+          {code}
+        </CodeBlock>
       </td>
     </tr>
   );
 }
 
 export default function GoExample({title, playHash, next, children}: GoExampleProps) {
-  const allCode = (() => {
-    // collect from children if needed for play URL; fallback to hash
-    return '';
-  })();
-
-  const runUrl = playHash
-    ? `https://go.dev/play/p/${playHash}`
-    : `https://go.dev/play/`;
-
-  const copyAll = async () => {
-    // crude: copy visible code via DOM? fallback
-    const el = document.querySelectorAll(`.${styles.code} code`);
-    const txt = Array.from(el)
-      .map((n) => n.textContent)
-      .join('\n');
-    await navigator.clipboard.writeText(txt);
-  };
+  const runUrl = playHash ? `https://go.dev/play/p/${playHash}` : `https://go.dev/play/`;
 
   return (
     <div className={styles.wrapper}>
@@ -73,17 +58,7 @@ export default function GoExample({title, playHash, next, children}: GoExamplePr
         <tbody>{children}</tbody>
       </table>
 
-      <div style={{marginTop: 8, textAlign: 'right', fontSize: 12}}>
-        <a
-          href="#"
-          onClick={(e) => {
-            e.preventDefault();
-            copyAll();
-          }}
-        >
-          ⧉ Copiar tudo
-        </a>
-        {' · '}
+      <div style={{marginTop: 8, textAlign: 'right', fontSize: 12, opacity: 0.8}}>
         <a href={runUrl} target="_blank" rel="noreferrer">
           Run on go.dev/play ↗
         </a>

@@ -1,0 +1,27 @@
+---
+title: Exec'ing Processes
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Exec'ing Processes" playHash="s9qg7olf1dM" next={{title: "Signals", href: "/go/signals"}}>
+
+<GoExampleRow docs={"In the previous example we looked at [spawning external processes](spawning-processes). We do this when we need an external process accessible to a running Go process. Sometimes we just want to completely replace the current Go process with another (perhaps non-Go) one. To do this we'll use Go's implementation of the classic <a href=\"https://en.wikipedia.org/wiki/Exec_(operating_system)\"><code>exec</code></a> function."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"execing-processes.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"os\"\n    \"os/exec\"\n    \"syscall\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"For our example we'll exec `ls`. Go requires an absolute path to the binary we want to execute, so we'll use `exec.LookPath` to find it (probably `/bin/ls`)."} language="go" code={"    binary, lookErr := exec.LookPath(\"ls\")\n    if lookErr != nil {\n        panic(lookErr)\n    }"} />
+
+<GoExampleRow docs={"`Exec` requires arguments in slice form (as opposed to one big string). We'll give `ls` a few common arguments. Note that the first argument should be the program name."} language="go" code={"    args := []string{\"ls\", \"-a\", \"-l\", \"-h\"}"} />
+
+<GoExampleRow docs={"`Exec` also needs a set of [environment variables](environment-variables) to use. Here we just provide our current environment."} language="go" code={"    env := os.Environ()"} />
+
+<GoExampleRow docs={"Here's the actual `syscall.Exec` call. If this call is successful, the execution of our process will end here and be replaced by the `/bin/ls -a -l -h` process. If there is an error we'll get a return value."} language="go" code={"    execErr := syscall.Exec(binary, args, env)\n    if execErr != nil {\n        panic(execErr)\n    }\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# When we run our program it is replaced by `ls`.\n$ go run execing-processes.go\ntotal 16\ndrwxr-xr-x  4 mark 136B Oct 3 16:29 .\ndrwxr-xr-x 91 mark 3.0K Oct 3 12:50 ..\n-rw-r--r--  1 mark 1.3K Oct 3 16:28 execing-processes.go\n\n# Note that Go does not offer a classic Unix `fork`\n# function. Usually this isn't an issue though, since\n# starting goroutines, spawning processes, and exec'ing\n# processes covers most use cases for `fork`."} />
+
+</GoExample>

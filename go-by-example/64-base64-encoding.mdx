@@ -1,0 +1,27 @@
+---
+title: Base64 Encoding
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Base64 Encoding" playHash="yztzkirFEvv" next={{title: "Reading Files", href: "/go/reading-files"}}>
+
+<GoExampleRow docs={"Go provides built-in support for [base64 encoding/decoding](https://en.wikipedia.org/wiki/Base64)."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"base64-encoding.go"} code={"package main"} />
+
+<GoExampleRow docs={"This syntax imports the `encoding/base64` package with the `b64` name instead of the default `base64`. It'll save us some space below."} language="go" code={"import (\n    b64 \"encoding/base64\"\n    \"fmt\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"Here's the `string` we'll encode/decode."} language="go" code={"    data := \"abc123!?$*&()'-=@~\""} />
+
+<GoExampleRow docs={"Go supports both standard and URL-compatible base64. Here's how to encode using the standard encoder. The encoder requires a `[]byte` so we convert our `string` to that type."} language="go" code={"    sEnc := b64.StdEncoding.EncodeToString([]byte(data))\n    fmt.Println(sEnc)"} />
+
+<GoExampleRow docs={"Decoding may return an error, which you can check if you don't already know the input to be well-formed."} language="go" code={"    sDec, _ := b64.StdEncoding.DecodeString(sEnc)\n    fmt.Println(string(sDec))\n    fmt.Println()"} />
+
+<GoExampleRow docs={"This encodes/decodes using a URL-compatible base64 format."} language="go" code={"    uEnc := b64.URLEncoding.EncodeToString([]byte(data))\n    fmt.Println(uEnc)\n    uDec, _ := b64.URLEncoding.DecodeString(uEnc)\n    fmt.Println(string(uDec))\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# The string encodes to slightly different values with the\n# standard and URL base64 encoders (trailing `+` vs `-`)\n# but they both decode to the original string as desired.\n$ go run base64-encoding.go\nYWJjMTIzIT8kKiYoKSctPUB+\nabc123!?$*&()'-=@~\n\nYWJjMTIzIT8kKiYoKSctPUB-\nabc123!?$*&()'-=@~"} />
+
+</GoExample>

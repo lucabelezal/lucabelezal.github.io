@@ -1,0 +1,29 @@
+---
+title: Defer
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Defer" playHash="9_sJ5XnikSw" next={{title: "Recover", href: "/go/recover"}}>
+
+<GoExampleRow docs={"_Defer_ is used to ensure that a function call is performed later in a program's execution, usually for purposes of cleanup. `defer` is often used where e.g. `ensure` and `finally` would be used in other languages."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"defer.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"os\"\n    \"path/filepath\"\n)"} />
+
+<GoExampleRow docs={"Suppose we wanted to create a file, write to it, and then close when we're done. Here's how we could do that with `defer`."} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"Immediately after getting a file object with `createFile`, we defer the closing of that file with `closeFile`. This will be executed at the end of the enclosing function (`main`), after `writeFile` has finished."} language="go" code={"    path := filepath.Join(os.TempDir(), \"defer.txt\")\n    f := createFile(path)\n    defer closeFile(f)\n    writeFile(f)\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func createFile(p string) *os.File {\n    fmt.Println(\"creating\")\n    f, err := os.Create(p)\n    if err != nil {\n        panic(err)\n    }\n    return f\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func writeFile(f *os.File) {\n    fmt.Println(\"writing\")\n    fmt.Fprintln(f, \"data\")\n}"} />
+
+<GoExampleRow docs={"It's important to check for errors when closing a file, even in a deferred function."} language="go" code={"func closeFile(f *os.File) {\n    fmt.Println(\"closing\")\n    err := f.Close()"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    if err != nil {\n        panic(err)\n    }\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# Running the program confirms that the file is closed\n# after being written.\n$ go run defer.go\ncreating\nwriting\nclosing"} />
+
+</GoExample>

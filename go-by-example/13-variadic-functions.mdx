@@ -1,0 +1,27 @@
+---
+title: Variadic Functions
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Variadic Functions" playHash="glNdE8aKPNq" next={{title: "Closures", href: "/go/closures"}}>
+
+<GoExampleRow docs={"[_Variadic functions_](https://en.wikipedia.org/wiki/Variadic_function) can be called with any number of trailing arguments. For example, `fmt.Println` is a common variadic function."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"variadic-functions.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
+
+<GoExampleRow docs={"Here's a function that will take an arbitrary number of `int`s as arguments."} language="go" code={"func sum(nums ...int) {\n    fmt.Print(nums, \" \")\n    total := 0"} />
+
+<GoExampleRow docs={"Within the function, the type of `nums` is equivalent to `[]int`. We can call `len(nums)`, iterate over it with `range`, etc."} language="go" code={"    for _, num := range nums {\n        total += num\n    }\n    fmt.Println(total)\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"Variadic functions can be called in the usual way with individual arguments."} language="go" code={"    sum(1, 2)\n    sum(1, 2, 3)"} />
+
+<GoExampleRow docs={"If you already have multiple args in a slice, apply them to a variadic function using `func(slice...)` like this."} language="go" code={"    nums := []int{1, 2, 3, 4}\n    sum(nums...)\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run variadic-functions.go \n[1 2] 3\n[1 2 3] 6\n[1 2 3 4] 10\n\n# Another key aspect of functions in Go is their ability\n# to form closures, which we'll look at next."} />
+
+</GoExample>

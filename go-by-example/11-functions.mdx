@@ -1,0 +1,29 @@
+---
+title: Functions
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Functions" playHash="-o49-dQfGbK" next={{title: "Multiple Return Values", href: "/go/multiple-return-values"}}>
+
+<GoExampleRow docs={"_Functions_ are central in Go. We'll learn about functions with a few different examples."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"functions.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
+
+<GoExampleRow docs={"Here's a function that takes two `int`s and returns their sum as an `int`."} language="go" code={"func plus(a int, b int) int {"} />
+
+<GoExampleRow docs={"Go requires explicit returns, i.e. it won't automatically return the value of the last expression."} language="go" code={"    return a + b\n}"} />
+
+<GoExampleRow docs={"When you have multiple consecutive parameters of the same type, you may omit the type name for the like-typed parameters up to the final parameter that declares the type."} language="go" code={"func plusPlus(a, b, c int) int {\n    return a + b + c\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"Call a function just as you'd expect, with `name(args)`."} language="go" code={"    res := plus(1, 2)\n    fmt.Println(\"1+2 =\", res)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    res = plusPlus(1, 2, 3)\n    fmt.Println(\"1+2+3 =\", res)\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run functions.go \n1+2 = 3\n1+2+3 = 6\n\n# There are several other features to Go functions. One is\n# multiple return values, which we'll look at next."} />
+
+</GoExample>

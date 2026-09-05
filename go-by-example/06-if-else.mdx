@@ -1,0 +1,29 @@
+---
+title: If/Else
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="If/Else" playHash="RKgKzCe7qcF" next={{title: "Switch", href: "/go/switch"}}>
+
+<GoExampleRow docs={"Branching with `if` and `else` in Go is straight-forward."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"if-else.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"Here's a basic example."} language="go" code={"    if 7%2 == 0 {\n        fmt.Println(\"7 is even\")\n    } else {\n        fmt.Println(\"7 is odd\")\n    }"} />
+
+<GoExampleRow docs={"You can have an `if` statement without an else."} language="go" code={"    if 8%4 == 0 {\n        fmt.Println(\"8 is divisible by 4\")\n    }"} />
+
+<GoExampleRow docs={"Logical operators like `&&` and `||` are often useful in conditions."} language="go" code={"    if 8%2 == 0 || 7%2 == 0 {\n        fmt.Println(\"either 8 or 7 are even\")\n    }"} />
+
+<GoExampleRow docs={"A statement can precede conditionals; any variables declared in this statement are available in the current and all subsequent branches."} language="go" code={"    if num := 9; num < 0 {\n        fmt.Println(num, \"is negative\")\n    } else if num < 10 {\n        fmt.Println(num, \"has 1 digit\")\n    } else {\n        fmt.Println(num, \"has multiple digits\")\n    }\n}"} />
+
+<GoExampleRow docs={"Note that you don't need parentheses around conditions in Go, but that the braces are required."} empty code="" />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run if-else.go\n7 is odd\n8 is divisible by 4\neither 8 or 7 are even\n9 has 1 digit\n\n# There is no [ternary if](https://en.wikipedia.org/wiki/%3F:)\n# in Go, so you'll need to use a full `if` statement even\n# for basic conditions."} />
+
+</GoExample>

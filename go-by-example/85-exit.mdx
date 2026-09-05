@@ -1,0 +1,25 @@
+---
+title: Exit
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Exit" playHash="b9aYzlENkb__R" next={undefined}>
+
+<GoExampleRow docs={"Use `os.Exit` to immediately exit with a given status."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"exit.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"os\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"`defer`s will _not_ be run when using `os.Exit`, so this `fmt.Println` will never be called."} language="go" code={"    defer fmt.Println(\"!\")"} />
+
+<GoExampleRow docs={"Exit with status 3."} language="go" code={"    os.Exit(3)\n}"} />
+
+<GoExampleRow docs={"Note that unlike e.g. C, Go does not use an integer return value from `main` to indicate exit status. If you'd like to exit with a non-zero status you should use `os.Exit`."} empty code="" />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"#  If you run `exit.go` using `go run`, the exit\n# will be picked up by `go` and printed.\n$ go run exit.go\nexit status 3\n\n# By building and executing a binary you can see\n# the status in the terminal.\n$ go build exit.go\n$ ./exit\n$ echo $?\n3\n\n# Note that the `!` from our program never got printed."} />
+
+</GoExample>

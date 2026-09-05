@@ -1,0 +1,29 @@
+---
+title: Recursion
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Recursion" playHash="k4IRATLn9cE" next={{title: "Range over Built-in Types", href: "/go/range-over-built-in-types"}}>
+
+<GoExampleRow docs={"Go supports <a href=\"https://en.wikipedia.org/wiki/Recursion_(computer_science)\"><em>recursive functions</em></a>. Here's a classic example."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"recursion.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
+
+<GoExampleRow docs={"This `fact` function calls itself until it reaches the base case of `fact(0)`."} language="go" code={"func fact(n int) int {\n    if n == 0 {\n        return 1\n    }\n    return n * fact(n-1)\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {\n    fmt.Println(fact(7))"} />
+
+<GoExampleRow docs={"Anonymous functions can also be recursive, but this requires explicitly declaring a variable with `var` to store the function before it's defined."} language="go" code={"    var fib func(n int) int"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    fib = func(n int) int {\n        if n < 2 {\n            return n\n        }"} />
+
+<GoExampleRow docs={"Since `fib` was previously declared in `main`, Go knows which function to call with `fib` here."} language="go" code={"        return fib(n-1) + fib(n-2)\n    }"} />
+
+<GoExampleRow docs={undefined} language="go" code={"    fmt.Println(fib(7))\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run recursion.go \n5040\n13"} />
+
+</GoExample>

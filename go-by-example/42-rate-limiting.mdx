@@ -1,0 +1,33 @@
+---
+title: Rate Limiting
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Rate Limiting" playHash="y9V3goQfy5m" next={{title: "Atomic Counters", href: "/go/atomic-counters"}}>
+
+<GoExampleRow docs={"[_Rate limiting_](https://en.wikipedia.org/wiki/Rate_limiting) is an important mechanism for controlling resource utilization and maintaining quality of service. Go elegantly supports rate limiting with goroutines, channels, and [tickers](tickers)."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"rate-limiting.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import (\n    \"fmt\"\n    \"time\"\n)"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
+
+<GoExampleRow docs={"First we'll look at basic rate limiting. Suppose we want to limit our handling of incoming requests. We'll serve these requests off a channel of the same name."} language="go" code={"    requests := make(chan int, 5)\n    for i := 1; i <= 5; i++ {\n        requests <- i\n    }\n    close(requests)"} />
+
+<GoExampleRow docs={"This `limiter` channel will receive a value every 200 milliseconds. This is the regulator in our rate limiting scheme."} language="go" code={"    limiter := time.Tick(200 * time.Millisecond)"} />
+
+<GoExampleRow docs={"By blocking on a receive from the `limiter` channel before serving each request, we limit ourselves to 1 request every 200 milliseconds."} language="go" code={"    for req := range requests {\n        <-limiter\n        fmt.Println(\"request\", req, time.Now())\n    }"} />
+
+<GoExampleRow docs={"We may want to allow short bursts of requests in our rate limiting scheme while preserving the overall rate limit. We can accomplish this by buffering our limiter channel. This `burstyLimiter` channel will allow bursts of up to 3 events."} language="go" code={"    burstyLimiter := make(chan time.Time, 3)"} />
+
+<GoExampleRow docs={"Fill up the channel to represent allowed bursting."} language="go" code={"    for range 3 {\n        burstyLimiter <- time.Now()\n    }"} />
+
+<GoExampleRow docs={"Every 200 milliseconds we'll try to add a new value to `burstyLimiter`, up to its limit of 3."} language="go" code={"    go func() {\n        for t := range time.Tick(200 * time.Millisecond) {\n            burstyLimiter <- t\n        }\n    }()"} />
+
+<GoExampleRow docs={"Now simulate 5 more incoming requests. The first 3 of these will benefit from the burst capability of `burstyLimiter`."} language="go" code={"    burstyRequests := make(chan int, 5)\n    for i := 1; i <= 5; i++ {\n        burstyRequests <- i\n    }\n    close(burstyRequests)\n    for req := range burstyRequests {\n        <-burstyLimiter\n        fmt.Println(\"request\", req, time.Now())\n    }\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"# Running our program we see the first batch of requests\n# handled once every ~200 milliseconds as desired.\n$ go run rate-limiting.go\nrequest 1 2012-10-19 00:38:18.687438 +0000 UTC\nrequest 2 2012-10-19 00:38:18.887471 +0000 UTC\nrequest 3 2012-10-19 00:38:19.087238 +0000 UTC\nrequest 4 2012-10-19 00:38:19.287338 +0000 UTC\nrequest 5 2012-10-19 00:38:19.487331 +0000 UTC\n\n# For the second batch of requests we serve the first\n# 3 immediately because of the burstable rate limiting,\n# then serve the remaining 2 with ~200ms delays each.\nrequest 1 2012-10-19 00:38:20.487578 +0000 UTC\nrequest 2 2012-10-19 00:38:20.487645 +0000 UTC\nrequest 3 2012-10-19 00:38:20.487676 +0000 UTC\nrequest 4 2012-10-19 00:38:20.687483 +0000 UTC\nrequest 5 2012-10-19 00:38:20.887542 +0000 UTC"} />
+
+</GoExample>

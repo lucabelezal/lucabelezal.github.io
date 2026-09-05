@@ -6,33 +6,24 @@ import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
 
 <GoExample title="Variables" playHash="N5rWndIliJW" next={{title: "Constants", href: "/go/constants"}}>
 
-<GoExampleRow docs={<>Em Go, variáveis são declaradas explicitamente e o compilador verifica tipos.</>} code={`package main
+<GoExampleRow docs={"In Go, _variables_ are explicitly declared and used by the compiler to e.g. check type-correctness of function calls."} empty code="" />
 
-import "fmt"
+<GoExampleRow docs={undefined} language="go" title={"variables.go"} code={"package main"} />
 
-func main() {`} />
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
 
-<GoExampleRow docs={<>`var` declara 1 ou mais variáveis.</>} code={`    var a = "initial"
-    fmt.Println(a)`} />
+<GoExampleRow docs={undefined} language="go" code={"func main() {"} />
 
-<GoExampleRow docs={<>Múltiplas variáveis de uma vez.</>} code={`    var b, c int = 1, 2
-    fmt.Println(b, c)`} />
+<GoExampleRow docs={"`var` declares 1 or more variables."} language="go" code={"    var a = \"initial\"\n    fmt.Println(a)"} />
 
-<GoExampleRow docs={<>Go infere o tipo.</>} code={`    var d = true
-    fmt.Println(d)`} />
+<GoExampleRow docs={"You can declare multiple variables at once."} language="go" code={"    var b, c int = 1, 2\n    fmt.Println(b, c)"} />
 
-<GoExampleRow docs={<>Variáveis sem inicialização são *zero-valued* — `int` é `0`.</>} code={`    var e int
-    fmt.Println(e)`} />
+<GoExampleRow docs={"Go will infer the type of initialized variables."} language="go" code={"    var d = true\n    fmt.Println(d)"} />
 
-<GoExampleRow docs={<>Atalho `:=` para declarar e inicializar (só dentro de funções).</>} code={`    f := "apple"
-    fmt.Println(f)
-}`} />
+<GoExampleRow docs={"Variables declared without a corresponding initialization are _zero-valued_. For example, the zero value for an `int` is `0`."} language="go" code={"    var e int\n    fmt.Println(e)"} />
 
-<GoExampleRow docs={<>Saída:</>} code={`$ go run variables.go
-initial
-1 2
-true
-0
-apple`} />
+<GoExampleRow docs={"The `:=` syntax is shorthand for declaring and initializing a variable, e.g. for `var f string = \"apple\"` in this case. This syntax is only available inside functions."} language="go" code={"    f := \"apple\"\n    fmt.Println(f)\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run variables.go\ninitial\n1 2\ntrue\n0\napple"} />
 
 </GoExample>

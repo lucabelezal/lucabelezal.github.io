@@ -1,0 +1,29 @@
+---
+title: Methods
+---
+
+import GoExample, {GoExampleRow} from '@site/src/components/GoExample';
+
+<GoExample title="Methods" playHash="4wmDCAydC1e" next={{title: "Interfaces", href: "/go/interfaces"}}>
+
+<GoExampleRow docs={"Go supports _methods_ defined on struct types."} empty code="" />
+
+<GoExampleRow docs={undefined} language="go" title={"methods.go"} code={"package main"} />
+
+<GoExampleRow docs={undefined} language="go" code={"import \"fmt\""} />
+
+<GoExampleRow docs={undefined} language="go" code={"type rect struct {\n    width, height int\n}"} />
+
+<GoExampleRow docs={"This `area` method has a _receiver type_ of `*rect`."} language="go" code={"func (r *rect) area() int {\n    return r.width * r.height\n}"} />
+
+<GoExampleRow docs={"Methods can be defined for either pointer or value receiver types. Here's an example of a value receiver."} language="go" code={"func (r rect) perim() int {\n    return 2*r.width + 2*r.height\n}"} />
+
+<GoExampleRow docs={undefined} language="go" code={"func main() {\n    r := rect{width: 10, height: 5}"} />
+
+<GoExampleRow docs={"Here we call the 2 methods defined for our struct."} language="go" code={"    fmt.Println(\"area: \", r.area())\n    fmt.Println(\"perim:\", r.perim())"} />
+
+<GoExampleRow docs={"Go automatically handles conversion between values and pointers for method calls. You may want to use a pointer receiver type to avoid copying on method calls or to allow the method to mutate the receiving struct."} language="go" code={"    rp := &r\n    fmt.Println(\"area: \", rp.area())\n    fmt.Println(\"perim:\", rp.perim())\n}"} />
+
+<GoExampleRow docs={"Saída:"} language="bash" code={"$ go run methods.go \narea:  50\nperim: 30\narea:  50\nperim: 30\n\n# Next we'll look at Go's mechanism for grouping and\n# naming related sets of methods: interfaces."} />
+
+</GoExample>
