@@ -1,4 +1,8 @@
-# Website
+# lucabelezal.github.io
+
+Blog de aprendizados em engenharia de software — **https://lucabelezal.github.io**
+
+> Docusaurus 3 + blog na `/` (i18n: pt-BR, en, es)
 
 This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
 
@@ -28,16 +32,12 @@ This command generates static content into the `build` directory and can be serv
 
 ## Deployment
 
-Using SSH:
+Deploy automático via GitHub Actions (`.github/workflows/deploy.yml`):
+- `git push` na `main` → build 3 locales → `actions/deploy-pages@v4` → https://lucabelezal.github.io
+- Em **Settings → Pages → Source: GitHub Actions** (já configurado)
+
+Legado (não usado aqui):
 
 ```bash
 USE_SSH=true npm run deploy
 ```
-
-Not using SSH:
-
-```bash
-GIT_USER=<Your GitHub username> npm run deploy
-```
-
-If you are using GitHub Pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
