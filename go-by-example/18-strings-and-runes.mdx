@@ -1,11 +1,11 @@
 ---
-title: Strings and Runes
+title: Strings e Runes
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Strings and Runes"}
+  title={"Strings e Runes"}
   code={`package main
 
 import (
@@ -40,14 +40,14 @@ func examineRune(r rune) {
     }
 }`}
   sections={[
-    {text: "`s` is a `string` assigned a literal value representing the word \"hello\" in the Thai language. Go string literals are UTF-8 encoded text."},
-    {text: "Since strings are equivalent to `[]byte`, this will produce the length of the raw bytes stored within."},
-    {text: "Indexing into a string produces the raw byte values at each index. This loop generates the hex values of all the bytes that constitute the code points in `s`."},
-    {text: "To count how many _runes_ are in a string, we can use the `utf8` package. Note that the run-time of `RuneCountInString` depends on the size of the string, because it has to decode each UTF-8 rune sequentially. Some Thai characters are represented by UTF-8 code points that can span multiple bytes, so the result of this count may be surprising."},
-    {text: "A `range` loop handles strings specially and decodes each `rune` along with its offset in the string."},
-    {text: "We can achieve the same iteration by using the `utf8.DecodeRuneInString` function explicitly."},
-    {text: "This demonstrates passing a `rune` value to a function."},
-    {text: "Values enclosed in single quotes are _rune literals_. We can compare a `rune` value to a rune literal directly."},
+    {text: "`s` é uma `string` com o literal da palavra \"olá\" em tailandês. Literais de string em Go são UTF-8."},
+    {text: "Como strings equivalem a `[]byte`, isso retorna o tamanho em bytes brutos."},
+    {text: "Indexar uma string retorna os bytes brutos. Este loop gera os valores hex de todos os bytes que formam os code points em `s`."},
+    {text: "Para contar _runes_ em uma string, use o pacote `utf8`. O tempo de `RuneCountInString` depende do tamanho, pois decodifica cada rune sequencialmente. Alguns caracteres tailandeses ocupam múltiplos bytes, então o resultado pode surpreender."},
+    {text: "Um loop `range` trata strings de forma especial, decodificando cada `rune` com seu offset."},
+    {text: "Podemos fazer a mesma iteração usando explicitamente `utf8.DecodeRuneInString`."},
+    {text: "Isso demonstra passar um `rune` para uma função."},
+    {text: "Valores entre aspas simples são _rune literals_. Podemos comparar um `rune` diretamente com um literal."},
     {text: "Saída:\n$ go run strings-and-runes.go\nLen: 18\ne0 b8 aa e0 b8 a7 e0 b8 b1 e0 b8 aa e0 b8 94 e0 b8 b5 \nRune count: 6\nU+0E2A 'ส' starts at 0\nU+0E27 'ว' starts at 3\nU+0E31 'ั' starts at 6\nU+0E2A 'ส' starts at 9\nU+0E14 'ด' starts at 12\nU+0E35 'ี' starts at 15\n\nUsing DecodeRuneInString\nU+0E2A 'ส' starts at 0\nfound so sua\nU+0E27 'ว' starts at 3\nU+0E31 'ั' starts at 6\nU+0E2A 'ส' starts at 9\nfound so sua\nU+0E14 'ด' starts at 12\nU+0E35 'ี' starts at 15"}
   ]}
 />

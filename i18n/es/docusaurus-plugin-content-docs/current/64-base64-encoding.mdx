@@ -1,0 +1,42 @@
+---
+title: Base64 Encoding
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Base64 Encoding"}
+  code={`package main
+
+import (
+    b64 "encoding/base64"
+    "fmt"
+)
+
+func main() {
+    data := "abc123!?$*&()'-=@~"
+    sEnc := b64.StdEncoding.EncodeToString([]byte(data))
+    fmt.Println(sEnc)
+    sDec, _ := b64.StdEncoding.DecodeString(sEnc)
+    fmt.Println(string(sDec))
+    fmt.Println()
+    uEnc := b64.URLEncoding.EncodeToString([]byte(data))
+    fmt.Println(uEnc)
+    uDec, _ := b64.URLEncoding.DecodeString(uEnc)
+    fmt.Println(string(uDec))
+}`}
+  sections={[
+    {text: "This syntax imports the `encoding/base64` package with the `b64` name instead of the default `base64`. It'll save us some space below."},
+    {text: "Here's the `string` we'll encode/decode."},
+    {text: "Go supports both standard and URL-compatible base64. Here's how to encode using the standard encoder. The encoder requires a `[]byte` so we convert our `string` to that type."},
+    {text: "Decoding may return an error, which you can check if you don't already know the input to be well-formed."},
+    {text: "This encodes/decodes using a URL-compatible base64 format."},
+    {text: "Saída:\n# The string encodes to slightly different values with the\n# standard and URL base64 encoders (trailing `+` vs `-`)\n# but they both decode to the original string as desired.\n$ go run base64-encoding.go\nYWJjMTIzIT8kKiYoKSctPUB+\nabc123!?$*&()'-=@~\n\nYWJjMTIzIT8kKiYoKSctPUB-\nabc123!?$*&()'-=@~"}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/yztzkirFEvv" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Reading Files](/go/reading-files).

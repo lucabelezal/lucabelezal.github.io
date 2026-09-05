@@ -1,0 +1,45 @@
+---
+title: Atomic Counters
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Atomic Counters"}
+  code={`package main
+
+import (
+    "fmt"
+    "sync"
+    "sync/atomic"
+)
+
+func main() {
+    var ops atomic.Uint64
+    var wg sync.WaitGroup
+    for range 50 {
+        wg.Go(func() {
+            for range 1000 {
+                ops.Add(1)
+            }
+        })
+    }
+    wg.Wait()
+    fmt.Println("ops:", ops.Load())
+}`}
+  sections={[
+    {text: "We'll use an atomic integer type to represent our (always-positive) counter."},
+    {text: "A WaitGroup will help us wait for all goroutines to finish their work."},
+    {text: "We'll start 50 goroutines that each increment the counter exactly 1000 times."},
+    {text: "To atomically increment the counter we use `Add`."},
+    {text: "Wait until all the goroutines are done."},
+    {text: "Here no goroutines are writing to 'ops', but using `Load` it's safe to atomically read a value even while other goroutines are (atomically) updating it."},
+    {text: "Saída:\n# We expect to get exactly 50,000 operations. Had we\n# used a non-atomic integer and incremented it with\n# `ops++`, we'd likely get a different number,\n# changing between runs, because the goroutines\n# would interfere with each other. Moreover, we'd\n# get data race failures when running with the\n# `-race` flag.\n$ go run atomic-counters.go\nops: 50000\n\n# Next we'll look at mutexes, another tool for managing\n# state."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/yiGAVfTH49v" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Mutexes](/go/mutexes).

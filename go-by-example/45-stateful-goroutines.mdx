@@ -1,11 +1,11 @@
 ---
-title: Stateful Goroutines
+title: Goroutines com Estado
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Stateful Goroutines"}
+  title={"Goroutines com Estado"}
   code={`package main
 
 import (
@@ -76,14 +76,14 @@ func main() {
     fmt.Println("writeOps:", writeOpsFinal)
 }`}
   sections={[
-    {text: "In this example our state will be owned by a single goroutine. This will guarantee that the data is never corrupted with concurrent access. In order to read or write that state, other goroutines will send messages to the owning goroutine and receive corresponding replies. These `readOp` and `writeOp` `struct`s encapsulate those requests and a way for the owning goroutine to respond."},
-    {text: "As before we'll count how many operations we perform."},
-    {text: "The `reads` and `writes` channels will be used by other goroutines to issue read and write requests, respectively."},
-    {text: "Here is the goroutine that owns the `state`, which is a map as in the previous example but now private to the stateful goroutine. This goroutine repeatedly selects on the `reads` and `writes` channels, responding to requests as they arrive. A response is executed by first performing the requested operation and then sending a value on the response channel `resp` to indicate success (and the desired value in the case of `reads`)."},
-    {text: "This starts 100 goroutines to issue reads to the state-owning goroutine via the `reads` channel. Each read requires constructing a `readOp`, sending it over the `reads` channel, and then receiving the result over the provided `resp` channel."},
-    {text: "We start 10 writes as well, using a similar approach."},
-    {text: "Let the goroutines work for a second."},
-    {text: "Finally, capture and report the op counts."},
+    {text: "Neste exemplo o estado pertence a uma única goroutine. Isso garante que nunca seja corrompido por acesso concorrente. Para ler ou escrever, outras goroutines enviam mensagens à goroutine dona e recebem respostas. Os structs `readOp` e `writeOp` encapsulam as requisições e a forma de responder."},
+    {text: "Como antes, vamos contar quantas operações fazemos."},
+    {text: "Os channels `reads` e `writes` serão usados por outras goroutines para emitir requisições de leitura e escrita."},
+    {text: "Aqui está a goroutine dona do `state`, um map como no exemplo anterior mas privado à goroutine com estado. Ela faz `select` repetidamente em `reads` e `writes`, respondendo conforme chegam. A resposta executa a operação e envia valor em `resp` para indicar sucesso (e o valor desejado no caso de `reads`)."},
+    {text: "Isso inicia 100 goroutines para emitir leituras via `reads`. Cada leitura exige construir um `readOp`, enviar em `reads` e receber o resultado em `resp`."},
+    {text: "Também iniciamos 10 escritas com abordagem similar."},
+    {text: "Deixe as goroutines trabalharem por um segundo."},
+    {text: "Por fim, capture e reporte as contagens."},
     {text: "Saída:\n# Running our program shows that the goroutine-based\n# state management example completes about 80,000\n# total operations.\n$ go run stateful-goroutines.go\nreadOps: 71708\nwriteOps: 7177\n\n# For this particular case the goroutine-based approach\n# was a bit more involved than the mutex-based one. It\n# might be useful in certain cases though, for example\n# where you have other channels involved or when managing\n# multiple such mutexes would be error-prone. You should\n# use whichever approach feels most natural, especially\n# with respect to understanding the correctness of your\n# program."}
   ]}
 />

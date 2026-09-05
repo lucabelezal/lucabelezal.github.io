@@ -34,9 +34,9 @@ func main() {
     }
 }`}
   sections={[
-    {text: "For our example we'll select across two channels."},
-    {text: "Each channel will receive a value after some amount of time, to simulate e.g. blocking RPC operations executing in concurrent goroutines."},
-    {text: "We'll use `select` to await both of these values simultaneously, printing each one as it arrives."},
+    {text: "Vamos fazer `select` em dois channels."},
+    {text: "Cada channel receberá um valor após um tempo, simulando RPCs bloqueantes em goroutines concorrentes."},
+    {text: "Usaremos `select` para aguardar ambos simultaneamente, imprimindo cada um ao chegar."},
     {text: "Saída:\n# We receive the values `\"one\"` and then `\"two\"` as\n# expected.\n$ time go run select.go \nreceived one\nreceived two\n\n# Note that the total execution time is only ~2 seconds\n# since both the 1 and 2 second `Sleeps` execute\n# concurrently.\nreal\\t0m2.245s"}
   ]}
 />

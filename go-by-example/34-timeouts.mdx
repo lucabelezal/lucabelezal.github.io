@@ -38,9 +38,9 @@ func main() {
     }
 }`}
   sections={[
-    {text: "For our example, suppose we're executing an external call that returns its result on a channel `c1` after 2s. Note that the channel is buffered, so the send in the goroutine is nonblocking. This is a common pattern to prevent goroutine leaks in case the channel is never read."},
-    {text: "Here's the `select` implementing a timeout. `res := <-c1` awaits the result and `<-time.After` awaits a value to be sent after the timeout of 1s. Since `select` proceeds with the first receive that's ready, we'll take the timeout case if the operation takes more than the allowed 1s."},
-    {text: "If we allow a longer timeout of 3s, then the receive from `c2` will succeed and we'll print the result."},
+    {text: "Suponha uma chamada externa que retorna o resultado em `c1` após 2s. O channel é bufferizado, então o send na goroutine não bloqueia. Padrão comum para evitar vazamento de goroutine caso o channel nunca seja lido."},
+    {text: "Aqui o `select` implementa timeout. `res := <-c1` aguarda o resultado e `<-time.After` aguarda após 1s. Como `select` segue o primeiro pronto, pegamos o caso de timeout se a operação demorar mais que 1s."},
+    {text: "Se permitirmos timeout maior de 3s, o receive de `c2` terá sucesso e imprimimos o resultado."},
     {text: "Saída:\n# Running this program shows the first operation timing\n# out and the second succeeding.\n$ go run timeouts.go \ntimeout 1\nresult 2"}
   ]}
 />

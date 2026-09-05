@@ -1,11 +1,11 @@
 ---
-title: Line Filters
+title: Filtros de Linha
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Line Filters"}
+  title={"Filtros de Linha"}
   code={`package main
 
 import (
@@ -27,11 +27,11 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Here's an example line filter in Go that writes a capitalized version of all input text. You can use this pattern to write your own Go line filters."},
-    {text: "Wrapping the unbuffered `os.Stdin` with a buffered scanner gives us a convenient `Scan` method that advances the scanner to the next token; which is the next line in the default scanner."},
-    {text: "`Text` returns the current token, here the next line, from the input."},
-    {text: "Write out the uppercased line."},
-    {text: "Check for errors during `Scan`. End of file is expected and not reported by `Scan` as an error."}
+    {text: "Aqui um filtro de linha em Go que escreve versão capitalizada de todo input. Use este padrão para seus próprios filtros."},
+    {text: "Envolver `os.Stdin` sem buffer com scanner bufferizado dá o método `Scan` que avança para o próximo token; próxima linha no scanner padrão."},
+    {text: "`Text` retorna o token atual, aqui a próxima linha do input."},
+    {text: "Escreva a linha em maiúsculas."},
+    {text: "Cheque erros durante `Scan`. EOF é esperado e não reportado como erro."}
   ]}
 />
 

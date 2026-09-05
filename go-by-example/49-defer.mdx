@@ -40,9 +40,9 @@ func closeFile(f *os.File) {
     }
 }`}
   sections={[
-    {text: "Suppose we wanted to create a file, write to it, and then close when we're done. Here's how we could do that with `defer`."},
-    {text: "Immediately after getting a file object with `createFile`, we defer the closing of that file with `closeFile`. This will be executed at the end of the enclosing function (`main`), after `writeFile` has finished."},
-    {text: "It's important to check for errors when closing a file, even in a deferred function."},
+    {text: "Suponha criar um arquivo, escrever e fechar ao terminar. Veja como fazer com `defer`."},
+    {text: "Logo após obter o arquivo com `createFile`, adiamos o fechamento com `closeFile`. Isso executa no fim de `main`, após `writeFile`."},
+    {text: "É importante checar erros ao fechar arquivo, mesmo em função adiada."},
     {text: "Saída:\n# Running the program confirms that the file is closed\n# after being written.\n$ go run defer.go\ncreating\nwriting\nclosing"}
   ]}
 />

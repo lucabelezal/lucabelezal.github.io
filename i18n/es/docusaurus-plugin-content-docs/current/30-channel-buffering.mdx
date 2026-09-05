@@ -1,0 +1,32 @@
+---
+title: Channel Buffering
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Channel Buffering"}
+  code={`package main
+
+import "fmt"
+
+func main() {
+    messages := make(chan string, 2)
+    messages <- "buffered"
+    messages <- "channel"
+    fmt.Println(<-messages)
+    fmt.Println(<-messages)
+}`}
+  sections={[
+    {text: "Here we `make` a channel of strings buffering up to 2 values."},
+    {text: "Because this channel is buffered, we can send these values into the channel without a corresponding concurrent receive."},
+    {text: "Later we can receive these two values as usual."},
+    {text: "Saída:\n$ go run channel-buffering.go \nbuffered\nchannel"}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/3BRCdRnRszb" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Channel Synchronization](/go/channel-synchronization).

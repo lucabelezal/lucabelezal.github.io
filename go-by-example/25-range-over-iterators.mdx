@@ -1,11 +1,11 @@
 ---
-title: Range over Iterators
+title: Range sobre Iteradores
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Range over Iterators"}
+  title={"Range sobre Iteradores"}
   code={`package main
 
 import (
@@ -67,13 +67,13 @@ func main() {
     }
     for n := range genFib() {`}
   sections={[
-    {text: "Let's look at the `List` type from the [previous example](generics) again. In that example we had an `AllElements` method that returned a slice of all elements in the list. With Go iterators, we can do it better - as shown below."},
-    {text: "All returns an _iterator_, which in Go is a function with a [special signature](https://pkg.go.dev/iter#Seq)."},
-    {text: "The iterator function takes another function as a parameter, called `yield` by convention (but the name can be arbitrary). It will call `yield` for every element we want to iterate over, and note `yield`'s return value for a potential early termination."},
-    {text: "Iteration doesn't require an underlying data structure, and doesn't even have to be finite! Here's a function returning an iterator over Fibonacci numbers: it keeps running as long as `yield` keeps returning `true`."},
-    {text: "Since `List.All` returns an iterator, we can use it in a regular `range` loop."},
-    {text: "Packages like [slices](https://pkg.go.dev/slices) have a number of useful functions to work with iterators. For example, `Collect` takes any iterator and collects all its values into a slice."},
-    {text: "Standard library packages now expose iterator helpers too. For example, `strings.SplitSeq` iterates over parts of a byte slice without first building a result slice."},
+    {text: "Vejamos o tipo `List` do [exemplo anterior](generics). Lá tínhamos `AllElements` que retornava um slice. Com iteradores de Go, podemos fazer melhor — como abaixo."},
+    {text: "`All` retorna um _iterador_, que em Go é uma função com [assinatura especial](https://pkg.go.dev/iter#Seq)."},
+    {text: "A função iteradora recebe outra função como parâmetro, chamada `yield` por convenção. Ela chama `yield` para cada elemento e observa o retorno para possível término antecipado."},
+    {text: "Iteração não exige estrutura subjacente, nem precisa ser finita! Aqui uma função que retorna iterador sobre Fibonacci: continua enquanto `yield` retornar `true`."},
+    {text: "Como `List.All` retorna um iterador, podemos usá-lo em um `range` normal."},
+    {text: "Pacotes como [slices](https://pkg.go.dev/slices) têm funções úteis para iteradores. Por exemplo, `Collect` coleta todos os valores em um slice."},
+    {text: "Pacotes da stdlib também expõem helpers de iterador. Por exemplo, `strings.SplitSeq` itera sobre partes sem construir um slice intermediário."},
     {text: "Saída:\n$ go run range-over-iterators.go\n10\n13\n23\nall: [10 13 23]\npart: go\npart: by\npart: example\n0\n1\n1\n2\n3\n5\n8"}
   ]}
 />

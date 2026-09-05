@@ -1,11 +1,11 @@
 ---
-title: Channel Synchronization
+title: Sincronização com Channels
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Channel Synchronization"}
+  title={"Sincronização com Channels"}
   code={`package main
 
 import (
@@ -25,10 +25,10 @@ func main() {
     <-done
 }`}
   sections={[
-    {text: "This is the function we'll run in a goroutine. The `done` channel will be used to notify another goroutine that this function's work is done."},
-    {text: "Send a value to notify that we're done."},
-    {text: "Start a worker goroutine, giving it the channel to notify on."},
-    {text: "Block until we receive a notification from the worker on the channel."},
+    {text: "Esta é a função que rodaremos em goroutine. O channel `done` notificará outra goroutine que o trabalho terminou."},
+    {text: "Envie um valor para notificar que terminamos."},
+    {text: "Inicie uma goroutine worker, passando o channel para notificação."},
+    {text: "Bloqueie até receber notificação do worker no channel."},
     {text: "Saída:\n$ go run channel-synchronization.go      \nworking...done                  \n\n# If you removed the `<- done` line from this program,\n# the program could exit before the `worker` finished\n# its work, or in some cases even before it started."}
   ]}
 />

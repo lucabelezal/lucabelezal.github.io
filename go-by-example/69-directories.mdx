@@ -1,11 +1,11 @@
 ---
-title: Directories
+title: Diretórios
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Directories"}
+  title={"Diretórios"}
   code={`package main
 
 import (
@@ -62,15 +62,15 @@ func visit(path string, d fs.DirEntry, err error) error {
     return nil
 }`}
   sections={[
-    {text: "Create a new sub-directory in the current working directory."},
-    {text: "When creating temporary directories, it's good practice to `defer` their removal. `os.RemoveAll` will delete a whole directory tree (similarly to `rm -rf`)."},
-    {text: "We can create a hierarchy of directories, including parents with `MkdirAll`. This is similar to the command-line `mkdir -p`."},
-    {text: "`ReadDir` lists directory contents, returning a slice of `os.DirEntry` objects."},
-    {text: "`Chdir` lets us change the current working directory, similarly to `cd`."},
-    {text: "Now we'll see the contents of `subdir/parent/child` when listing the *current* directory."},
-    {text: "`cd` back to where we started."},
-    {text: "We can also visit a directory *recursively*, including all its sub-directories. `WalkDir` accepts a callback function to handle every file or directory visited."},
-    {text: "`visit` is called for every file or directory found recursively by `filepath.WalkDir`."},
+    {text: "Crie um novo subdiretório no diretório atual."},
+    {text: "Ao criar diretórios temporários, é boa prática adiar remoção. `os.RemoveAll` deleta a árvore (como `rm -rf`)."},
+    {text: "Podemos criar hierarquia com `MkdirAll`, incluindo pais. Similar a `mkdir -p`."},
+    {text: "`ReadDir` lista conteúdo, retornando slice de `os.DirEntry`."},
+    {text: "`Chdir` muda o diretório atual, como `cd`."},
+    {text: "Agora veremos o conteúdo de `subdir/parent/child` ao listar o diretório *atual*."},
+    {text: "`cd` de volta ao ponto inicial."},
+    {text: "Também podemos visitar recursivamente, com `WalkDir` e callback para cada arquivo/diretório."},
+    {text: "`visit` é chamada para cada arquivo/diretório encontrado por `filepath.WalkDir`."},
     {text: "Saída:\n$ go run directories.go\nListing subdir/parent\n  child true\n  file2 false\n  file3 false\nListing subdir/parent/child\n  file4 false\nVisiting subdir\n  subdir true\n  subdir/file1 false\n  subdir/parent true\n  subdir/parent/child true\n  subdir/parent/child/file4 false\n  subdir/parent/file2 false\n  subdir/parent/file3 false"}
   ]}
 />

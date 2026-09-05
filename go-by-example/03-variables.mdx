@@ -1,11 +1,11 @@
 ---
-title: Variables
+title: Variáveis
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Variables"}
+  title={"Variáveis"}
   code={`package main
 
 import "fmt"
@@ -23,11 +23,11 @@ func main() {
     fmt.Println(f)
 }`}
   sections={[
-    {text: "`var` declares 1 or more variables."},
-    {text: "You can declare multiple variables at once."},
-    {text: "Go will infer the type of initialized variables."},
-    {text: "Variables declared without a corresponding initialization are _zero-valued_. For example, the zero value for an `int` is `0`."},
-    {text: "The `:=` syntax is shorthand for declaring and initializing a variable, e.g. for `var f string = \"apple\"` in this case. This syntax is only available inside functions."},
+    {text: "`var` declara uma ou mais variáveis."},
+    {text: "Você pode declarar múltiplas variáveis de uma vez."},
+    {text: "Go infere o tipo de variáveis inicializadas."},
+    {text: "Variáveis declaradas sem inicialização recebem o _zero value_. Por exemplo, o zero value de um `int` é `0`."},
+    {text: "A sintaxe `:=` é um atalho para declarar e inicializar uma variável, por exemplo `var f string = \"apple\"` neste caso. Essa sintaxe só está disponível dentro de funções."},
     {text: "Saída:\n$ go run variables.go\ninitial\n1 2\ntrue\n0\napple"}
   ]}
 />

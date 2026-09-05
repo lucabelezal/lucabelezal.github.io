@@ -42,18 +42,18 @@ func main() {
     fmt.Println(dog)
 }`}
   sections={[
-    {text: "This `person` struct type has `name` and `age` fields."},
-    {text: "`newPerson` constructs a new person struct with the given name."},
-    {text: "Go is a garbage collected language; you can safely return a pointer to a local variable - it will only be cleaned up by the garbage collector when there are no active references to it."},
-    {text: "This syntax creates a new struct."},
-    {text: "You can name the fields when initializing a struct."},
-    {text: "Omitted fields will be zero-valued."},
-    {text: "An `&` prefix yields a pointer to the struct."},
-    {text: "It's idiomatic to encapsulate new struct creation in constructor functions"},
-    {text: "Access struct fields with a dot."},
-    {text: "You can also use dots with struct pointers - the pointers are automatically dereferenced."},
-    {text: "Structs are mutable."},
-    {text: "If a struct type is only used for a single value, we don't have to give it a name. The value can have an anonymous struct type. This technique is commonly used for [table-driven tests](testing-and-benchmarking)."},
+    {text: "O struct `person` tem campos `name` e `age`."},
+    {text: "`newPerson` constrói um novo struct person com o nome dado."},
+    {text: "Go tem garbage collector; você pode retornar ponteiro para variável local com segurança."},
+    {text: "Esta sintaxe cria um novo struct."},
+    {text: "Você pode nomear os campos ao inicializar um struct."},
+    {text: "Campos omitidos ficam com zero value."},
+    {text: "O prefixo `&` retorna um ponteiro para o struct."},
+    {text: "É idiomático encapsular criação de structs em funções construtoras"},
+    {text: "Acesse campos do struct com ponto."},
+    {text: "Também pode usar ponto com ponteiros para struct — eles são dereferenciados automaticamente."},
+    {text: "Structs são mutáveis."},
+    {text: "Se um struct é usado para um único valor, não precisa nomeá-lo. Pode usar tipo anônimo. Técnica comum em [table-driven tests](testing-and-benchmarking)."},
     {text: "Saída:\n$ go run structs.go\n{Bob 20}\n{Alice 30}\n{Fred 0}\n&{Ann 40}\n&{Jon 42}\nSean\n50\n51\n{Rex true}"}
   ]}
 />

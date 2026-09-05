@@ -1,0 +1,29 @@
+---
+title: Exit
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Exit"}
+  code={`package main
+
+import (
+    "fmt"
+    "os"
+)
+
+func main() {
+    defer fmt.Println("!")
+    os.Exit(3)
+}`}
+  sections={[
+    {text: "`defer`s will _not_ be run when using `os.Exit`, so this `fmt.Println` will never be called."},
+    {text: "Exit with status 3."},
+    {text: "Saída:\n#  If you run `exit.go` using `go run`, the exit\n# will be picked up by `go` and printed.\n$ go run exit.go\nexit status 3\n\n# By building and executing a binary you can see\n# the status in the terminal.\n$ go build exit.go\n$ ./exit\n$ echo $?\n3\n\n# Note that the `!` from our program never got printed."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/b9aYzlENkb__R" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>

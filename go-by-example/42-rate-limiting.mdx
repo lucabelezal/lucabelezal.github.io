@@ -44,13 +44,13 @@ func main() {
     }
 }`}
   sections={[
-    {text: "First we'll look at basic rate limiting. Suppose we want to limit our handling of incoming requests. We'll serve these requests off a channel of the same name."},
-    {text: "This `limiter` channel will receive a value every 200 milliseconds. This is the regulator in our rate limiting scheme."},
-    {text: "By blocking on a receive from the `limiter` channel before serving each request, we limit ourselves to 1 request every 200 milliseconds."},
-    {text: "We may want to allow short bursts of requests in our rate limiting scheme while preserving the overall rate limit. We can accomplish this by buffering our limiter channel. This `burstyLimiter` channel will allow bursts of up to 3 events."},
-    {text: "Fill up the channel to represent allowed bursting."},
-    {text: "Every 200 milliseconds we'll try to add a new value to `burstyLimiter`, up to its limit of 3."},
-    {text: "Now simulate 5 more incoming requests. The first 3 of these will benefit from the burst capability of `burstyLimiter`."},
+    {text: "Primeiro, rate limiting básico. Suponha limitar o tratamento de requests. Servimos os requests a partir de um channel homônimo."},
+    {text: "O channel `limiter` receberá um valor a cada 200ms. É o regulador do rate limiting."},
+    {text: "Ao bloquear em um receive de `limiter` antes de servir cada request, limitamos a 1 request a cada 200ms."},
+    {text: "Podemos permitir rajadas curtas mantendo o limite geral. Fazemos isso bufferizando o channel. `burstyLimiter` permite rajadas de até 3 eventos."},
+    {text: "Preencha o channel para representar a rajada permitida."},
+    {text: "A cada 200ms tentamos adicionar um novo valor a `burstyLimiter`, até o limite de 3."},
+    {text: "Agora simule mais 5 requests. Os 3 primeiros se beneficiam da rajada de `burstyLimiter`."},
     {text: "Saída:\n# Running our program we see the first batch of requests\n# handled once every ~200 milliseconds as desired.\n$ go run rate-limiting.go\nrequest 1 2012-10-19 00:38:18.687438 +0000 UTC\nrequest 2 2012-10-19 00:38:18.887471 +0000 UTC\nrequest 3 2012-10-19 00:38:19.087238 +0000 UTC\nrequest 4 2012-10-19 00:38:19.287338 +0000 UTC\nrequest 5 2012-10-19 00:38:19.487331 +0000 UTC\n\n# For the second batch of requests we serve the first\n# 3 immediately because of the burstable rate limiting,\n# then serve the remaining 2 with ~200ms delays each.\nrequest 1 2012-10-19 00:38:20.487578 +0000 UTC\nrequest 2 2012-10-19 00:38:20.487645 +0000 UTC\nrequest 3 2012-10-19 00:38:20.487676 +0000 UTC\nrequest 4 2012-10-19 00:38:20.687483 +0000 UTC\nrequest 5 2012-10-19 00:38:20.887542 +0000 UTC"}
   ]}
 />

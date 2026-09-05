@@ -1,11 +1,11 @@
 ---
-title: Struct Embedding
+title: Composição de Structs
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Struct Embedding"}
+  title={"Composição de Structs"}
   code={`package main
 
 import "fmt"
@@ -40,12 +40,12 @@ func main() {
     fmt.Println("describer:", d.describe())
 }`}
   sections={[
-    {text: "A `container` _embeds_ a `base`. An embedding looks like a field without a name."},
-    {text: "When creating structs with literals, we have to initialize the embedding explicitly; here the embedded type serves as the field name."},
-    {text: "We can access the base's fields directly on `co`, e.g. `co.num`."},
-    {text: "Alternatively, we can spell out the full path using the embedded type name."},
-    {text: "Since `container` embeds `base`, the methods of `base` also become methods of a `container`. Here we invoke a method that was embedded from `base` directly on `co`."},
-    {text: "Embedding structs with methods may be used to bestow interface implementations onto other structs. Here we see that a `container` now implements the `describer` interface because it embeds `base`."},
+    {text: "`container` faz _embed_ de `base`. Parece um campo sem nome."},
+    {text: "Ao criar structs com literais, precisamos inicializar o embedding explicitamente; o tipo embutido serve como nome do campo."},
+    {text: "Podemos acessar campos de `base` diretamente em `co`, ex. `co.num`."},
+    {text: "Alternativamente, pode usar o caminho completo com o nome do tipo embutido."},
+    {text: "Como `container` embute `base`, os métodos de `base` viram métodos de `container`. Aqui invocamos um método embutido diretamente em `co`."},
+    {text: "Embedding com métodos pode dar implementações de interface a outros structs. Aqui `container` implementa `describer` porque embute `base`."},
     {text: "Saída:\n$ go run struct-embedding.go\nco={num: 1, str: some name}\nalso num: 1\ndescribe: base with num=1\ndescriber: base with num=1"}
   ]}
 />

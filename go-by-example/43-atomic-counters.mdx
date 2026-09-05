@@ -1,11 +1,11 @@
 ---
-title: Atomic Counters
+title: Contadores Atômicos
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Atomic Counters"}
+  title={"Contadores Atômicos"}
   code={`package main
 
 import (
@@ -28,12 +28,12 @@ func main() {
     fmt.Println("ops:", ops.Load())
 }`}
   sections={[
-    {text: "We'll use an atomic integer type to represent our (always-positive) counter."},
-    {text: "A WaitGroup will help us wait for all goroutines to finish their work."},
-    {text: "We'll start 50 goroutines that each increment the counter exactly 1000 times."},
-    {text: "To atomically increment the counter we use `Add`."},
-    {text: "Wait until all the goroutines are done."},
-    {text: "Here no goroutines are writing to 'ops', but using `Load` it's safe to atomically read a value even while other goroutines are (atomically) updating it."},
+    {text: "Usaremos um inteiro atômico para representar nosso contador (sempre positivo)."},
+    {text: "Um WaitGroup ajuda a esperar todas as goroutines terminarem."},
+    {text: "Vamos iniciar 50 goroutines que incrementam o contador 1000 vezes cada."},
+    {text: "Para incrementar atomicamente usamos `Add`."},
+    {text: "Espere todas as goroutines terminarem."},
+    {text: "Aqui nenhuma goroutine escreve em 'ops', mas com `Load` é seguro ler atomicamente mesmo enquanto outras atualizam."},
     {text: "Saída:\n# We expect to get exactly 50,000 operations. Had we\n# used a non-atomic integer and incremented it with\n# `ops++`, we'd likely get a different number,\n# changing between runs, because the goroutines\n# would interfere with each other. Moreover, we'd\n# get data race failures when running with the\n# `-race` flag.\n$ go run atomic-counters.go\nops: 50000\n\n# Next we'll look at mutexes, another tool for managing\n# state."}
   ]}
 />

@@ -1,0 +1,35 @@
+---
+title: Multiple Return Values
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Multiple Return Values"}
+  code={`package main
+
+import "fmt"
+
+func vals() (int, int) {
+    return 3, 7
+}
+func main() {
+    a, b := vals()
+    fmt.Println(a)
+    fmt.Println(b)
+    _, c := vals()
+    fmt.Println(c)
+}`}
+  sections={[
+    {text: "The `(int, int)` in this function signature shows that the function returns 2 `int`s."},
+    {text: "Here we use the 2 different return values from the call with _multiple assignment_."},
+    {text: "If you only want a subset of the returned values, use the blank identifier `_`."},
+    {text: "Saída:\n$ go run multiple-return-values.go\n3\n7\n7\n\n# Accepting a variable number of arguments is another nice\n# feature of Go functions; we'll look at this next."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/vZdUvLB1WbK" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Variadic Functions](/go/variadic-functions).

@@ -1,0 +1,38 @@
+---
+title: Sorting
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Sorting"}
+  code={`package main
+
+import (
+    "fmt"
+    "slices"
+)
+
+func main() {
+    strs := []string{"c", "a", "b"}
+    slices.Sort(strs)
+    fmt.Println("Strings:", strs)
+    ints := []int{7, 2, 4}
+    slices.Sort(ints)
+    fmt.Println("Ints:   ", ints)
+    s := slices.IsSorted(ints)
+    fmt.Println("Sorted: ", s)
+}`}
+  sections={[
+    {text: "Sorting functions are generic, and work for any _ordered_ built-in type. For a list of ordered types, see [cmp.Ordered](https://pkg.go.dev/cmp#Ordered)."},
+    {text: "An example of sorting `int`s."},
+    {text: "We can also use the `slices` package to check if a slice is already in sorted order."},
+    {text: "Saída:\n$ go run sorting.go\nStrings: [a b c]\nInts:    [2 4 7]\nSorted:  true"}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/X7iJcIua02T" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Sorting by Functions](/go/sorting-by-functions).

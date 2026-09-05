@@ -1,0 +1,40 @@
+---
+title: Channel Synchronization
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Channel Synchronization"}
+  code={`package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func worker(done chan bool) {
+    fmt.Print("working...")
+    time.Sleep(time.Second)
+    fmt.Println("done")
+    done <- true
+}
+func main() {
+    done := make(chan bool, 1)
+    go worker(done)
+    <-done
+}`}
+  sections={[
+    {text: "This is the function we'll run in a goroutine. The `done` channel will be used to notify another goroutine that this function's work is done."},
+    {text: "Send a value to notify that we're done."},
+    {text: "Start a worker goroutine, giving it the channel to notify on."},
+    {text: "Block until we receive a notification from the worker on the channel."},
+    {text: "Saída:\n$ go run channel-synchronization.go      \nworking...done                  \n\n# If you removed the `<- done` line from this program,\n# the program could exit before the `worker` finished\n# its work, or in some cases even before it started."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/Nw-1DzIGk5f" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Channel Directions](/go/channel-directions).

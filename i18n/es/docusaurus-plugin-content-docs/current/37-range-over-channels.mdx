@@ -1,0 +1,33 @@
+---
+title: Range over Channels
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Range over Channels"}
+  code={`package main
+
+import "fmt"
+
+func main() {
+    queue := make(chan string, 2)
+    queue <- "one"
+    queue <- "two"
+    close(queue)
+    for elem := range queue {
+        fmt.Println(elem)
+    }
+}`}
+  sections={[
+    {text: "We'll iterate over 2 values in the `queue` channel."},
+    {text: "This `range` iterates over each element as it's received from `queue`. Because we `close`d the channel above, the iteration terminates after receiving the 2 elements."},
+    {text: "Saída:\n$ go run range-over-channels.go\none\ntwo\n\n# This example also showed that it's possible to close\n# a non-empty channel but still have the remaining\n# values be received."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/8vAhX6eX1wy" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Timers](/go/timers).

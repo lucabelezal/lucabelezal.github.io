@@ -1,11 +1,11 @@
 ---
-title: Signals
+title: Sinais
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Signals"}
+  title={"Sinais"}
   code={`package main
 
 import (
@@ -26,9 +26,9 @@ func main() {
     fmt.Println("exiting")
 }`}
   sections={[
-    {text: "`signal.NotifyContext` returns a context that's canceled when one of the listed signals arrives."},
-    {text: "The program will wait here until one of the configured signals is received."},
-    {text: "`context.Cause` reports why the context was canceled. For a signal-triggered cancellation, this includes the signal value."},
+    {text: "`signal.NotifyContext` retorna context cancelado quando um dos sinais chega."},
+    {text: "O programa espera aqui até um dos sinais ser recebido."},
+    {text: "`context.Cause` reporta por que o context foi cancelado. Para sinais, inclui o valor do sinal."},
     {text: "Saída:\n# When we run this program it will block waiting for a\n# signal. By typing `ctrl-C` (which the\n# terminal shows as `^C`) we can send a `SIGINT` signal,\n# causing the program to print the cancellation cause and then exit.\n$ go run signals.go\nawaiting signal\n^C\ninterrupt signal received\nexiting"}
   ]}
 />

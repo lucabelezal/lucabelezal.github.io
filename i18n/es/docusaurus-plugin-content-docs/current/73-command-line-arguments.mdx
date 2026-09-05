@@ -1,0 +1,35 @@
+---
+title: Command-Line Arguments
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Command-Line Arguments"}
+  code={`package main
+
+import (
+    "fmt"
+    "os"
+)
+
+func main() {
+    argsWithProg := os.Args
+    argsWithoutProg := os.Args[1:]
+    arg := os.Args[3]
+    fmt.Println(argsWithProg)
+    fmt.Println(argsWithoutProg)
+    fmt.Println(arg)
+}`}
+  sections={[
+    {text: "`os.Args` provides access to raw command-line arguments. Note that the first value in this slice is the path to the program, and `os.Args[1:]` holds the arguments to the program."},
+    {text: "You can get individual args with normal indexing."},
+    {text: "Saída:\n# To experiment with command-line arguments it's best to\n# build a binary with `go build` first.\n$ go build command-line-arguments.go\n$ ./command-line-arguments a b c d\n[./command-line-arguments a b c d]       \n[a b c d]\nc\n\n# Next we'll look at more advanced command-line processing\n# with flags."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/UYCEvh9d2Zb" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Command-Line Flags](/go/command-line-flags).

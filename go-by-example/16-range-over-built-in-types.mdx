@@ -1,11 +1,11 @@
 ---
-title: Range over Built-in Types
+title: Range sobre Tipos Embutidos
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Range over Built-in Types"}
+  title={"Range sobre Tipos Embutidos"}
   code={`package main
 
 import "fmt"
@@ -30,10 +30,10 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Here we use `range` to sum the numbers in a slice. Arrays work like this too."},
-    {text: "`range` on arrays and slices provides both the index and value for each entry. Above we didn't need the index, so we ignored it with the blank identifier `_`. Sometimes we actually want the indexes though."},
-    {text: "`range` can also iterate over just the keys of a map."},
-    {text: "`range` on strings iterates over Unicode code points. The first value is the starting byte index of the `rune` and the second the `rune` itself. See [Strings and Runes](strings-and-runes) for more details."}
+    {text: "Aqui usamos `range` para somar números de um slice. Arrays funcionam igual."},
+    {text: "`range` em arrays e slices fornece índice e valor. Acima não precisamos do índice, então ignoramos com `_`. Às vezes queremos os índices."},
+    {text: "`range` também itera apenas sobre as chaves de um map."},
+    {text: "`range` em strings itera sobre code points Unicode. O primeiro valor é o índice inicial do `rune` e o segundo é o próprio `rune`. Veja [Strings e Runes](strings-and-runes)."}
   ]}
 />
 

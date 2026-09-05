@@ -1,0 +1,40 @@
+---
+title: Variadic Functions
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Variadic Functions"}
+  code={`package main
+
+import "fmt"
+
+func sum(nums ...int) {
+    fmt.Print(nums, " ")
+    total := 0
+    for _, num := range nums {
+        total += num
+    }
+    fmt.Println(total)
+}
+func main() {
+    sum(1, 2)
+    sum(1, 2, 3)
+    nums := []int{1, 2, 3, 4}
+    sum(nums...)
+}`}
+  sections={[
+    {text: "Here's a function that will take an arbitrary number of `int`s as arguments."},
+    {text: "Within the function, the type of `nums` is equivalent to `[]int`. We can call `len(nums)`, iterate over it with `range`, etc."},
+    {text: "Variadic functions can be called in the usual way with individual arguments."},
+    {text: "If you already have multiple args in a slice, apply them to a variadic function using `func(slice...)` like this."},
+    {text: "Saída:\n$ go run variadic-functions.go \n[1 2] 3\n[1 2 3] 6\n[1 2 3 4] 10\n\n# Another key aspect of functions in Go is their ability\n# to form closures, which we'll look at next."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/glNdE8aKPNq" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Closures](/go/closures).

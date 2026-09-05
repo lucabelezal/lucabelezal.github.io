@@ -55,13 +55,13 @@ func main() {
     detectCircle(c)
 }`}
   sections={[
-    {text: "Here's a basic interface for geometric shapes."},
-    {text: "For our example we'll implement this interface on `rect` and `circle` types."},
-    {text: "To implement an interface in Go, we just need to implement all the methods in the interface. Here we implement `geometry` on `rect`s."},
-    {text: "The implementation for `circle`s."},
-    {text: "If a variable has an interface type, then we can call methods that are in the named interface. Here's a generic `measure` function taking advantage of this to work on any `geometry`."},
-    {text: "Sometimes it's useful to know the runtime type of an interface value. One option is using a *type assertion* as shown here; another is a [type `switch`](switch)."},
-    {text: "The `circle` and `rect` struct types both implement the `geometry` interface so we can use instances of these structs as arguments to `measure`."},
+    {text: "Uma interface básica para formas geométricas."},
+    {text: "Vamos implementar esta interface nos tipos `rect` e `circle`."},
+    {text: "Para implementar uma interface em Go, basta implementar todos os métodos. Aqui implementamos `geometry` em `rect`s."},
+    {text: "A implementação para `circle`s."},
+    {text: "Se uma variável tem tipo de interface, podemos chamar métodos da interface. Aqui uma função genérica `measure` que funciona com qualquer `geometry`."},
+    {text: "Às vezes é útil saber o tipo em runtime de um valor de interface. Uma opção é _type assertion_ como aqui; outra é [type `switch`](switch)."},
+    {text: "Os tipos `circle` e `rect` implementam `geometry`, então podem ser passados para `measure`."},
     {text: "Saída:\n$ go run interfaces.go\n{3 4}\n12\n14\n{5}\n78.53981633974483\n31.41592653589793\ncircle with radius 5\n\n# To understand how Go's interfaces work under the hood,\n# check out this [blog post](https://research.swtch.com/interfaces)."}
   ]}
 />

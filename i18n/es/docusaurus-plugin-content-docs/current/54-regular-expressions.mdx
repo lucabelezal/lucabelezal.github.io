@@ -1,0 +1,58 @@
+---
+title: Regular Expressions
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Regular Expressions"}
+  code={`package main
+
+import (
+    "bytes"
+    "fmt"
+    "regexp"
+)
+
+func main() {
+    match, _ := regexp.MatchString("p([a-z]+)ch", "peach")
+    fmt.Println(match)
+    r, _ := regexp.Compile("p([a-z]+)ch")
+    fmt.Println(r.MatchString("peach"))
+    fmt.Println(r.FindString("peach punch"))
+    fmt.Println("idx:", r.FindStringIndex("peach punch"))
+    fmt.Println(r.FindStringSubmatch("peach punch"))
+    fmt.Println(r.FindStringSubmatchIndex("peach punch"))
+    fmt.Println(r.FindAllString("peach punch pinch", -1))
+    fmt.Println("all:", r.FindAllStringSubmatchIndex(
+        "peach punch pinch", -1))
+    fmt.Println(r.FindAllString("peach punch pinch", 2))
+    fmt.Println(r.Match([]byte("peach")))
+    r = regexp.MustCompile("p([a-z]+)ch")
+    fmt.Println("regexp:", r)
+    in := []byte("a peach")
+    out := r.ReplaceAllFunc(in, bytes.ToUpper)
+    fmt.Println(string(out))
+}`}
+  sections={[
+    {text: "This tests whether a pattern matches a string."},
+    {text: "Above we used a string pattern directly, but for other regexp tasks you'll need to `Compile` an optimized `Regexp` struct."},
+    {text: "Many methods are available on these structs. Here's a match test like we saw earlier."},
+    {text: "This finds the match for the regexp."},
+    {text: "This also finds the first match but returns the start and end indexes for the match instead of the matching text."},
+    {text: "The `Submatch` variants include information about both the whole-pattern matches and the submatches within those matches. For example this will return information for both `p([a-z]+)ch` and `([a-z]+)`."},
+    {text: "Similarly this will return information about the indexes of matches and submatches."},
+    {text: "The `All` variants of these functions apply to all matches in the input, not just the first. For example to find all matches for a regexp."},
+    {text: "These `All` variants are available for the other functions we saw above as well."},
+    {text: "Providing a non-negative integer as the second argument to these functions will limit the number of matches."},
+    {text: "Our examples above had string arguments and used names like `MatchString`. We can also provide `[]byte` arguments and drop `String` from the function name."},
+    {text: "When creating global variables with regular expressions you can use the `MustCompile` variation of `Compile`. `MustCompile` panics instead of returning an error, which makes it safer to use for global variables."},
+    {text: "The `Func` variant allows you to transform matched text with a given function."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/fI2YIfYsCaL" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [JSON](/go/json).

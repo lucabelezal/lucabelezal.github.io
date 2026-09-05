@@ -26,10 +26,10 @@ func main() {
     fmt.Println(newInts())
 }`}
   sections={[
-    {text: "This function `intSeq` returns another function, which we define anonymously in the body of `intSeq`. The returned function _closes over_ the variable `i` to form a closure."},
-    {text: "We call `intSeq`, assigning the result (a function) to `nextInt`. This function value captures its own `i` value, which will be updated each time we call `nextInt`."},
-    {text: "See the effect of the closure by calling `nextInt` a few times."},
-    {text: "To confirm that the state is unique to that particular function, create and test a new one."},
+    {text: "A função `intSeq` retorna outra função, definida anonimamente no corpo de `intSeq`. A função retornada faz _closure_ sobre `i`."},
+    {text: "Chamamos `intSeq` e atribuímos o resultado (uma função) a `nextInt`. Essa função captura seu próprio `i`, atualizado a cada chamada."},
+    {text: "Veja o efeito do closure chamando `nextInt` algumas vezes."},
+    {text: "Para confirmar que o estado é único daquela função, crie e teste uma nova."},
     {text: "Saída:\n$ go run closures.go\n1\n2\n3\n1\n\n# The last feature of functions we'll look at for now is\n# recursion."}
   ]}
 />

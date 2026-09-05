@@ -1,11 +1,11 @@
 ---
-title: Regular Expressions
+title: Expressões Regulares
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Regular Expressions"}
+  title={"Expressões Regulares"}
   code={`package main
 
 import (
@@ -35,19 +35,19 @@ func main() {
     fmt.Println(string(out))
 }`}
   sections={[
-    {text: "This tests whether a pattern matches a string."},
-    {text: "Above we used a string pattern directly, but for other regexp tasks you'll need to `Compile` an optimized `Regexp` struct."},
-    {text: "Many methods are available on these structs. Here's a match test like we saw earlier."},
-    {text: "This finds the match for the regexp."},
-    {text: "This also finds the first match but returns the start and end indexes for the match instead of the matching text."},
-    {text: "The `Submatch` variants include information about both the whole-pattern matches and the submatches within those matches. For example this will return information for both `p([a-z]+)ch` and `([a-z]+)`."},
-    {text: "Similarly this will return information about the indexes of matches and submatches."},
-    {text: "The `All` variants of these functions apply to all matches in the input, not just the first. For example to find all matches for a regexp."},
-    {text: "These `All` variants are available for the other functions we saw above as well."},
-    {text: "Providing a non-negative integer as the second argument to these functions will limit the number of matches."},
-    {text: "Our examples above had string arguments and used names like `MatchString`. We can also provide `[]byte` arguments and drop `String` from the function name."},
-    {text: "When creating global variables with regular expressions you can use the `MustCompile` variation of `Compile`. `MustCompile` panics instead of returning an error, which makes it safer to use for global variables."},
-    {text: "The `Func` variant allows you to transform matched text with a given function."}
+    {text: "Isso testa se um padrão casa com uma string."},
+    {text: "Acima usamos padrão direto, mas para outras tarefas precisa compilar com `Compile` um `Regexp` otimizado."},
+    {text: "Muitos métodos estão disponíveis. Aqui um teste de match como antes."},
+    {text: "Isso encontra o match da regexp."},
+    {text: "Também encontra o primeiro match, mas retorna índices de início e fim em vez do texto."},
+    {text: "Variantes `Submatch` incluem o match completo e submatches. Por exemplo, retorna info para `p([a-z]+)ch` e `([a-z]+)`."},
+    {text: "Similarmente, isso retorna índices de matches e submatches."},
+    {text: "Variantes `All` aplicam a todos os matches, não só o primeiro. Por exemplo, encontrar todos os matches."},
+    {text: "Essas variantes `All` também existem para as outras funções vistas."},
+    {text: "Passar inteiro não-negativo como segundo argumento limita o número de matches."},
+    {text: "Exemplos acima usaram strings e nomes como `MatchString`. Também pode passar `[]byte` e remover `String` do nome."},
+    {text: "Para variáveis globais com regex, use `MustCompile`. Ele dá panic em vez de erro, mais seguro para globais."},
+    {text: "A variante `Func` permite transformar texto casado com uma função."}
   ]}
 />
 

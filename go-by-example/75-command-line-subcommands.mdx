@@ -1,11 +1,11 @@
 ---
-title: Command-Line Subcommands
+title: Subcomandos de Linha de Comando
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Command-Line Subcommands"}
+  title={"Subcomandos de Linha de Comando"}
   code={`package main
 
 import (
@@ -42,11 +42,11 @@ func main() {
     }
 }`}
   sections={[
-    {text: "We declare a subcommand using the `NewFlagSet` function, and proceed to define new flags specific for this subcommand."},
-    {text: "For a different subcommand we can define different supported flags."},
-    {text: "The subcommand is expected as the first argument to the program."},
-    {text: "Check which subcommand is invoked."},
-    {text: "For every subcommand, we parse its own flags and have access to trailing positional arguments."},
+    {text: "Declaramos um subcomando com `NewFlagSet` e definimos flags específicas."},
+    {text: "Para outro subcomando podemos definir flags diferentes."},
+    {text: "O subcomando é esperado como primeiro argumento."},
+    {text: "Verifique qual subcomando foi invocado."},
+    {text: "Para cada subcomando, fazemos parse de suas flags e acessamos args posicionais restantes."},
     {text: "Saída:\n$ go build command-line-subcommands.go \n\n# First invoke the foo subcommand.\n$ ./command-line-subcommands foo -enable -name=joe a1 a2\nsubcommand 'foo'\n  enable: true\n  name: joe\n  tail: [a1 a2]\n\n# Now try bar.\n$ ./command-line-subcommands bar -level 8 a1\nsubcommand 'bar'\n  level: 8\n  tail: [a1]\n\n# But bar won't accept foo's flags.\n$ ./command-line-subcommands bar -enable a1\nflag provided but not defined: -enable\nUsage of bar:\n  -level int\n    \\tlevel\n\n# Next we'll look at environment variables, another common\n# way to parameterize programs."}
   ]}
 />

@@ -1,0 +1,40 @@
+---
+title: Constants
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Constants"}
+  code={`package main
+
+import (
+    "fmt"
+    "math"
+)
+
+const s string = "constant"
+
+func main() {
+    fmt.Println(s)
+    const n = 500000000
+    const d = 3e20 / n
+    fmt.Println(d)
+    fmt.Println(int64(d))
+    fmt.Println(math.Sin(n))
+}`}
+  sections={[
+    {text: "`const` declares a constant value."},
+    {text: "A `const` statement can also appear inside a function body."},
+    {text: "Constant expressions perform arithmetic with arbitrary precision."},
+    {text: "A numeric constant has no type until it's given one, such as by an explicit conversion."},
+    {text: "A number can be given a type by using it in a context that requires one, such as a variable assignment or function call. For example, here `math.Sin` expects a `float64`."},
+    {text: "Saída:\n$ go run constant.go \nconstant\n6e+11\n600000000000\n-0.28470407323754404"}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/LfvIxHlpomp" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [For](/go/for).

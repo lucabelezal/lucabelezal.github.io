@@ -1,0 +1,44 @@
+---
+title: Command-Line Flags
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Command-Line Flags"}
+  code={`package main
+
+import (
+    "flag"
+    "fmt"
+)
+
+func main() {
+    wordPtr := flag.String("word", "foo", "a string")
+    numbPtr := flag.Int("numb", 42, "an int")
+    forkPtr := flag.Bool("fork", false, "a bool")
+    var svar string
+    flag.StringVar(&svar, "svar", "bar", "a string var")
+    flag.Parse()
+    fmt.Println("word:", *wordPtr)
+    fmt.Println("numb:", *numbPtr)
+    fmt.Println("fork:", *forkPtr)
+    fmt.Println("svar:", svar)
+    fmt.Println("tail:", flag.Args())
+}`}
+  sections={[
+    {text: "Go provides a `flag` package supporting basic command-line flag parsing. We'll use this package to implement our example command-line program."},
+    {text: "Basic flag declarations are available for string, integer, and boolean options. Here we declare a string flag `word` with a default value `\"foo\"` and a short description. This `flag.String` function returns a string pointer (not a string value); we'll see how to use this pointer below."},
+    {text: "This declares `numb` and `fork` flags, using a similar approach to the `word` flag."},
+    {text: "It's also possible to declare an option that uses an existing var declared elsewhere in the program. Note that we need to pass in a pointer to the flag declaration function."},
+    {text: "Once all flags are declared, call `flag.Parse()` to execute the command-line parsing."},
+    {text: "Here we'll just dump out the parsed options and any trailing positional arguments. Note that we need to dereference the pointers with e.g. `*wordPtr` to get the actual option values."},
+    {text: "Saída:\n# To experiment with the command-line flags program it's\n# best to first compile it and then run the resulting\n# binary directly.\n$ go build command-line-flags.go\n\n# Try out the built program by first giving it values for\n# all flags.\n$ ./command-line-flags -word=opt -numb=7 -fork -svar=flag\nword: opt\nnumb: 7\nfork: true\nsvar: flag\ntail: []\n\n# Note that if you omit flags they automatically take\n# their default values.\n$ ./command-line-flags -word=opt\nword: opt\nnumb: 42\nfork: false\nsvar: bar\ntail: []\n\n# Trailing positional arguments can be provided after\n# any flags.\n$ ./command-line-flags -word=opt a1 a2 a3\nword: opt\n...\ntail: [a1 a2 a3]\n\n# Note that the `flag` package requires all flags to\n# appear before positional arguments (otherwise the flags\n# will be interpreted as positional arguments).\n$ ./command-line-flags -word=opt a1 a2 a3 -numb=7\nword: opt\nnumb: 42\nfork: false\nsvar: bar\ntail: [a1 a2 a3 -numb=7]\n\n# Use `-h` or `--help` flags to get automatically\n# generated help text for the command-line program.\n$ ./command-line-flags -h\nUsage of ./command-line-flags:\n  -fork=false: a bool\n  -numb=42: an int\n  -svar=\"bar\": a string var\n  -word=\"foo\": a string\n\n# If you provide a flag that wasn't specified to the\n# `flag` package, the program will print an error message\n# and show the help text again.\n$ ./command-line-flags -wat\nflag provided but not defined: -wat\nUsage of ./command-line-flags:\n..."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/IUPZlYSigc3" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Command-Line Subcommands](/go/command-line-subcommands).

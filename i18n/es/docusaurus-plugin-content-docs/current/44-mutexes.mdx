@@ -1,0 +1,63 @@
+---
+title: Mutexes
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Mutexes"}
+  code={`package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+type Container struct {
+    mu       sync.Mutex
+    counters map[string]int
+}
+
+func (c *Container) inc(name string) {
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    c.counters[name]++
+}
+func main() {
+    c := Container{
+        counters: map[string]int{"a": 0, "b": 0},
+    }
+    var wg sync.WaitGroup
+    doIncrement := func(name string, n int) {
+        for range n {
+            c.inc(name)
+        }
+    }
+    wg.Go(func() {
+        doIncrement("a", 10000)
+    })
+    wg.Go(func() {
+        doIncrement("a", 10000)
+    })
+    wg.Go(func() {
+        doIncrement("b", 10000)
+    })
+    wg.Wait()
+    fmt.Println(c.counters)
+}`}
+  sections={[
+    {text: "Container holds a map of counters; since we want to update it concurrently from multiple goroutines, we add a `Mutex` to synchronize access. Note that mutexes must not be copied, so if this `struct` is passed around, it should be done by pointer."},
+    {text: "Lock the mutex before accessing `counters`; unlock it at the end of the function using a [defer](defer) statement."},
+    {text: "Note that the zero value of a mutex is usable as-is, so no initialization is required here."},
+    {text: "This function increments a named counter in a loop."},
+    {text: "Run several goroutines concurrently; note that they all access the same `Container`, and two of them access the same counter."},
+    {text: "Wait for the goroutines to finish"},
+    {text: "Saída:\n# Running the program shows that the counters\n# updated as expected.\n$ go run mutexes.go\nmap[a:20000 b:10000]\n\n# Next we'll look at implementing this same state\n# management task using only goroutines and channels."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/u0VAVSWRlU0" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Stateful Goroutines](/go/stateful-goroutines).

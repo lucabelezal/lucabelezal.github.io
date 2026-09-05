@@ -42,14 +42,14 @@ func main() {
     p(then.Add(-diff))
 }`}
   sections={[
-    {text: "We'll start by getting the current time."},
-    {text: "You can build a `time` struct by providing the year, month, day, etc. Times are always associated with a `Location`, i.e. time zone."},
-    {text: "You can extract the various components of the time value as expected."},
-    {text: "The Monday-Sunday `Weekday` is also available."},
-    {text: "These methods compare two times, testing if the first occurs before, after, or at the same time as the second, respectively."},
-    {text: "The `Sub` methods returns a `Duration` representing the interval between two times."},
-    {text: "We can compute the length of the duration in various units."},
-    {text: "You can use `Add` to advance a time by a given duration, or with a `-` to move backwards by a duration."},
+    {text: "Vamos começar pegando a hora atual."},
+    {text: "Você pode construir um `time` informando ano, mês, dia, etc. Sempre associado a `Location`, o fuso."},
+    {text: "Você pode extrair os componentes do tempo como esperado."},
+    {text: "O `Weekday` segunda-domingo também está disponível."},
+    {text: "Estes métodos comparam dois tempos, testando se o primeiro ocorre antes, depois ou junto do segundo."},
+    {text: "`Sub` retorna um `Duration` com o intervalo entre dois tempos."},
+    {text: "Podemos computar a duração em várias unidades."},
+    {text: "Use `Add` para avançar um tempo por uma duração, ou `-` para voltar."},
     {text: "Saída:\n$ go run time.go\n2012-10-31 15:50:13.793654 +0000 UTC\n2009-11-17 20:34:58.651387237 +0000 UTC\n2009\nNovember\n17\n20\n34\n58\n651387237\nUTC\nTuesday\ntrue\nfalse\nfalse\n25891h15m15.142266763s\n25891.25420618521\n1.5534752523711128e+06\n9.320851514226677e+07\n93208515142266763\n2012-10-31 15:50:13.793654 +0000 UTC\n2006-12-05 01:19:43.509120474 +0000 UTC\n\n# Next we'll look at the related idea of time relative to\n# the Unix epoch."}
   ]}
 />

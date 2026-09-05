@@ -1,11 +1,11 @@
 ---
-title: Sorting by Functions
+title: Ordenação com Funções
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Sorting by Functions"}
+  title={"Ordenação com Funções"}
   code={`package main
 
 import (
@@ -37,10 +37,10 @@ func main() {
     fmt.Println(people)
 }`}
   sections={[
-    {text: "We implement a comparison function for string lengths. `cmp.Compare` is helpful for this."},
-    {text: "Now we can call `slices.SortFunc` with this custom comparison function to sort `fruits` by name length."},
-    {text: "We can use the same technique to sort a slice of values that aren't built-in types."},
-    {text: "Sort `people` by age using `slices.SortFunc`.  Note: if the `Person` struct is large, you may want the slice to contain `*Person` instead and adjust the sorting function accordingly. If in doubt, [benchmark](testing-and-benchmarking)!"},
+    {text: "Implementamos comparação por tamanho de string. `cmp.Compare` ajuda."},
+    {text: "Agora chamamos `slices.SortFunc` com essa comparação para ordenar `fruits` por tamanho."},
+    {text: "Podemos usar a mesma técnica para ordenar slices de tipos não embutidos."},
+    {text: "Ordene `people` por idade com `slices.SortFunc`. Se `Person` for grande, prefira `*Person` e ajuste a função. Em dúvida, faça [benchmark](testing-and-benchmarking)!"},
     {text: "Saída:\n$ go run sorting-by-functions.go \n[kiwi peach banana]\n[{TJ 25} {Jax 37} {Alex 72}]"}
   ]}
 />

@@ -1,11 +1,11 @@
 ---
-title: Sorting
+title: Ordenação
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Sorting"}
+  title={"Ordenação"}
   code={`package main
 
 import (
@@ -24,9 +24,9 @@ func main() {
     fmt.Println("Sorted: ", s)
 }`}
   sections={[
-    {text: "Sorting functions are generic, and work for any _ordered_ built-in type. For a list of ordered types, see [cmp.Ordered](https://pkg.go.dev/cmp#Ordered)."},
-    {text: "An example of sorting `int`s."},
-    {text: "We can also use the `slices` package to check if a slice is already in sorted order."},
+    {text: "Funções de ordenação são genéricas e funcionam para qualquer tipo _ordenado_. Veja [cmp.Ordered](https://pkg.go.dev/cmp#Ordered)."},
+    {text: "Um exemplo ordenando `int`s."},
+    {text: "Também podemos usar `slices` para checar se o slice já está ordenado."},
     {text: "Saída:\n$ go run sorting.go\nStrings: [a b c]\nInts:    [2 4 7]\nSorted:  true"}
   ]}
 />

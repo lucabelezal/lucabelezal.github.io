@@ -33,11 +33,11 @@ func main() {
     http.ListenAndServe(":8090", nil)
 }`}
   sections={[
-    {text: "In the previous example we looked at setting up a simple [HTTP server](http-server). HTTP servers are useful for demonstrating the usage of `context.Context` for controlling cancellation. A `Context` carries deadlines, cancellation signals, and other request-scoped values across API boundaries and goroutines."},
-    {text: "A `context.Context` is created for each request by the `net/http` machinery, and is available with the `Context()` method."},
-    {text: "Wait for a few seconds before sending a reply to the client. This could simulate some work the server is doing. While working, keep an eye on the context's `Done()` channel for a signal that we should cancel the work and return as soon as possible."},
-    {text: "The context's `Err()` method returns an error that explains why the `Done()` channel was closed."},
-    {text: "As before, we register our handler on the \"/hello\" route, and start serving."},
+    {text: "No exemplo anterior vimos um [servidor HTTP](http-server) simples. Servidores HTTP são bons para demonstrar `context.Context` para controle de cancelamento. Um `Context` carrega deadlines, sinais de cancelamento e valores do request através de boundaries de API e goroutines."},
+    {text: "Um `context.Context` é criado para cada request pelo `net/http` e fica disponível via `Context()`."},
+    {text: "Aguarde alguns segundos antes de responder ao cliente. Isso simula trabalho do servidor. Enquanto trabalha, observe o channel `Done()` do context para sinal de cancelamento e retorne o quanto antes."},
+    {text: "O método `Err()` do context retorna erro explicando por que `Done()` foi fechado."},
+    {text: "Como antes, registramos o handler em \"/hello\" e iniciamos o serviço."},
     {text: "Saída:\n# Run the server in the background.\n$ go run context.go &\n\n# Simulate a client request to `/hello`, hitting\n# Ctrl+C shortly after starting to signal\n# cancellation.\n$ curl localhost:8090/hello\nserver: hello handler started\n^C\nserver: context canceled\nserver: hello handler ended"}
   ]}
 />

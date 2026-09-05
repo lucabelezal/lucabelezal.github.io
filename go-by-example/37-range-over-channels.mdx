@@ -1,11 +1,11 @@
 ---
-title: Range over Channels
+title: Range sobre Channels
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Range over Channels"}
+  title={"Range sobre Channels"}
   code={`package main
 
 import "fmt"
@@ -20,8 +20,8 @@ func main() {
     }
 }`}
   sections={[
-    {text: "We'll iterate over 2 values in the `queue` channel."},
-    {text: "This `range` iterates over each element as it's received from `queue`. Because we `close`d the channel above, the iteration terminates after receiving the 2 elements."},
+    {text: "Vamos iterar sobre 2 valores no channel `queue`."},
+    {text: "Este `range` itera cada elemento recebido de `queue`. Como fechamos o channel acima, a iteração termina após 2 elementos."},
     {text: "Saída:\n$ go run range-over-channels.go\none\ntwo\n\n# This example also showed that it's possible to close\n# a non-empty channel but still have the remaining\n# values be received."}
   ]}
 />

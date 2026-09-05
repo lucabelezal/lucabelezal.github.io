@@ -46,12 +46,12 @@ func main() {
     fmt.Println(c.counters)
 }`}
   sections={[
-    {text: "Container holds a map of counters; since we want to update it concurrently from multiple goroutines, we add a `Mutex` to synchronize access. Note that mutexes must not be copied, so if this `struct` is passed around, it should be done by pointer."},
-    {text: "Lock the mutex before accessing `counters`; unlock it at the end of the function using a [defer](defer) statement."},
-    {text: "Note that the zero value of a mutex is usable as-is, so no initialization is required here."},
-    {text: "This function increments a named counter in a loop."},
-    {text: "Run several goroutines concurrently; note that they all access the same `Container`, and two of them access the same counter."},
-    {text: "Wait for the goroutines to finish"},
+    {text: "`Container` guarda um map de contadores; como atualizamos concorrentemente, adicionamos `Mutex` para sincronizar. Mutex não deve ser copiado, então passe o struct por ponteiro."},
+    {text: "Trave o mutex antes de acessar `counters`; destrave no fim com [defer](defer)."},
+    {text: "O zero value de um mutex já é utilizável, sem inicialização."},
+    {text: "Esta função incrementa um contador nomeado em loop."},
+    {text: "Rode várias goroutines concorrentemente; todas acessam o mesmo `Container`, e duas o mesmo contador."},
+    {text: "Espere as goroutines terminarem"},
     {text: "Saída:\n# Running the program shows that the counters\n# updated as expected.\n$ go run mutexes.go\nmap[a:20000 b:10000]\n\n# Next we'll look at implementing this same state\n# management task using only goroutines and channels."}
   ]}
 />

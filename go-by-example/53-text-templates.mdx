@@ -1,11 +1,11 @@
 ---
-title: Text Templates
+title: Templates de Texto
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Text Templates"}
+  title={"Templates de Texto"}
   code={`package main
 
 import (
@@ -53,13 +53,13 @@ func main() {
         })
 }`}
   sections={[
-    {text: "We can create a new template and parse its body from a string. Templates are a mix of static text and \"actions\" enclosed in `{{..."},
-    {text: "Alternatively, we can use the `template.Must` function to panic in case `Parse` returns an error. This is especially useful for templates initialized in the global scope."},
-    {text: "By \"executing\" the template we generate its text with specific values for its actions. The `{{."},
-    {text: "Helper function we'll use below."},
-    {text: "If the data is a struct we can use the `{{.FieldName"},
-    {text: "The same applies to maps; with maps there is no restriction on the case of key names."},
-    {text: "range blocks let us loop through slices, arrays, maps or channels. Inside the range block `{{."},
+    {text: "Podemos criar um novo template e fazer parse do corpo a partir de string. Templates misturam texto estático e \"actions\" em `{{..."},
+    {text: "Alternativamente, use `template.Must` para panic caso `Parse` retorne erro. Útil para templates globais."},
+    {text: "Ao \"executar\" o template geramos o texto com valores específicos. O `{{."},
+    {text: "Função auxiliar usada abaixo."},
+    {text: "Se o dado é struct, usamos `{{.FieldName"},
+    {text: "O mesmo vale para maps; sem restrição de caixa nos nomes das chaves."},
+    {text: "Blocos range permitem iterar slices, arrays, maps ou channels. Dentro do bloco `{{."},
     {text: "Saída:\n$ go run templates.go \nValue: some text\nValue: 5\nValue: [Go Rust C++ C#]\nName: Jane Doe\nName: Mickey Mouse\nyes \nno \nRange: Go Rust C++ C#"}
   ]}
 />

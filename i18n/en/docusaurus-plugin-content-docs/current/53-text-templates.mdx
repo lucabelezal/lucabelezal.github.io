@@ -1,0 +1,71 @@
+---
+title: Text Templates
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Text Templates"}
+  code={`package main
+
+import (
+    "os"
+    "text/template"
+)
+
+func main() {
+    t1 := template.New("t1")
+    t1, err := t1.Parse("Value is {{.}}\n")
+    if err != nil {
+        panic(err)
+    }
+    t1 = template.Must(t1.Parse("Value: {{.}}\n"))
+    t1.Execute(os.Stdout, "some text")
+    t1.Execute(os.Stdout, 5)
+    t1.Execute(os.Stdout, []string{
+        "Go",
+        "Rust",
+        "C++",
+        "C#",
+    })
+    Create := func(name, t string) *template.Template {
+        return template.Must(template.New(name).Parse(t))
+    }
+    t2 := Create("t2", "Name: {{.Name}}\n")
+    t2.Execute(os.Stdout, struct {
+        Name string
+    }{"Jane Doe"})
+    t2.Execute(os.Stdout, map[string]string{
+        "Name": "Mickey Mouse",
+    })
+    t3 := Create("t3",
+        "{{if . -}} yes {{else -}} no {{end}}\n")
+    t3.Execute(os.Stdout, "not empty")
+    t3.Execute(os.Stdout, "")
+    t4 := Create("t4",
+        "Range: {{range .}}{{.}} {{end}}\n")
+    t4.Execute(os.Stdout,
+        []string{
+            "Go",
+            "Rust",
+            "C++",
+            "C#",
+        })
+}`}
+  sections={[
+    {text: "We can create a new template and parse its body from a string. Templates are a mix of static text and \"actions\" enclosed in `{{..."},
+    {text: "Alternatively, we can use the `template.Must` function to panic in case `Parse` returns an error. This is especially useful for templates initialized in the global scope."},
+    {text: "By \"executing\" the template we generate its text with specific values for its actions. The `{{."},
+    {text: "Helper function we'll use below."},
+    {text: "If the data is a struct we can use the `{{.FieldName"},
+    {text: "The same applies to maps; with maps there is no restriction on the case of key names."},
+    {text: "range blocks let us loop through slices, arrays, maps or channels. Inside the range block `{{."},
+    {text: "Saída:\n$ go run templates.go \nValue: some text\nValue: 5\nValue: [Go Rust C++ C#]\nName: Jane Doe\nName: Mickey Mouse\nyes \nno \nRange: Go Rust C++ C#"}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/pDwkw1iMACF" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Regular Expressions](/go/regular-expressions).

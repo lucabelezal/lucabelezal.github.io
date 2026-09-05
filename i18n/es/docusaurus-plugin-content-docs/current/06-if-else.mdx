@@ -1,0 +1,46 @@
+---
+title: If/Else
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"If/Else"}
+  code={`package main
+
+import "fmt"
+
+func main() {
+    if 7%2 == 0 {
+        fmt.Println("7 is even")
+    } else {
+        fmt.Println("7 is odd")
+    }
+    if 8%4 == 0 {
+        fmt.Println("8 is divisible by 4")
+    }
+    if 8%2 == 0 || 7%2 == 0 {
+        fmt.Println("either 8 or 7 are even")
+    }
+    if num := 9; num < 0 {
+        fmt.Println(num, "is negative")
+    } else if num < 10 {
+        fmt.Println(num, "has 1 digit")
+    } else {
+        fmt.Println(num, "has multiple digits")
+    }
+}`}
+  sections={[
+    {text: "Here's a basic example."},
+    {text: "You can have an `if` statement without an else."},
+    {text: "Logical operators like `&&` and `||` are often useful in conditions."},
+    {text: "A statement can precede conditionals; any variables declared in this statement are available in the current and all subsequent branches."},
+    {text: "Saída:\n$ go run if-else.go\n7 is odd\n8 is divisible by 4\neither 8 or 7 are even\n9 has 1 digit\n\n# There is no [ternary if](https://en.wikipedia.org/wiki/%3F:)\n# in Go, so you'll need to use a full `if` statement even\n# for basic conditions."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/RKgKzCe7qcF" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Switch](/go/switch).

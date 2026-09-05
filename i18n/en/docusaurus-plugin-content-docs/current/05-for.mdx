@@ -1,0 +1,54 @@
+---
+title: For
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"For"}
+  code={`package main
+
+import "fmt"
+
+func main() {
+    i := 1
+    for i <= 3 {
+        fmt.Println(i)
+        i = i + 1
+    }
+
+    for j := 0; j < 3; j++ {
+        fmt.Println(j)
+    }
+
+    for i := range 3 {
+        fmt.Println("range", i)
+    }
+
+    for {
+        fmt.Println("loop")
+        break
+    }
+
+    for n := range 6 {
+        if n%2 == 0 {
+            continue
+        }
+        fmt.Println(n)
+    }
+}`}
+  sections={[
+    {text: "The most basic type, with a single condition."},
+    {text: "A classic initial/condition/after `for` loop."},
+    {text: "Another way of accomplishing the basic \"do this N times\" iteration is `range` over an integer."},
+    {text: "`for` without a condition will loop repeatedly until you `break` out of the loop or `return` from the enclosing function."},
+    {text: "You can also `continue` to the next iteration of the loop."},
+    {text: "Saída:\n$ go run for.go\n1\n2\n3\n0\n1\n2\nrange 0\nrange 1\nrange 2\nloop\n1\n3\n5\n\n# We'll see some other `for` forms later when we look at\n# `range` statements, channels, and other data\n# structures."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/_F2rYHNilKa" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [If/Else](/go/if-else).

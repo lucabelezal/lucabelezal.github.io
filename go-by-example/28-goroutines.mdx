@@ -28,10 +28,10 @@ func main() {
     fmt.Println("done")
 }`}
   sections={[
-    {text: "Suppose we have a function call `f(s)`. Here's how we'd call that in the usual way, running it synchronously."},
-    {text: "To invoke this function in a goroutine, use `go f(s)`. This new goroutine will execute concurrently with the calling one."},
-    {text: "You can also start a goroutine for an anonymous function call."},
-    {text: "Our two function calls are running asynchronously in separate goroutines now. Wait for them to finish (for a more robust approach, use a [WaitGroup](waitgroups))."},
+    {text: "Suponha a chamada `f(s)`. Assim a chamamos de forma síncrona."},
+    {text: "Para invocar em goroutine, use `go f(s)`. A nova goroutine executa concorrentemente com a chamadora."},
+    {text: "Também pode iniciar uma goroutine para uma função anônima."},
+    {text: "As duas chamadas rodam assincronamente em goroutines separadas. Espere terminarem (para algo robusto, use [WaitGroup](waitgroups))."},
     {text: "Saída:\n# When we run this program, we see the output of the\n# blocking call first, then the output of the two\n# goroutines. The goroutines' output may be interleaved,\n# because goroutines are being run concurrently by the\n# Go runtime.\n$ go run goroutines.go\ndirect : 0\ndirect : 1\ndirect : 2\ngoroutine : 0\ngoing\ngoroutine : 1\ngoroutine : 2\ndone\n\n# Next we'll look at a complement to goroutines in\n# concurrent Go programs: channels."}
   ]}
 />

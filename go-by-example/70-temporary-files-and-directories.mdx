@@ -1,11 +1,11 @@
 ---
-title: Temporary Files and Directories
+title: Arquivos e Diretórios Temporários
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Temporary Files and Directories"}
+  title={"Arquivos e Diretórios Temporários"}
   code={`package main
 
 import (
@@ -35,12 +35,12 @@ func main() {
     check(err)
 }`}
   sections={[
-    {text: "The easiest way to create a temporary file is by calling `os.CreateTemp`. It creates a file *and* opens it for reading and writing. We provide `\"\"` as the first argument, so `os.CreateTemp` will create the file in the default location for our OS."},
-    {text: "Display the name of the temporary file. On Unix-based OSes the directory will likely be `/tmp`. The file name starts with the prefix given as the second argument to `os.CreateTemp` and the rest is chosen automatically to ensure that concurrent calls will always create different file names."},
-    {text: "Clean up the file after we're done. The OS is likely to clean up temporary files by itself after some time, but it's good practice to do this explicitly."},
-    {text: "We can write some data to the file."},
-    {text: "If we intend to write many temporary files, we may prefer to create a temporary *directory*. `os.MkdirTemp`'s arguments are the same as `CreateTemp`'s, but it returns a directory *name* rather than an open file."},
-    {text: "Now we can synthesize temporary file names by prefixing them with our temporary directory."},
+    {text: "A forma mais fácil de criar um arquivo temporário é com `os.CreateTemp`. Ele cria o arquivo *e* já abre para leitura/escrita. Passamos `\"\"` como primeiro arg, então `os.CreateTemp` cria no diretório padrão do OS."},
+    {text: "Exiba o nome do arquivo temporário. Em Unix será `/tmp`. O nome começa com o prefixo do segundo arg e o resto é automático para garantir nomes únicos."},
+    {text: "Limpe o arquivo ao terminar. O OS deve limpar temporários após um tempo, mas é boa prática fazer explicitamente."},
+    {text: "Podemos escrever dados no arquivo."},
+    {text: "Se for escrever muitos temporários, prefira diretório temporário. Args de `os.MkdirTemp` são iguais aos de `CreateTemp`, mas retorna *nome* de diretório."},
+    {text: "Agora podemos sintetizar nomes prefixando com o diretório temporário."},
     {text: "Saída:\n$ go run temporary-files-and-directories.go\nTemp file name: /tmp/sample610887201\nTemp dir name: /tmp/sampledir898854668"}
   ]}
 />

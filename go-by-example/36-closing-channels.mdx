@@ -1,11 +1,11 @@
 ---
-title: Closing Channels
+title: Fechando Channels
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Closing Channels"}
+  title={"Fechando Channels"}
   code={`package main
 
 import "fmt"
@@ -36,10 +36,10 @@ func main() {
     fmt.Println("received more jobs:", ok)
 }`}
   sections={[
-    {text: "In this example we'll use a `jobs` channel to communicate work to be done from the `main()` goroutine to a worker goroutine. When we have no more jobs for the worker we'll `close` the `jobs` channel."},
-    {text: "Here's the worker goroutine. It repeatedly receives from `jobs` with `j, more := <-jobs`. In this special 2-value form of receive, the `more` value will be `false` if `jobs` has been `close`d and all values in the channel have already been received. We use this to notify on `done` when we've worked all our jobs."},
-    {text: "This sends 3 jobs to the worker over the `jobs` channel, then closes it."},
-    {text: "We await the worker using the [synchronization](channel-synchronization) approach we saw earlier."},
+    {text: "Neste exemplo usamos um channel `jobs` para comunicar trabalho da goroutine `main` para a worker. Quando não houver mais jobs, fazemos `close` no channel."},
+    {text: "A goroutine worker recebe repetidamente de `jobs` com `j, more := <-jobs`. Nesta forma com 2 valores, `more` será `false` se `jobs` foi fechado e todos os valores já foram recebidos. Usamos isso para notificar em `done` all our jobs."},
+    {text: "Isso envia 3 jobs para o worker via `jobs` e depois fecha o channel."},
+    {text: "Aguardamos o worker usando a abordagem de [sincronização](channel-synchronization) vista antes."},
     {text: "Saída:\n$ go run closing-channels.go \nsent job 1\nreceived job 1\nsent job 2\nreceived job 2\nsent job 3\nreceived job 3\nsent all jobs\nreceived all jobs\nreceived more jobs: false\n\n# The idea of closed channels leads naturally to our next\n# example: `range` over channels."}
   ]}
 />

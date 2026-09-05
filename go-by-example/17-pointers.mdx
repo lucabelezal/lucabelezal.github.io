@@ -1,11 +1,11 @@
 ---
-title: Pointers
+title: Ponteiros
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Pointers"}
+  title={"Ponteiros"}
   code={`package main
 
 import "fmt"
@@ -30,11 +30,11 @@ func main() {
     fmt.Println("value at *p:", *p)
 }`}
   sections={[
-    {text: "We'll show how pointers work in contrast to values with 2 functions: `zeroval` and `zeroptr`. `zeroval` has an `int` parameter, so arguments will be passed to it by value. `zeroval` will get a copy of `ival` distinct from the one in the calling function."},
-    {text: "`zeroptr` in contrast has an `*int` parameter, meaning that it takes an `int` pointer. The `*iptr` code in the function body then _dereferences_ the pointer from its memory address to the current value at that address. Assigning a value to a dereferenced pointer changes the value at the referenced address."},
-    {text: "The `&i` syntax gives the memory address of `i`, i.e. a pointer to `i`."},
-    {text: "Pointers can be printed too."},
-    {text: "A new pointer to a value can be created with the builtin function `new`."},
+    {text: "Vamos mostrar ponteiros em contraste com valores com duas funções: `zeroval` e `zeroptr`. `zeroval` recebe `int` por valor, então ganha uma cópia distinta de `ival`."},
+    {text: "`zeroptr` recebe `*int`, um ponteiro para `int`. O `*iptr` _dereferencia_ o ponteiro para o valor no endereço. Atribuir a um ponteiro dereferenciado altera o valor no endereço referenciado."},
+    {text: "A sintaxe `&i` retorna o endereço de memória de `i`, um ponteiro para `i`."},
+    {text: "Ponteiros também podem ser impressos."},
+    {text: "Um novo ponteiro pode ser criado com o builtin `new`."},
     {text: "Saída:\n# `zeroval` doesn't change the `i` in `main`, but\n# `zeroptr` does because it has a reference to\n# the memory address for that variable.\n$ go run pointers.go\ninitial: 1\nzeroval: 1\nzeroptr: 0\npointer: 0x42131100\nvalue at *p: 42\nvalue at *p: 0"}
   ]}
 />

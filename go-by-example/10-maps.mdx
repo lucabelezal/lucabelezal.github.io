@@ -37,16 +37,16 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Set key/value pairs using typical `name[key] = val` syntax."},
-    {text: "Printing a map with e.g. `fmt.Println` will show all of its key/value pairs."},
-    {text: "Get a value for a key with `name[key]`."},
-    {text: "If the key doesn't exist, the [zero value](https://go.dev/ref/spec#The_zero_value) of the value type is returned."},
-    {text: "The builtin `len` returns the number of key/value pairs when called on a map."},
-    {text: "The builtin `delete` removes key/value pairs from a map."},
-    {text: "To remove *all* key/value pairs from a map, use the `clear` builtin."},
-    {text: "The optional second return value when getting a value from a map indicates if the key was present in the map. This can be used to disambiguate between missing keys and keys with zero values like `0` or `\"\"`. Here we didn't need the value itself, so we ignored it with the _blank identifier_ `_`."},
-    {text: "You can also declare and initialize a new map in the same line with this syntax."},
-    {text: "The `maps` package contains a number of useful utility functions for maps."},
+    {text: "Defina pares chave/valor com a sintaxe `name[key] = val`."},
+    {text: "Imprimir um map com `fmt.Println` mostra todos os pares chave/valor."},
+    {text: "Obtenha o valor de uma chave com `name[key]`."},
+    {text: "Se a chave não existe, retorna o [zero value](https://go.dev/ref/spec#The_zero_value) do tipo do valor."},
+    {text: "O builtin `len` retorna o número de pares chave/valor quando chamado em um map."},
+    {text: "O builtin `delete` remove pares chave/valor de um map."},
+    {text: "Para remover *todos* os pares chave/valor de um map, use o builtin `clear`."},
+    {text: "O segundo retorno opcional ao buscar um valor no map indica se a chave existia. Isso permite distinguir entre chaves ausentes e chaves com zero values como `0` ou `\"\"`. Aqui não precisamos do valor, então ignoramos com o _blank identifier_ `_`."},
+    {text: "Você também pode declarar e inicializar um novo map na mesma linha com esta sintaxe."},
+    {text: "O pacote `maps` contém várias funções utilitárias para maps."},
     {text: "Saída:\n# Note that maps appear in the form `map[k:v k:v]` when\n# printed with `fmt.Println`.\n$ go run maps.go \nmap: map[k1:7 k2:13]\nv1: 7\nv3: 0\nlen: 2\nmap: map[k1:7]\nmap: map[]\nprs: false\nmap: map[bar:2 foo:1]\nn == n2"}
   ]}
 />

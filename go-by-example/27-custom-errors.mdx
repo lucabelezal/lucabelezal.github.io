@@ -1,11 +1,11 @@
 ---
-title: Custom Errors
+title: Erros Customizados
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Custom Errors"}
+  title={"Erros Customizados"}
   code={`package main
 
 import (
@@ -37,10 +37,10 @@ func main() {
     }
 }`}
   sections={[
-    {text: "A custom error type usually has the suffix \"Error\"."},
-    {text: "Adding this `Error` method makes `argError` implement the `error` interface."},
-    {text: "Return our custom error."},
-    {text: "`errors.AsType` is a more advanced version of `errors.Is`. It checks that a given error (or any error in its chain) matches a specific error type and converts to a value of that type, also returning `true`. If there's no match, the second return value is `false`."},
+    {text: "Um tipo de erro customizado geralmente tem sufixo \"Error\"."},
+    {text: "Adicionar o método `Error` faz `argError` implementar a interface `error`."},
+    {text: "Retorna nosso erro customizado."},
+    {text: "`errors.As` é uma versão mais avançada de `errors.Is`. Verifica se um erro na cadeia corresponde a um tipo e converte, retornando `true`. Sem match, retorna `false`."},
     {text: "Saída:\n$ go run custom-errors.go\n42\ncan't work with it"}
   ]}
 />

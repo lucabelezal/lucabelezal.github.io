@@ -1,11 +1,11 @@
 ---
-title: Errors
+title: Erros
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Errors"}
+  title={"Erros"}
   code={`package main
 
 import (
@@ -54,13 +54,13 @@ func main() {
     }
 }`}
   sections={[
-    {text: "By convention, errors are the last return value and have type `error`, a built-in interface."},
-    {text: "`errors.New` constructs a basic `error` value with the given error message."},
-    {text: "A `nil` value in the error position indicates that there was no error."},
-    {text: "A sentinel error is a predeclared variable that is used to signify a specific error condition."},
-    {text: "We can wrap errors with higher-level errors to add context. The simplest way to do this is with the `%w` verb in `fmt.Errorf`. Wrapped errors create a logical chain (A wraps B, which wraps C, etc.) that can be queried with functions like `errors.Is` and `errors.AsType`."},
-    {text: "It's idiomatic to use an inline error check in the `if` line."},
-    {text: "`errors.Is` checks that a given error (or any error in its chain) matches a specific error value. This is especially useful with wrapped or nested errors, allowing you to identify specific error types or sentinel errors in a chain of errors."},
+    {text: "Por convenção, erros são o último retorno e têm tipo `error`, uma interface embutida."},
+    {text: "`errors.New` cria um `error` básico com a mensagem dada."},
+    {text: "Um `nil` na posição de erro indica ausência de erro."},
+    {text: "Um sentinel error é uma variável pré-declarada para sinalizar uma condição específica."},
+    {text: "Podemos envolver erros com erros de nível superior para dar contexto. A forma mais simples é com `%w` em `fmt.Errorf`. Erros envolvidos formam uma cadeia consultável com `errors.Is` e `errors.As`."},
+    {text: "É idiomático verificar o erro inline no `if`."},
+    {text: "`errors.Is` verifica se um erro (ou qualquer um na cadeia) corresponde a um valor específico. Útil com erros envolvidos para identificar sentinels."},
     {text: "Saída:\n$ go run errors.go\nf worked: 10\nf failed: can't work with 42\nTea is ready!\nTea is ready!\nWe should buy new tea!\nTea is ready!\nNow it is dark."}
   ]}
 />

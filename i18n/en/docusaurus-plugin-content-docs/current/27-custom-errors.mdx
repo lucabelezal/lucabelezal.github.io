@@ -1,0 +1,52 @@
+---
+title: Custom Errors
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Custom Errors"}
+  code={`package main
+
+import (
+    "errors"
+    "fmt"
+)
+
+type argError struct {
+    arg     int
+    message string
+}
+
+func (e *argError) Error() string {
+    return fmt.Sprintf("%d - %s", e.arg, e.message)
+}
+func f(arg int) (int, error) {
+    if arg == 42 {
+        return -1, &argError{arg, "can't work with it"}
+    }
+    return arg + 3, nil
+}
+func main() {
+    _, err := f(42)
+    if ae, ok := errors.AsType[*argError](err); ok {
+        fmt.Println(ae.arg)
+        fmt.Println(ae.message)
+    } else {
+        fmt.Println("err doesn't match argError")
+    }
+}`}
+  sections={[
+    {text: "A custom error type usually has the suffix \"Error\"."},
+    {text: "Adding this `Error` method makes `argError` implement the `error` interface."},
+    {text: "Return our custom error."},
+    {text: "`errors.AsType` is a more advanced version of `errors.Is`. It checks that a given error (or any error in its chain) matches a specific error type and converts to a value of that type, also returning `true`. If there's no match, the second return value is `false`."},
+    {text: "Saída:\n$ go run custom-errors.go\n42\ncan't work with it"}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/0WHh8JFOjQq" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Goroutines](/go/goroutines).

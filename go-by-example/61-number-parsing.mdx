@@ -1,11 +1,11 @@
 ---
-title: Number Parsing
+title: Parsing de Números
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Number Parsing"}
+  title={"Parsing de Números"}
   code={`package main
 
 import (
@@ -28,13 +28,13 @@ func main() {
     fmt.Println(e)
 }`}
   sections={[
-    {text: "The built-in package `strconv` provides the number parsing."},
-    {text: "With `ParseFloat`, this `64` tells how many bits of precision to parse."},
-    {text: "For `ParseInt`, the `0` means infer the base from the string. `64` requires that the result fit in 64 bits."},
-    {text: "`ParseInt` will recognize hex-formatted numbers."},
-    {text: "A `ParseUint` is also available."},
-    {text: "`Atoi` is a convenience function for basic base-10 `int` parsing."},
-    {text: "Parse functions return an error on bad input."},
+    {text: "O pacote `strconv` faz parsing de números."},
+    {text: "Em `ParseFloat`, o `64` indica bits de precisão."},
+    {text: "Em `ParseInt`, `0` infere a base da string. `64` exige resultado em 64 bits."},
+    {text: "`ParseInt` reconhece números em hex."},
+    {text: "`ParseUint` também está disponível."},
+    {text: "`Atoi` é conveniência para parsing base 10 de `int`."},
+    {text: "Funções de parsing retornam erro em input inválido."},
     {text: "Saída:\n$ go run number-parsing.go \n1.234\n123\n456\n789\n135\nstrconv.ParseInt: parsing \"wat\": invalid syntax\n\n# Next we'll look at another common parsing task: URLs."}
   ]}
 />

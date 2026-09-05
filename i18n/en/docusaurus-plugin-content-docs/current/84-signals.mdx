@@ -1,0 +1,40 @@
+---
+title: Signals
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Signals"}
+  code={`package main
+
+import (
+    "context"
+    "fmt"
+    "os/signal"
+    "syscall"
+)
+
+func main() {
+    ctx, stop := signal.NotifyContext(
+        context.Background(), syscall.SIGINT, syscall.SIGTERM)
+    defer stop()
+    fmt.Println("awaiting signal")
+    <-ctx.Done()
+    fmt.Println()
+    fmt.Println(context.Cause(ctx))
+    fmt.Println("exiting")
+}`}
+  sections={[
+    {text: "`signal.NotifyContext` returns a context that's canceled when one of the listed signals arrives."},
+    {text: "The program will wait here until one of the configured signals is received."},
+    {text: "`context.Cause` reports why the context was canceled. For a signal-triggered cancellation, this includes the signal value."},
+    {text: "Saída:\n# When we run this program it will block waiting for a\n# signal. By typing `ctrl-C` (which the\n# terminal shows as `^C`) we can send a `SIGINT` signal,\n# causing the program to print the cancellation cause and then exit.\n$ go run signals.go\nawaiting signal\n^C\ninterrupt signal received\nexiting"}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/F3Wm7JT8wgn" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Exit](/go/exit).

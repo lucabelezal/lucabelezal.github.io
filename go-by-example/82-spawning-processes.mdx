@@ -1,11 +1,11 @@
 ---
-title: Spawning Processes
+title: Criando Processos
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Spawning Processes"}
+  title={"Criando Processos"}
   code={`package main
 
 import (
@@ -38,10 +38,10 @@ goodbye grep"))
     grepBytes, _ := io.ReadAll(grepOut)
     grepCmd.Wait()`}
   sections={[
-    {text: "We'll start with a simple command that takes no arguments or input and just prints something to stdout. The `exec.Command` helper creates an object to represent this external process."},
-    {text: "`Output` and other methods of `Command` will return `*exec.Error` if there was a problem executing the command (e.g. wrong path), and `*exec.ExitError` if the command ran but exited with a non-zero return code."},
-    {text: "Next we'll look at a slightly more involved case where we pipe data to the external process on its `stdin` and collect the results from its `stdout`."},
-    {text: "Here we explicitly grab input/output pipes, start the process, write some input to it, read the resulting output, and finally wait for the process to exit."}
+    {text: "Começamos com comando simples sem args que imprime em stdout. `exec.Command` cria objeto para o processo externo."},
+    {text: "`Output` e outros métodos retornam `*exec.Error` se houver problema ao executar (path errado) e `*exec.ExitError` se rodou mas saiu com código não-zero."},
+    {text: "Em seguida, caso mais elaborado onde enviamos dados para `stdin` e coletamos de `stdout`."},
+    {text: "Aqui pegamos pipes de input/output, iniciamos o processo, escrevemos input, lemos output e esperamos terminar."}
   ]}
 />
 

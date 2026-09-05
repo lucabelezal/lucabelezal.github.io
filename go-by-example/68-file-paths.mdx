@@ -1,11 +1,11 @@
 ---
-title: File Paths
+title: Caminhos de Arquivos
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"File Paths"}
+  title={"Caminhos de Arquivos"}
   code={`package main
 
 import (
@@ -39,14 +39,14 @@ func main() {
     fmt.Println(rel)
 }`}
   sections={[
-    {text: "The `filepath` package provides functions to parse and construct *file paths* in a way that is portable between operating systems; `dir/file` on Linux vs. `dir\\file` on Windows, for example."},
-    {text: "`Join` should be used to construct paths in a portable way. It takes any number of arguments and constructs a hierarchical path from them."},
-    {text: "You should always use `Join` instead of concatenating `/`s or `\\`s manually. In addition to providing portability, `Join` will also normalize paths by removing superfluous separators and directory changes."},
-    {text: "`Dir` and `Base` can be used to split a path to the directory and the file. Alternatively, `Split` will return both in the same call."},
-    {text: "We can check whether a path is absolute."},
-    {text: "Some file names have extensions following a dot. We can split the extension out of such names with `Ext`."},
-    {text: "To find the file's name with the extension removed, use `strings.TrimSuffix`."},
-    {text: "`Rel` finds a relative path between a *base* and a *target*. It returns an error if the target cannot be made relative to base."},
+    {text: "O pacote `filepath` fornece funções para analisar e construir *caminhos de arquivo* de forma portável entre sistemas; `dir/file` no Linux vs. `dir\\file` no Windows, por exemplo."},
+    {text: "`Join` deve ser usado para construir paths portáveis. Recebe qualquer número de args e constrói path hierárquico."},
+    {text: "Use sempre `Join` em vez de concatenar `/` ou `\\` manualmente. Além de garantir portabilidade, `Join` normaliza o path removendo separadores supérfluos e navegações de diretório."},
+    {text: "`Dir` e `Base` separam path em diretório e arquivo. `Split` retorna ambos na mesma chamada."},
+    {text: "Podemos checar se um path é absoluto."},
+    {text: "Alguns arquivos têm extensão após ponto. Use `Ext` para extrair."},
+    {text: "Para o nome sem extensão, use `strings.TrimSuffix`."},
+    {text: "`Rel` encontra path relativo entre *base* e *target*. Retorna erro se não puder tornar relativo."},
     {text: "Saída:\n$ go run file-paths.go\np: dir1/dir2/filename\ndir1/filename\ndir1/filename\nDir(p): dir1/dir2\nBase(p): filename\nfalse\ntrue\n.json\nconfig\nt/file\n../c/t/file"}
   ]}
 />

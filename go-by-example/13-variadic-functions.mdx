@@ -1,11 +1,11 @@
 ---
-title: Variadic Functions
+title: Funções Variádicas
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Variadic Functions"}
+  title={"Funções Variádicas"}
   code={`package main
 
 import "fmt"
@@ -25,10 +25,10 @@ func main() {
     sum(nums...)
 }`}
   sections={[
-    {text: "Here's a function that will take an arbitrary number of `int`s as arguments."},
-    {text: "Within the function, the type of `nums` is equivalent to `[]int`. We can call `len(nums)`, iterate over it with `range`, etc."},
-    {text: "Variadic functions can be called in the usual way with individual arguments."},
-    {text: "If you already have multiple args in a slice, apply them to a variadic function using `func(slice...)` like this."},
+    {text: "Uma função que aceita um número arbitrário de `int`s."},
+    {text: "Dentro da função, `nums` é equivalente a `[]int`. Podemos usar `len(nums)`, iterar com `range`, etc."},
+    {text: "Funções variádicas podem ser chamadas normalmente com argumentos individuais."},
+    {text: "Se já tem múltiplos args em um slice, aplique-os com `func(slice...)`."},
     {text: "Saída:\n$ go run variadic-functions.go \n[1 2] 3\n[1 2 3] 6\n[1 2 3 4] 10\n\n# Another key aspect of functions in Go is their ability\n# to form closures, which we'll look at next."}
   ]}
 />

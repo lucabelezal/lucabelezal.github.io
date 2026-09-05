@@ -1,0 +1,35 @@
+---
+title: Panic
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Panic"}
+  code={`package main
+
+import (
+    "os"
+    "path/filepath"
+)
+
+func main() {
+    panic("a problem")
+    path := filepath.Join(os.TempDir(), "file")
+    _, err := os.Create(path)
+    if err != nil {
+        panic(err)
+    }
+}`}
+  sections={[
+    {text: "We'll use panic throughout this site to check for unexpected errors. This is the only program on the site designed to panic."},
+    {text: "A common use of panic is to abort if a function returns an error value that we don't know how to (or want to) handle. Here's an example of `panic`king if we get an unexpected error when creating a new file."},
+    {text: "Saída:\n# Running this program will cause it to panic, print\n# an error message and goroutine traces, and exit with\n# a non-zero status.\n\n# When first panic in `main` fires, the program exits\n# without reaching the rest of the code. If you'd like\n# to see the program try to create a temp file, comment\n# the first panic out.\n$ go run panic.go\npanic: a problem\n\ngoroutine 1 [running]:\nmain.main()\n\\t/.../panic.go:12 +0x47\n...\nexit status 2\n\n# Note that unlike some languages which use exceptions\n# for handling of many errors, in Go it is idiomatic\n# to use error-indicating return values wherever possible."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/Z57OSC0ASwn" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Defer](/go/defer).

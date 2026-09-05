@@ -1,11 +1,11 @@
 ---
-title: HTTP Client
+title: Cliente HTTP
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"HTTP Client"}
+  title={"Cliente HTTP"}
   code={`package main
 
 import (
@@ -30,10 +30,10 @@ func main() {
     }
 }`}
   sections={[
-    {text: "The Go standard library comes with excellent support for HTTP clients and servers in the `net/http` package. In this example we'll use it to issue simple HTTP requests."},
-    {text: "Issue an HTTP GET request to a server. `http.Get` is a convenient shortcut around creating an `http.Client` object and calling its `Get` method; it uses the `http.DefaultClient` object which has useful default settings."},
-    {text: "Print the HTTP response status."},
-    {text: "Print the first 5 lines of the response body."}
+    {text: "A stdlib tem excelente suporte a clientes e servidores HTTP em `net/http`. Neste exemplo fazemos requests simples."},
+    {text: "Faça um GET. `http.Get` é atalho para criar `http.Client` e chamar `Get`; usa `http.DefaultClient` com defaults úteis."},
+    {text: "Imprima o status da resposta HTTP."},
+    {text: "Imprima as 5 primeiras linhas do body."}
   ]}
 />
 

@@ -17,9 +17,9 @@ func main() {
     fmt.Println(msg)
 }`}
   sections={[
-    {text: "Create a new channel with `make(chan val-type)`. Channels are typed by the values they convey."},
-    {text: "_Send_ a value into a channel using the `channel <-` syntax. Here we send `\"ping\"`  to the `messages` channel we made above, from a new goroutine."},
-    {text: "The `<-channel` syntax _receives_ a value from the channel. Here we'll receive the `\"ping\"` message we sent above and print it out."},
+    {text: "Crie um channel com `make(chan val-type)`. Channels são tipados pelos valores que transportam."},
+    {text: "_Envie_ um valor para um channel usando a sintaxe `channel <-`. Aqui enviamos `\"ping\"` para o channel `messages` criado acima, a partir de uma nova goroutine."},
+    {text: "A sintaxe `<-channel` _recebe_ um valor do channel. Aqui vamos receber a mensagem `\"ping\"` que enviamos acima e imprimi-la."},
     {text: "Saída:\n# When we run the program the `\"ping\"` message is\n# successfully passed from one goroutine to another via\n# our channel.\n$ go run channels.go \nping\n\n# By default sends and receives block until both the\n# sender and receiver are ready. This property allowed\n# us to wait at the end of our program for the `\"ping\"`\n# message without having to use any other synchronization."}
   ]}
 />

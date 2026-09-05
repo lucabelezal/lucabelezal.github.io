@@ -1,0 +1,31 @@
+---
+title: Channels
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Channels"}
+  code={`package main
+
+import "fmt"
+
+func main() {
+    messages := make(chan string)
+    go func() { messages <- "ping" }()
+    msg := <-messages
+    fmt.Println(msg)
+}`}
+  sections={[
+    {text: "Create a new channel with `make(chan val-type)`. Channels are typed by the values they convey."},
+    {text: "_Send_ a value into a channel using the `channel <-` syntax. Here we send `\"ping\"`  to the `messages` channel we made above, from a new goroutine."},
+    {text: "The `<-channel` syntax _receives_ a value from the channel. Here we'll receive the `\"ping\"` message we sent above and print it out."},
+    {text: "Saída:\n# When we run the program the `\"ping\"` message is\n# successfully passed from one goroutine to another via\n# our channel.\n$ go run channels.go \nping\n\n# By default sends and receives block until both the\n# sender and receiver are ready. This property allowed\n# us to wait at the end of our program for the `\"ping\"`\n# message without having to use any other synchronization."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/MaLY7AiAkHM" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Channel Buffering](/go/channel-buffering).

@@ -1,11 +1,11 @@
 ---
-title: Methods
+title: Métodos
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Methods"}
+  title={"Métodos"}
   code={`package main
 
 import "fmt"
@@ -29,10 +29,10 @@ func main() {
     fmt.Println("perim:", rp.perim())
 }`}
   sections={[
-    {text: "This `area` method has a _receiver type_ of `*rect`."},
-    {text: "Methods can be defined for either pointer or value receiver types. Here's an example of a value receiver."},
-    {text: "Here we call the 2 methods defined for our struct."},
-    {text: "Go automatically handles conversion between values and pointers for method calls. You may want to use a pointer receiver type to avoid copying on method calls or to allow the method to mutate the receiving struct."},
+    {text: "O método `area` tem _receiver_ do tipo `*rect`."},
+    {text: "Métodos podem ter receiver por valor ou ponteiro. Aqui um exemplo com receiver por valor."},
+    {text: "Aqui chamamos os 2 métodos definidos para o struct."},
+    {text: "Go converte automaticamente entre valores e ponteiros em chamadas de método. Use receiver por ponteiro para evitar cópia ou permitir mutação."},
     {text: "Saída:\n$ go run methods.go \narea:  50\nperim: 30\narea:  50\nperim: 30\n\n# Next we'll look at Go's mechanism for grouping and\n# naming related sets of methods: interfaces."}
   ]}
 />

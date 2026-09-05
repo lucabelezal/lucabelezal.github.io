@@ -43,10 +43,10 @@ func main() {
     fmt.Println(string(out))
 }`}
   sections={[
-    {text: "Plant will be mapped to XML. Similarly to the JSON examples, field tags contain directives for the encoder and decoder. Here we use some special features of the XML package: the `XMLName` field name dictates the name of the XML element representing this struct; `id,attr` means that the `Id` field is an XML _attribute_ rather than a nested element."},
-    {text: "Emit XML representing our plant; using `MarshalIndent` to produce a more human-readable output."},
-    {text: "To add a generic XML header to the output, append it explicitly."},
-    {text: "Use `Unmarshal` to parse a stream of bytes with XML into a data structure. If the XML is malformed or cannot be mapped onto Plant, a descriptive error will be returned."}
+    {text: "Plant será mapeado para XML. Como nos exemplos de JSON, tags contêm diretivas para encoder e decoder. Aqui usamos recursos especiais: `XMLName` dita o nome do elemento; `id,attr` significa que `Id` é _atributo_ XML em vez de elemento aninhado."},
+    {text: "Emita XML da nossa plant; use `MarshalIndent` para saída mais legível."},
+    {text: "Para adicionar header XML genérico, anexe explicitamente."},
+    {text: "Use `Unmarshal` para parsear XML em estrutura. Se malformado ou incompatível, retorna erro descritivo."}
   ]}
 />
 

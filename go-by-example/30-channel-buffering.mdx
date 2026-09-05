@@ -1,11 +1,11 @@
 ---
-title: Channel Buffering
+title: Buffer de Channels
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Channel Buffering"}
+  title={"Buffer de Channels"}
   code={`package main
 
 import "fmt"
@@ -18,9 +18,9 @@ func main() {
     fmt.Println(<-messages)
 }`}
   sections={[
-    {text: "Here we `make` a channel of strings buffering up to 2 values."},
-    {text: "Because this channel is buffered, we can send these values into the channel without a corresponding concurrent receive."},
-    {text: "Later we can receive these two values as usual."},
+    {text: "Aqui criamos um channel de strings com buffer para até 2 valores."},
+    {text: "Como é bufferizado, podemos enviar valores sem um receive concorrente."},
+    {text: "Depois podemos receber os dois valores normalmente."},
     {text: "Saída:\n$ go run channel-buffering.go \nbuffered\nchannel"}
   ]}
 />

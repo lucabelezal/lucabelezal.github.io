@@ -1,0 +1,44 @@
+---
+title: Range over Built-in Types
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Range over Built-in Types"}
+  code={`package main
+
+import "fmt"
+
+func main() {
+    nums := []int{2, 3, 4}
+    sum := 0
+    for _, num := range nums {
+        sum += num
+    }
+    fmt.Println("sum:", sum)
+    for i, num := range nums {
+        if num == 3 {
+            fmt.Println("index:", i)
+        }
+    }
+    for k := range kvs {
+        fmt.Println("key:", k)
+    }
+    for i, c := range "go" {
+        fmt.Println(i, c)
+    }
+}`}
+  sections={[
+    {text: "Here we use `range` to sum the numbers in a slice. Arrays work like this too."},
+    {text: "`range` on arrays and slices provides both the index and value for each entry. Above we didn't need the index, so we ignored it with the blank identifier `_`. Sometimes we actually want the indexes though."},
+    {text: "`range` can also iterate over just the keys of a map."},
+    {text: "`range` on strings iterates over Unicode code points. The first value is the starting byte index of the `rune` and the second the `rune` itself. See [Strings and Runes](strings-and-runes) for more details."}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/S171w0PjgsD" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Pointers](/go/pointers).

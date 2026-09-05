@@ -1,11 +1,11 @@
 ---
-title: Channel Directions
+title: Direção de Channels
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Channel Directions"}
+  title={"Direção de Channels"}
   code={`package main
 
 import "fmt"
@@ -25,8 +25,8 @@ func main() {
     fmt.Println(<-pongs)
 }`}
   sections={[
-    {text: "This `ping` function only accepts a channel for sending values. It would be a compile-time error to try to receive on this channel."},
-    {text: "The `pong` function accepts one channel for receives (`pings`) and a second for sends (`pongs`)."},
+    {text: "A função `ping` só aceita channel para envio. Tentar receber seria erro de compilação."},
+    {text: "A função `pong` aceita um channel para receber (`pings`) e outro para enviar (`pongs`)."},
     {text: "Saída:\n$ go run channel-directions.go\npassed message"}
   ]}
 />

@@ -1,11 +1,11 @@
 ---
-title: Reading Files
+title: Lendo Arquivos
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Reading Files"}
+  title={"Lendo Arquivos"}
   code={`package main
 
 import (
@@ -58,17 +58,17 @@ func main() {
     f.Close()
 }`}
   sections={[
-    {text: "Reading files requires checking most calls for errors. This helper will streamline our error checks below."},
-    {text: "Perhaps the most basic file reading task is slurping a file's entire contents into memory."},
-    {text: "You'll often want more control over how and what parts of a file are read. For these tasks, start by `Open`ing a file to obtain an `os.File` value."},
-    {text: "Read some bytes from the beginning of the file. Allow up to 5 to be read but also note how many actually were read."},
-    {text: "You can also `Seek` to a known location in the file and `Read` from there."},
-    {text: "Other methods of seeking are relative to the current cursor position,"},
-    {text: "and relative to the end of the file."},
-    {text: "The `io` package provides some functions that may be helpful for file reading. For example, reads like the ones above can be more robustly implemented with `ReadAtLeast`."},
-    {text: "There is no built-in rewind, but `Seek(0, io.SeekStart)` accomplishes this."},
-    {text: "The `bufio` package implements a buffered reader that may be useful both for its efficiency with many small reads and because of the additional reading methods it provides."},
-    {text: "Close the file when you're done (usually this would be scheduled immediately after `Open`ing with `defer`)."}
+    {text: "Ler arquivos exige checar erros na maioria das chamadas. Este helper simplifica as checagens."},
+    {text: "A tarefa mais básica é ler todo o conteúdo do arquivo para memória."},
+    {text: "Frequentemente quer mais controle sobre o que ler. Para isso, faça `Open` para obter um `os.File`."},
+    {text: "Leia alguns bytes do início. Permita até 5, mas note quantos realmente foram lidos."},
+    {text: "Também pode dar `Seek` para uma posição conhecida e `Read` a partir dela."},
+    {text: "Outros seeks são relativos à posição atual,"},
+    {text: "e relativos ao fim do arquivo."},
+    {text: "O pacote `io` fornece funções úteis para leitura. Por exemplo, leituras como acima ficam mais robustas com `ReadAtLeast`."},
+    {text: "Não há rewind embutido, mas `Seek(0, io.SeekStart)` faz isso."},
+    {text: "`bufio` implementa reader bufferizado, útil por eficiência com muitas leituras pequenas e por métodos adicionais."},
+    {text: "Feche o arquivo ao terminar (geralmente agendado logo após `Open` com `defer`)."}
   ]}
 />
 

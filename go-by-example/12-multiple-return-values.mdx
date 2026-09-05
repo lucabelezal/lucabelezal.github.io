@@ -1,11 +1,11 @@
 ---
-title: Multiple Return Values
+title: Múltiplos Retornos
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Multiple Return Values"}
+  title={"Múltiplos Retornos"}
   code={`package main
 
 import "fmt"
@@ -21,9 +21,9 @@ func main() {
     fmt.Println(c)
 }`}
   sections={[
-    {text: "The `(int, int)` in this function signature shows that the function returns 2 `int`s."},
-    {text: "Here we use the 2 different return values from the call with _multiple assignment_."},
-    {text: "If you only want a subset of the returned values, use the blank identifier `_`."},
+    {text: "O `(int, int)` na assinatura mostra que a função retorna 2 `int`s."},
+    {text: "Aqui usamos os 2 retornos com _multiple assignment_."},
+    {text: "Se quiser apenas um subconjunto dos retornos, use o identificador `_`."},
     {text: "Saída:\n$ go run multiple-return-values.go\n3\n7\n7\n\n# Accepting a variable number of arguments is another nice\n# feature of Go functions; we'll look at this next."}
   ]}
 />

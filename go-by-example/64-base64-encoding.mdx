@@ -1,11 +1,11 @@
 ---
-title: Base64 Encoding
+title: Codificação Base64
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Base64 Encoding"}
+  title={"Codificação Base64"}
   code={`package main
 
 import (
@@ -26,11 +26,11 @@ func main() {
     fmt.Println(string(uDec))
 }`}
   sections={[
-    {text: "This syntax imports the `encoding/base64` package with the `b64` name instead of the default `base64`. It'll save us some space below."},
-    {text: "Here's the `string` we'll encode/decode."},
-    {text: "Go supports both standard and URL-compatible base64. Here's how to encode using the standard encoder. The encoder requires a `[]byte` so we convert our `string` to that type."},
-    {text: "Decoding may return an error, which you can check if you don't already know the input to be well-formed."},
-    {text: "This encodes/decodes using a URL-compatible base64 format."},
+    {text: "Esta sintaxe importa `encoding/base64` como `b64`. Economiza espaço abaixo."},
+    {text: "Aqui a `string` que vamos codificar/decodificar."},
+    {text: "Go suporta base64 padrão e URL-safe. Veja como codificar com o encoder padrão. Ele exige `[]byte`, então convertemos a string."},
+    {text: "Decodificar pode retornar erro, que você pode checar se não souber que o input é bem formado."},
+    {text: "Isso codifica/decodifica com base64 URL-safe."},
     {text: "Saída:\n# The string encodes to slightly different values with the\n# standard and URL base64 encoders (trailing `+` vs `-`)\n# but they both decode to the original string as desired.\n$ go run base64-encoding.go\nYWJjMTIzIT8kKiYoKSctPUB+\nabc123!?$*&()'-=@~\n\nYWJjMTIzIT8kKiYoKSctPUB-\nabc123!?$*&()'-=@~"}
   ]}
 />

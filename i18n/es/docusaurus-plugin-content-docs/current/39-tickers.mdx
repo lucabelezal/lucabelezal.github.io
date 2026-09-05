@@ -1,0 +1,45 @@
+---
+title: Tickers
+---
+
+import CodeExplanation from '@site/src/components/CodeExplanation';
+
+<CodeExplanation
+  title={"Tickers"}
+  code={`package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func main() {
+    ticker := time.NewTicker(500 * time.Millisecond)
+    done := make(chan bool)
+    go func() {
+        for {
+            select {
+            case <-done:
+                return
+            case t := <-ticker.C:
+                fmt.Println("Tick at", t)
+            }
+        }
+    }()
+    time.Sleep(1600 * time.Millisecond)
+    ticker.Stop()
+    done <- true
+    fmt.Println("Ticker stopped")
+}`}
+  sections={[
+    {text: "Tickers use a similar mechanism to timers: a channel that is sent values. Here we'll use the `select` builtin on the channel to await the values as they arrive every 500ms."},
+    {text: "Tickers can be stopped like timers. Once a ticker is stopped it won't receive any more values on its channel. We'll stop ours after 1600ms."},
+    {text: "Saída:\n# When we run this program the ticker should tick 3 times\n# before we stop it.\n$ go run tickers.go\nTick at 2012-09-23 11:29:56.487625 -0700 PDT\nTick at 2012-09-23 11:29:56.988063 -0700 PDT\nTick at 2012-09-23 11:29:57.488076 -0700 PDT\nTicker stopped"}
+  ]}
+/>
+
+<a href="https://go.dev/play/p/gs6zoJP-Pl9" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
+  Run on go.dev/play
+</a>
+
+Próximo: [Worker Pools](/go/worker-pools).

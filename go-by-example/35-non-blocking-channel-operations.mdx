@@ -1,11 +1,11 @@
 ---
-title: Non-Blocking Channel Operations
+title: Operações Não-Bloqueantes em Channels
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"Non-Blocking Channel Operations"}
+  title={"Operações Não-Bloqueantes em Channels"}
   code={`package main
 
 import "fmt"
@@ -36,9 +36,9 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Here's a non-blocking receive. If a value is available on `messages` then `select` will take the `<-messages` `case` with that value. If not it will immediately take the `default` case."},
-    {text: "A non-blocking send works similarly. Here `msg` cannot be sent to the `messages` channel, because the channel has no buffer and there is no receiver. Therefore the `default` case is selected."},
-    {text: "We can use multiple `case`s above the `default` clause to implement a multi-way non-blocking select. Here we attempt non-blocking receives on both `messages` and `signals`."},
+    {text: "Um receive não-bloqueante. Se houver valor em `messages`, o `select` pega o `case <-messages`. Caso contrário, cai no `default` imediatamente."},
+    {text: "Um send não-bloqueante funciona similar. Aqui `msg` não pode ser enviado pois o channel não tem buffer nem receiver, então cai no `default`."},
+    {text: "Podemos usar múltiplos `case`s acima do `default` para um select não-bloqueante multi-way. Aqui tentamos receives não-bloqueantes em `messages` e `signals`."},
     {text: "Saída:\n$ go run non-blocking-channel-operations.go \nno message received\nno message sent\nno activity"}
   ]}
 />

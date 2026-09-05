@@ -1,11 +1,11 @@
 ---
-title: String Functions
+title: Funções de Strings
 ---
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
 <CodeExplanation
-  title={"String Functions"}
+  title={"Funções de Strings"}
   code={`package main
 
 import (
@@ -30,8 +30,8 @@ func main() {
     p("ToUpper:   ", s.ToUpper("test"))
 }`}
   sections={[
-    {text: "We alias `fmt.Println` to a shorter name as we'll use it a lot below."},
-    {text: "Here's a sample of the functions available in `strings`. Since these are functions from the package, not methods on the string object itself, we need to pass the string in question as the first argument to the function. You can find more functions in the [`strings`](https://pkg.go.dev/strings) package docs."},
+    {text: "Apelidamos `fmt.Println` para um nome mais curto, pois usaremos bastante abaixo."},
+    {text: "Aqui uma amostra das funções em `strings`. Como são funções do pacote, não métodos da string, passamos a string como primeiro argumento. Veja mais em [`strings`](https://pkg.go.dev/strings)age docs."},
     {text: "Saída:\n$ go run string-functions.go\nContains:   true\nCount:      2\nHasPrefix:  true\nHasSuffix:  true\nIndex:      1\nJoin:       a-b\nRepeat:     aaaaa\nReplace:    f00\nReplace:    f0o\nSplit:      [a b c d e]\nToLower:    test\nToUpper:    TEST"}
   ]}
 />
