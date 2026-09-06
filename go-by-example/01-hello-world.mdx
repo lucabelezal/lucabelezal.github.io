@@ -14,8 +14,12 @@ func main() {
     fmt.Println("hello world")
 }`}
   sections={[
-    {text: "Nosso primeiro programa vai imprimir a mensagem clássica \"hello world\". Aqui está o código completo."},
-    {text: "Saída:\n# To run the program, put the code in `hello-world.go` and\n# use `go run`.\n$ go run hello-world.go\nhello world\n\n# Sometimes we'll want to build our programs into\n# binaries. We can do this using `go build`.\n$ go build hello-world.go\n$ ls\nhello-world\\thello-world.go\n\n# We can then execute the built binary directly.\n$ ./hello-world\nhello world\n\n# Now that we can run and build basic Go programs, let's\n# learn more about the language."}
+    {text: "Nosso primeiro programa vai imprimir a mensagem clássica \"hello world\". Antes de executar, vamos entender a estrutura mínima de um programa Go."},
+    {text: "`package main` informa que este arquivo pertence ao pacote `main`. Em Go, esse nome tem um significado especial: ele indica que o pacote será compilado como um executável."},
+    {text: "`func main()` define a função `main`. Quando executamos um programa, o runtime do Go procura essa função e começa a execução por ela."},
+    {text: "`import \"fmt\"` declara que o programa usa o pacote `fmt`, da biblioteca padrão. Imports tornam explícito de onde vêm funções como `fmt.Println`, em vez de deixá-las disponíveis sem declaração."},
+    {text: "Essas três peças formam a base do exemplo: o pacote organiza o código, `main` marca o ponto de entrada e o import disponibiliza a funcionalidade que vamos usar. Agora podemos executá-lo e, em seguida, avançar para valores e sintaxe básica."},
+    {text: "Saída:\n# Para executar o programa, coloque o código em `hello-world.go`\n# e use `go run`.\n$ go run hello-world.go\nhello world\n\n# Também podemos compilar o programa em um binário com `go build`.\n$ go build hello-world.go\n$ ls\nhello-world\\thello-world.go\n\n# Depois, executamos o binário diretamente.\n$ ./hello-world\nhello world"}
   ]}
 />
 
