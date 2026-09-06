@@ -4,8 +4,10 @@ title: Sinais
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+O SO se comunica com processos por **sinais**: `Ctrl+C` envia `SIGINT`, `kill` envia `SIGTERM`, e um processo que não trata morre na hora. Para um servidor, morrer na hora é ruim — você quer **parar com elegância**: terminar o request em andamento, fechar conexões, salvar estado. O `os/signal` captura esses sinais e o padrão moderno é um `signal.NotifyContext`: um context que é cancelado quando o sinal chega.
+
 <CodeExplanation
-  title={"Sinais"}
+  title={"signals.go"}
   code={`package main
 
 import (
@@ -26,13 +28,70 @@ func main() {
     fmt.Println("exiting")
 }`}
   sections={[
-    {text: "`signal.NotifyContext` retorna context cancelado quando um dos sinais chega."},
-    {text: "O programa espera aqui até um dos sinais ser recebido."},
-    {text: "`context.Cause` reporta por que o context foi cancelado. Para sinais, inclui o valor do sinal."},
-    {text: "Saída:\n# When we run this program it will block waiting for a\n# signal. By typing `ctrl-C` (which the\n# terminal shows as `^C`) we can send a `SIGINT` signal,\n# causing the program to print the cancellation cause and then exit.\n$ go run signals.go\nawaiting signal\n^C\ninterrupt signal received\nexiting"}
+    {text: "`signal.NotifyContext(ctx, SIGINT, SIGTERM)` cria um context que é **cancelado quando um desses sinais chega**. `stop()` (no `defer`) restaura o comportamento padrão dos sinais."},
+    {text: "`<-ctx.Done()` bloqueia até o sinal. Enquanto isso, o programa poderia estar servindo requests — o `Done` é o gancho para começar o shutdown."},
+    {text: "`context.Cause(ctx)` diz **por que** cancelou — para sinais, inclui o valor (`interrupt signal received` para SIGINT). Útil para logar o motivo."},
+    {text: "Saída (real — `Ctrl+C` envia SIGINT):\n$ go run signals.go\nawaiting signal\n^C\ninterrupt signal received\nexiting"}
   ]}
 />
 
-<a href="https://go.dev/play/p/F3Wm7JT8wgn" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O padrão de graceful shutdown
+
+No mundo real, o sinal não encerra o programa direto — ele dispara o **shutdown**:
+
+```go
+func main() {
+    ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+    defer stop()
+
+    srv := &http.Server{Addr: ":8090", Handler: mux}
+
+    go func() {
+        <-ctx.Done()                       // sinal chegou
+        ctxShutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+        defer cancel()
+        srv.Shutdown(ctxShutdown)          // para de aceitar e espera requests (página [Servidor HTTP](http-server))
+    }()
+
+    log.Fatal(srv.ListenAndServe())
+}
+```
+
+O `SIGTERM` (default do `docker stop`/orquestradores) e o `SIGINT` (`Ctrl+C`) são os dois sinais de "pare"; tratar os dois cobre dev e prod. Por isso `kill <pid>` sem flag manda SIGTERM — e o processo tratá-lo significa que o container para de forma limpa.
+
+## Sinais comuns que importam
+
+| Sinal | Origem | Significado |
+|---|---|---|
+| `SIGINT` | `Ctrl+C` no terminal | Interrupção |
+| `SIGTERM` | `kill`, orquestradores | Pede para terminar (o padrão) |
+| `SIGHUP` | terminal fechou / reload | Recarregar config ou morrer |
+| `SIGKILL` | `kill -9` | Mata — **não dá para capturar** |
+| `SIGQUIT` | `Ctrl+\` | Termina e despeja stack (dump) |
+
+`SIGKILL` e `SIGSTOP` não podem ser capturados — não adianta tratar. O resto, `NotifyContext` cobre.
+
+## Em código real
+
+- **Servidores**: parar de aceitar novas conexões + `Shutdown` com timeout (requests em voo terminam).
+- **Workers**: o `ctx.Done()` sinaliza as goroutines para terminarem — o padrão das quatro perguntas de [Ciclo de Vida de Goroutines](goroutine-lifecycle).
+- **CLIs**: `Ctrl+C` interrompe uma operação longa de forma limpa.
+- Filhos de `exec.CommandContext` (página [Criando Processos](spawning-processes)) morrem junto quando o context cancela.
+
+## Armadilhas comuns
+
+- **`stop()` esquecido**: sem `defer stop()`, o programa continua capturando o sinal (e o `Ctrl+C` deixa de matá-lo). Restaure sempre.
+- **Tratar só `SIGINT`**: em prod o orquestrador manda `SIGTERM`. Trate os dois.
+- **Achar que `SIGKILL` dá para tratar**: não. `kill -9` é o último recurso; o graceful shutdown é para `TERM`/`INT`.
+- **Fazer trabalho longo no handler do sinal sem timeout**: o `Shutdown` pode travar esperando. Timeout no `ctxShutdown`.
+- **Capturar sinal e não propagar**: se o sinal deve parar as goroutines, propague o `ctx` (não crie um `Background` novo no meio — página [Context](context)).
+
+## Pratique
+
+1. **Reproduza**: rode `signals.go` e envie `Ctrl+C`; depois rode em background e `kill -TERM <pid>` (mesma saída, sinal diferente).
+2. **Modifique**: capture `SIGHUP` também e imprima qual sinal chegou usando `context.Cause`.
+3. **Aplique**: integre o padrão ao [Servidor HTTP](http-server): suba o servidor, `Ctrl+C` e observe o shutdown — adicione um log em `srv.Shutdown`.
+
+## Próximo passo
+
+O programa tratou o sinal e decidiu terminar — mas como terminar **com o código certo**? Em [Exit](exit), o `os.Exit`, por que ele não roda `defer`s, e o papel do exit code no Unix.

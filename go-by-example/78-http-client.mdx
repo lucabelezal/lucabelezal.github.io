@@ -4,8 +4,10 @@ title: Cliente HTTP
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Falar com uma API, baixar uma página, chamar um serviço: todo programa de rede começa no **cliente HTTP**. A stdlib (`net/http`) traz um cliente completo — `http.Get` para o caso simples, `http.Client` configurável quando você precisa de timeout, headers e reuso de conexão.
+
 <CodeExplanation
-  title={"Cliente HTTP"}
+  title={"http-client.go"}
   code={`package main
 
 import (
@@ -30,13 +32,60 @@ func main() {
     }
 }`}
   sections={[
-    {text: "A stdlib tem excelente suporte a clientes e servidores HTTP em `net/http`. Neste exemplo fazemos requests simples."},
-    {text: "Faça um GET. `http.Get` é atalho para criar `http.Client` e chamar `Get`; usa `http.DefaultClient` com defaults úteis."},
-    {text: "Imprima o status da resposta HTTP."},
-    {text: "Imprima as 5 primeiras linhas do body."}
+    {text: "`http.Get(url)` dispara um GET e devolve `(resp, err)`. O `err` cobre falhas de rede/URL; um status 404 **não** é erro — vem na `resp`."},
+    {text: "`defer resp.Body.Close()` — o body é um `io.ReadCloser`; fechar evita vazar a conexão."},
+    {text: "`resp.Status` traz a linha de status (`200 OK`). `resp.StatusCode` traz só o número (para comparar com `http.StatusOK`)."},
+    {text: "O body é um stream: aqui lemos as 5 primeiras linhas com um `bufio.Scanner` (página [Filtros de Linha](line-filters))."},
+    {text: "Saída (uma execução):\n$ go run http-client.go\nResponse status: 200 OK\n<!DOCTYPE html>\n<html>\n  <head>\n    <meta charset=\"utf-8\">\n    <title>Go by Example</title>\n\n# O conteúdo do body é o HTML real da página; as 5 primeiras\n# linhas bastam para o exemplo."}
   ]}
 />
 
-<a href="https://go.dev/play/p/vFW_el7oHMk" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O contrato: feche o Body e trate o status
+
+Dois reflexos obrigatórios:
+
+- **`defer resp.Body.Close()`** sempre — mesmo para ler 5 linhas. Body não fechado = conexão não reutilizada.
+- **Trate o status como dado**: `http.Get` não falha em `404`/`500`. Verifique `resp.StatusCode` e decida (ou use `http.Error`-style checks). Para erro de transporte (DNS, conexão), aí sim o `err` importa.
+
+O body é um `io.Reader`. Isso abre as portas: ler o HTML linha a linha (como aqui), ou decodificar JSON direto do body:
+
+```go
+var resultado MeuTipo
+err := json.NewDecoder(resp.Body).Decode(&resultado) // página [JSON](json)
+```
+
+## O default não tem timeout — configure
+
+`http.Get` usa o `http.DefaultClient`, que **não tem timeout**: uma chamada pode travar para sempre se o servidor não responder. Em produção, crie seu próprio cliente:
+
+```go
+client := &http.Client{Timeout: 10 * time.Second}
+resp, err := client.Get(url)
+```
+
+O `http.Client` também concentra transporte (reuso de conexão, TLS), redirects e cookies — o padrão para serviços que falam com APIs.
+
+## Em código real
+
+- **Timeouts sempre**: rede é não-confiável; `client.Timeout` é o mínimo.
+- **Respeitar a API**: envie headers (`client.Do` + `req.Header.Set`), aceite gzip, use os métodos certos (`POST` com body via `http.NewRequest`).
+- **Não criar cliente por request**: um `http.Client` por serviço (reuso de conexão); `http.Get` no laço cria conexão nova toda hora.
+- **Cancelamento**: a página [Context](context) mostra o `ctx` viajando no request para abortar quando o chamador desiste.
+
+## Armadilhas comuns
+
+- **Esquecer de fechar o Body**: conexão presa. `defer`, sempre.
+- **Achar que status ≠ 200 é erro**: `http.Get` devolve `err` só para falha de transporte. `404` chega como `resp` com `StatusCode` 404.
+- **Sem timeout**: o `DefaultClient` pode travar. Configure `Timeout`.
+- **Ignorar `resp.Body` em POST**: se você não lê/fecha o body de uma resposta, a conexão não é reutilizada (keep-alive quebra).
+- **Cliente novo por request**: perde reuso de conexão e sockets. Um cliente por serviço.
+
+## Pratique
+
+1. **Reproduza**: rode `http-client.go` e observe o status e as primeiras linhas do HTML.
+2. **Modifique**: adicione um cliente com `Timeout` e trate um `err` de conexão (use uma porta que não escuta). Depois imprima só `resp.StatusCode`.
+3. **Aplique**: chame uma API de teste que devolve JSON e decodifique com `json.NewDecoder(resp.Body)` num struct — fechando o body e tratando o status.
+
+## Próximo passo
+
+Clientes falam; agora quem **escuta**. Em [Servidor HTTP](http-server), handlers, o mux padrão e o `ListenAndServe` — o outro lado da mesma moeda `net/http`.

@@ -4,8 +4,10 @@ title: Defer
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Você abriu um arquivo e precisa fechá-lo **quando a função terminar** — seja por sucesso ou por erro. Em vez de espalhar `f.Close()` em cada `return`, o **`defer`** adia uma chamada para o fim da função atual. É a ferramenta de *cleanup* do Go: fechar recursos, destravar mutexes, garantir que algo roda mesmo com `panic` no meio.
+
 <CodeExplanation
-  title={"Defer"}
+  title={"defer.go"}
   code={`package main
 
 import (
@@ -40,13 +42,70 @@ func closeFile(f *os.File) {
     }
 }`}
   sections={[
-    {text: "Suponha criar um arquivo, escrever e fechar ao terminar. Veja como fazer com `defer`."},
-    {text: "Logo após obter o arquivo com `createFile`, adiamos o fechamento com `closeFile`. Isso executa no fim de `main`, após `writeFile`."},
-    {text: "É importante checar erros ao fechar arquivo, mesmo em função adiada."},
-    {text: "Saída:\n# Running the program confirms that the file is closed\n# after being written.\n$ go run defer.go\ncreating\nwriting\nclosing"}
+    {text: "`f := createFile(path)` abre (ou cria) o arquivo. A partir daqui, `f` é um recurso que precisa ser liberado."},
+    {text: "`defer closeFile(f)` **adiamos** o fechamento para o fim de `main` — logo após obtê-lo. Se `writeFile` falhar ou der panic no meio, o closeFile ainda roda."},
+    {text: "`writeFile(f)` faz o trabalho. Quando `main` termina (qualquer caminho), o `closeFile` adiado executa."},
+    {text: "Fechar arquivo pode falhar (flush de disco) — cheque o erro até no `defer`. Panic aqui é aceitável porque fechar depois de escrever raramente falha."},
+    {text: "Saída:\n$ go run defer.go\ncreating\nwriting\nclosing\n\n# \"closing\" sai por último, mesmo sendo declarado antes de\n# \"writeFile\". O defer adia para o fim."}
   ]}
 />
 
-<a href="https://go.dev/play/p/9_sJ5XnikSw" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Ordem: LIFO
+
+`defer`s empilham — e executam na **ordem inversa** da declaração (LIFO):
+
+```go
+defer fmt.Println("primeiro") // declarado primeiro...
+defer fmt.Println("segundo")  // declarado segundo
+// imprime: segundo, depois primeiro
+```
+
+Útil quando recursos dependem uns dos outros: fechar na ordem inversa da abertura (conexão por cima, transação, arquivo...). É o padrão de cleanup natural: abriu A depois B → fecha B antes de A.
+
+## Argumentos são avaliados na hora do `defer`
+
+O `defer` captura os **argumentos imediatamente**, não no fim da função:
+
+```go
+x := 1
+defer fmt.Println(x) // imprime 1, não 2
+x = 2
+```
+
+Se você quer que o defer veja o valor **no momento da execução**, capture por closure:
+
+```go
+x := 1
+defer func() { fmt.Println(x) }() // imprime 2 — o closure vê a variável
+x = 2
+```
+
+(É a diferença entre cópia do argumento e captura por referência — o mecanismo de [Closures](closures).)
+
+## `defer` e o `return`
+
+O defer roda **depois** do `return` ser avaliado, mas **antes** de devolver ao chamador. Detalhe fino: com **retorno nomeado** (de [Múltiplos Retornos](multiple-return-values)), um defer consegue modificar o valor de retorno — o padrão de [Recover](recover) usa isso para transformar panic em `error`.
+
+## Em código real
+
+- **Fechar recursos**: `defer f.Close()`, `defer resp.Body.Close()`, `defer db.Close()` — sempre logo após abrir.
+- **Destravar mutex**: `defer c.mu.Unlock()` logo após `Lock()` (você já viu em [Mutexes](mutexes)).
+- **Medir tempo / logging**: `defer func() { fmt.Println("levou", time.Since(t)) }()`.
+- O custo de `defer` é mínimo desde o Go 1.14 (quase zero) — use sem culpa em código normal.
+
+## Armadilhas comuns
+
+- **`defer` dentro de um `for`**: os defers acumulam e só rodam quando a **função** termina — 10 mil iterações = 10 mil arquivos abertos até o fim. Se o recurso é por iteração, feche dentro do loop (sem `defer`) ou mova o corpo para uma função auxiliar que usa `defer`.
+- **Avaliação de argumento no momento errado**: `defer f.Close()` captura `f` na hora (correto aqui); mas `defer fmt.Println(contador)` num laço imprime sempre o valor de quando foi declarado — use closure se precisar do valor final.
+- **Esquecer que é LIFO**: fechar transação antes da conexão, por exemplo, pode quebrar a ordem correta de rollback/commit.
+- **Chamar método em ponteiro `nil` no defer**: `defer p.Close()` com `p == nil` panica no fim da função. Se o ponteiro pode ser `nil`, trate dentro de um closure com checagem.
+
+## Pratique
+
+1. **Reproduza**: rode `defer.go` e confirme a ordem `creating → writing → closing`.
+2. **Modifique**: adicione um segundo `defer` (ex.: `defer fmt.Println("fim")`) e observe a ordem LIFO. Depois rode `defer` dentro de um `for range 3` e veja que tudo imprime só no fim.
+3. **Aplique**: reescreva o `inc` de [Mutexes](mutexes) — e depois escreva uma função que abre um arquivo, registra `defer f.Close()` e retorna cedo num erro; confirme que o arquivo fecha nos dois caminhos.
+
+## Próximo passo
+
+O `defer` também é a porta de entrada do [Recover](recover): dentro de uma função adiada, ele intercepta o panic — transformando uma queda do programa num `error` tratável.

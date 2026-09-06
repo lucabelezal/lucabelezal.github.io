@@ -4,8 +4,10 @@ title: Strings e Runes
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Em Go, uma `string` **não** é uma lista de caracteres: é uma sequência de **bytes** — e por padrão esses bytes formam texto **UTF-8**. Um caractere (um *code point* Unicode) pode ocupar 1 a 4 bytes. Por isso `len("สวัสดี")` é 18 enquanto a palavra tem 6 caracteres. Para falar de "caracteres", Go usa o tipo **`rune`** (um alias de `int32`): cada rune é um ponto do texto. Esta página mostra a diferença — e por que `range` é o jeito certo de percorrer texto.
+
 <CodeExplanation
-  title={"Strings e Runes"}
+  title={"strings-and-runes.go"}
   code={`package main
 
 import (
@@ -40,18 +42,64 @@ func examineRune(r rune) {
     }
 }`}
   sections={[
-    {text: "`s` é uma `string` com o literal da palavra \"olá\" em tailandês. Literais de string em Go são UTF-8."},
-    {text: "Como strings equivalem a `[]byte`, isso retorna o tamanho em bytes brutos."},
-    {text: "Indexar uma string retorna os bytes brutos. Este loop gera os valores hex de todos os bytes que formam os code points em `s`."},
-    {text: "Para contar _runes_ em uma string, use o pacote `utf8`. O tempo de `RuneCountInString` depende do tamanho, pois decodifica cada rune sequencialmente. Alguns caracteres tailandeses ocupam múltiplos bytes, então o resultado pode surpreender."},
-    {text: "Um loop `range` trata strings de forma especial, decodificando cada `rune` com seu offset."},
-    {text: "Podemos fazer a mesma iteração usando explicitamente `utf8.DecodeRuneInString`."},
-    {text: "Isso demonstra passar um `rune` para uma função."},
-    {text: "Valores entre aspas simples são _rune literals_. Podemos comparar um `rune` diretamente com um literal."},
-    {text: "Saída:\n$ go run strings-and-runes.go\nLen: 18\ne0 b8 aa e0 b8 a7 e0 b8 b1 e0 b8 aa e0 b8 94 e0 b8 b5 \nRune count: 6\nU+0E2A 'ส' starts at 0\nU+0E27 'ว' starts at 3\nU+0E31 'ั' starts at 6\nU+0E2A 'ส' starts at 9\nU+0E14 'ด' starts at 12\nU+0E35 'ี' starts at 15\n\nUsing DecodeRuneInString\nU+0E2A 'ส' starts at 0\nfound so sua\nU+0E27 'ว' starts at 3\nU+0E31 'ั' starts at 6\nU+0E2A 'ส' starts at 9\nfound so sua\nU+0E14 'ด' starts at 12\nU+0E35 'ี' starts at 15"}
+    {text: "`s = \"สวัสดี\"` — \"olá\" em tailandês. Literais de string em Go são **UTF-8**: alguns caracteres ocupam vários bytes."},
+    {text: "`len(s)` conta **bytes**, não caracteres: 18. Como strings equivalem a `[]byte`, é o tamanho em bytes brutos."},
+    {text: "Indexar `s[i]` devolve o **byte** i. O laço imprime os 18 bytes em hex — veja como cada caractere vira 3 bytes."},
+    {text: "`utf8.RuneCountInString(s)` conta os **runes**: 6. Decodifica sequencialmente, então custo proporcional ao tamanho."},
+    {text: "`range` sobre string é especial: decodifica cada rune e devolve `(byte offset, rune)`. Cada rune de 3 bytes \"começa\" num offset 0, 3, 6..."},
+    {text: "A mesma iteração manual com `utf8.DecodeRuneInString`: devolve o rune e a **largura** em bytes; `i += w` pula exatamente o que o rune ocupa."},
+    {text: "Um `rune` pode ser passado a funções e comparado."},
+    {text: "Aspas simples `'ส'` são *rune literals* — compare com `==` direto."},
+    {text: "Saída:\n$ go run strings-and-runes.go\nLen: 18\ne0 b8 aa e0 b8 a7 e0 b8 b1 e0 b8 aa e0 b8 94 e0 b8 b5\nRune count: 6\nU+0E2A 'ส' starts at 0\nU+0E27 'ว' starts at 3\nU+0E31 'ั' starts at 6\nU+0E2A 'ส' starts at 9\nU+0E14 'ด' starts at 12\nU+0E35 'ี' starts at 15\n\nUsing DecodeRuneInString\nU+0E2A 'ส' starts at 0\nfound so sua\nU+0E27 'ว' starts at 3\nU+0E31 'ั' starts at 6\nU+0E2A 'ส' starts at 9\nfound so sua\nU+0E14 'ด' starts at 12\nU+0E35 'ี' starts at 15"}
   ]}
 />
 
 <a href="https://go.dev/play/p/-iNDXZ9IM3s" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## String por dentro: bytes UTF-8
+
+Uma string é um **header** (ponteiro + len) para bytes **imutáveis** e **somente leitura**. Quando você escreve `"สวัสดี"`, o compilador grava os bytes UTF-8 dessa palavra — e é isso que a string guarda. Nenhum "índice de caractere" existe: há apenas posições de bytes.
+
+- `len(s)` → 18 (bytes)
+- 6 caracteres → cada um 3 bytes → offsets 0, 3, 6, 9, 12, 15
+
+Se você indexar `s[1]`, pega o **segundo byte** de um caractere de 3 bytes — um valor que, isolado, não é um caractere válido. É por isso que andar por string com `for i := 0; i < len(s); i++` quase nunca é o que você quer para texto.
+
+## `rune` = um ponto do texto
+
+`rune` é um alias de `int32` — um *code point* Unicode. `'ส'` (aspas simples) é um literal de rune. O `range` e o `DecodeRuneInString` fazem o mesmo trabalho: achar o próximo rune começando numa posição de byte. A diferença prática:
+
+- **`range`** — quando você só quer percorrer o texto (a escolha certa na maioria das vezes).
+- **`utf8.DecodeRuneInString`** — quando precisa controlar o avanço manualmente (ex.: pular, validar, ou olhar o próximo sem consumir).
+- **Indexar com `s[i]`** — quando o texto é ASCII puro e você quer bytes mesmo, ou quando está processando os bytes crus.
+
+`%#U` imprime o rune no formato `U+0E2A 'ส'` — útil para debugar Unicode.
+
+## Em código real
+
+Strings aparecem em toda parte — JSON, HTTP, arquivos — e quase sempre como UTF-8. Regras que evitam dor:
+
+- **Conte caracteres com `utf8.RuneCountInString`**, nunca com `len` (a não ser que você queira bytes).
+- **Percorra com `range`**, não com índice, para não cortar um caractere no meio.
+- **Textos ASCII** (identificadores, códigos, logs simples) têm 1 byte por rune — aí `len` e índice funcionam como o esperado; o problema só aparece com acentos, emojis e outros alfabetos.
+- Para **concatenar muito** texto, `+` recria a string a cada vez; o padrão de performance é `strings.Builder` (detalhe em [Funções de Strings](string-functions)).
+
+## Armadilhas comuns
+
+- **`len` para contar caracteres**: `len(\"olá\")` é 4 (o `á` tem 2 bytes), não 3. Conte runes.
+- **Indexar no meio de um rune**: `s[1]` num caractere multibyte devolve um byte inválido isolado — sem erro, só dado errado.
+- **Iterar por índice em texto não-ASCII**: imprime bytes quebrados. Use `range` ou `DecodeRuneInString`.
+- **Tratar string como `[]byte` e vice-versa**: conversões `string(bs)` e `[]byte(s)` **copiam** — não são views gratuitas. Em laços quentes, evite converter a cada iteração.
+- **Esquecer que string é imutável**: `s[0] = 'x'` não compila. Para "editar", construa uma nova (ou `[]byte` mutável).
+
+## Pratique
+
+1. **Reproduza**: rode `strings-and-runes.go` e confira que `สวัสดี` tem 18 bytes e 6 runes, com offsets 0,3,6...
+2. **Modifique**: troque a constante por `\"olá, mundo\"` (com acento) e `\"héllo\"` — observe `len` vs `RuneCount`. Depois adicione um emoji (4 bytes) e veja o offset pular de 4.
+3. **Aplique**: escreva `func inverter(s string) string` que inverte os **runes** (use `[]rune(s)` — converter para `[]rune` decodifica tudo) e teste com `"olá"` → `"álo"`.
+
+## Próximo passo
+
+Bytes, runes e offsets resolvidos — você já domina os blocos para modelar dados: do texto aos **structs**. Em [Structs](structs) você agrupa campos relacionados numa única entidade, a fundação de quase todo tipo em Go.

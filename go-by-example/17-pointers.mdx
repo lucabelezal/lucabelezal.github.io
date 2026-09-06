@@ -4,8 +4,10 @@ title: Ponteiros
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Quando uma função precisa **mudar** um valor que vive fora dela, um valor copiado não serve — a função precisa saber *onde* o dado está. Pense num banco: para mostrar ao cliente uma simulação de saldo, você pode trabalhar com uma cópia; mas para registrar um depósito, a função precisa acessar o saldo **real**, não uma cópia. O *ponteiro* resolve isso: em vez de enviar o dado, você envia o **endereço** dele na memória. É o assunto que mais confunde quem vem de Python, Java ou JavaScript — e, em Go, é mais simples e seguro do que parece.
+
 <CodeExplanation
-  title={"Ponteiros"}
+  title={"pointers.go"}
   code={`package main
 
 import "fmt"
@@ -24,21 +26,131 @@ func main() {
     zeroptr(&i)
     fmt.Println("zeroptr:", i)
     fmt.Println("pointer:", &i)
-    p := new(42)
+    p := new(int)
+    *p = 42
     fmt.Println("value at *p:", *p)
     zeroptr(p)
     fmt.Println("value at *p:", *p)
 }`}
   sections={[
-    {text: "Vamos mostrar ponteiros em contraste com valores com duas funções: `zeroval` e `zeroptr`. `zeroval` recebe `int` por valor, então ganha uma cópia distinta de `ival`."},
-    {text: "`zeroptr` recebe `*int`, um ponteiro para `int`. O `*iptr` _dereferencia_ o ponteiro para o valor no endereço. Atribuir a um ponteiro dereferenciado altera o valor no endereço referenciado."},
-    {text: "A sintaxe `&i` retorna o endereço de memória de `i`, um ponteiro para `i`."},
-    {text: "Ponteiros também podem ser impressos."},
-    {text: "Um novo ponteiro pode ser criado com o builtin `new`."},
-    {text: "Saída:\n# `zeroval` doesn't change the `i` in `main`, but\n# `zeroptr` does because it has a reference to\n# the memory address for that variable.\n$ go run pointers.go\ninitial: 1\nzeroval: 1\nzeroptr: 0\npointer: 0x42131100\nvalue at *p: 42\nvalue at *p: 0"}
+    {text: "`zeroval` recebe um `int` — uma **cópia**. Mudar `ival` dentro da função altera só a cópia; o `i` do chamador fica intacto."},
+    {text: "`zeroptr` recebe um `*int`, ponteiro para `int`. O `*iptr` **desreferencia**: lê (ou escreve) o valor que está no endereço apontado. Atribuir `*iptr = 0` muda o `i` original."},
+    {text: "`&i` é o operador *address-of*: devolve o endereço de `i`. É o que convertemos em ponteiro para entregar à função."},
+    {text: "Imprimir um ponteiro mostra um endereço de memória (hexadecimal). Ele varia a cada execução e não serve para leitura humana — só o usamos para alcançar o valor."},
+    {text: "`new(int)` cria um ponteiro para um `int` zerado. Em seguida `*p = 42` escreve o valor **através** do ponteiro, no endereço que ele guarda."},
+    {text: "`zeroptr(p)` zera o mesmo inteiro apontado por `p`: depois da chamada, `*p` vale 0."},
+    {text: "Saída:\n$ go run pointers.go\ninitial: 1\nzeroval: 1\nzeroptr: 0\npointer: 0x7ac08878e020\nvalue at *p: 42\nvalue at *p: 0\n\n# O endereço impresso em \"pointer:\" muda a cada execução."}
   ]}
 />
 
 <a href="https://go.dev/play/p/B928SrV-F9M" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Go é sempre passagem por valor — o ponteiro muda isso
+
+Go **sempre** copia os argumentos ao chamar uma função. A pergunta não é "passo por valor ou por referência?", e sim: **o que estou copiando?**
+
+- Se copio um `int`, mudo a cópia — o original não muda.
+- Se copio um **ponteiro** (que é só um endereço), a função ganha uma cópia do endereço — e através dele alcança e altera o dado original.
+
+Os dois operadores são as duas faces da mesma moeda: `&x` **pega o endereço** de `x`; `*p` **segue o endereço** para ler ou escrever o valor que está lá. O tipo `*int` se lê "ponteiro para `int`". O *zero value* de qualquer ponteiro é `nil` — aponta para lugar nenhum.
+
+O exemplo clássico é a troca de valores:
+
+<CodeExplanation
+  title={"troca.go"}
+  code={`package main
+
+import "fmt"
+
+func trocaSemPonteiro(a, b int) {
+    a, b = b, a
+}
+
+func troca(a, b *int) {
+    *a, *b = *b, *a
+}
+
+func main() {
+    x, y := 1, 2
+
+    trocaSemPonteiro(x, y)
+    fmt.Println("sem ponteiro:", x, y)
+
+    troca(&x, &y)
+    fmt.Println("com ponteiro:", x, y)
+}`}
+  sections={[
+    {text: "`trocaSemPonteiro` troca as **cópias** locais. A troca acontece dentro da função e some no `return` — o chamador não vê nada."},
+    {text: "`troca` recebe dois ponteiros. `*a, *b = *b, *a` troca os valores **nos endereços**: escreve em `*a` o valor de `*b` e vice-versa."},
+    {text: "Na chamada passamos os endereços com `&` — nunca `x` e `y` crus. A função precisa do *onde*, não do *quê*."},
+    {text: "Saída:\n$ go run troca.go\nsem ponteiro: 1 2\ncom ponteiro: 2 1"}
+  ]}
+/>
+
+## Quando usar ponteiro (e quando não)
+
+O instinto saudável em Go é o **oposto** do de C: comece sem ponteiro e adicione só quando existe um motivo real. Use ponteiro quando:
+
+- **Precisa mutar o original** — o caso do `troca` e de setters.
+- O **struct é grande** e copiar dezenas de campos a cada chamada é caro (dezenas de bytes → fica na stack, cópia barata; structs com slices, maps e strings por dentro são só headers — copiar o header não copia o conteúdo).
+- Quer expressar **ausência**: um campo `*string` pode ser `nil` ("não informado"), enquanto `""` é ambíguo entre vazio e ausente.
+- O método **muta o receiver** (página de [Métodos](methods)).
+
+Não use quando:
+
+- O tipo **já carrega referência interna**: `slice`, `map`, `channel`, função e interface. Slices e maps já apontam para os dados; você não precisa de `*[]int`. Cuidado com a exceção do `append`, que pode realocar e devolver outro slice — por isso a assinatura idiomática é `func f(s []int) []int`, **devolvendo** o slice, não recebendo `*[]int` (detalhe na página de [Slices](slices)).
+- Só vai **ler** o valor — receba por valor: fica explícito que não há efeito colateral.
+- Quer "otimizar" sem medir. Ponteiro às vezes **piora**: se o compilador vê que o ponteiro escapa da função, aloca no *heap* e gera trabalho para o coletor de lixo; uma struct pequena por valor fica na stack, sem GC.
+
+## `nil`: o ponteiro que não aponta para nada
+
+Dereferenciar um ponteiro `nil` derruba o programa em runtime:
+
+```go
+var u *Usuario // nil
+fmt.Println(u.Nome) // panic: runtime error: invalid memory address or nil pointer dereference
+```
+
+Quando o ponteiro pode vir `nil` (de uma busca, de um JSON, de uma função que "talvez" retorne), cheque antes de usar:
+
+```go
+if u != nil {
+    fmt.Println(u.Nome)
+}
+```
+
+Esse *panic* e a arte de tratá-lo são explorados em [Panic](panic) e [Erros](errors).
+
+## `new(T)`, `&T{}` e retornar endereço local
+
+Duas formas de obter um ponteiro:
+
+```go
+p := new(int)             // *int apontando para um int zerado
+u := &Usuario{Nome: "Ana"} // *Usuario, já inicializado — o idiomático
+```
+
+`new(T)` é raro em código real; `&T{...}` domina. E, diferente de C, **retornar o endereço de uma variável local é seguro**: o compilador percebe (via *escape analysis*) que o valor escapa da função e o move para o heap, onde o coletor de lixo cuida do ciclo de vida. É exatamente o que o `newPerson` de [Structs](structs) faz.
+
+## Ponteiros e concorrência: o aviso
+
+Compartilhar um ponteiro mutável entre **goroutines** sem sincronização é *data race*: comportamento indefinido que só aparece sob carga. A regra do Go é "não compartilhe memória comunicando; comunique compartilhando memória" — detalhe que você vai enfrentar no bloco de [Goroutines](goroutines).
+
+## Armadilhas comuns
+
+- **Dereferenciar `nil`**: qualquer acesso a `*p` com `p == nil` é panic. Cheque antes quando o ponteiro vem de fora.
+- **Salvar o endereço da variável de um `for` (Go antigo)**: em versões anteriores à 1.22, `for _, v := range xs { save(&v) }` guardava o mesmo endereço a cada iteração. Desde o Go 1.22 a variável é nova por iteração — mas código legado pode ter o bug.
+- **Cadeia com `nil` no meio**: `a.b.c` pânica se `a.b` for `nil`. Inicialize a cadeia ou valide por partes.
+- **Achar que `x := y` (com ponteiros) cria um objeto novo**: `y` continua sendo o mesmo dado; `x` só ganha outro nome para o mesmo endereço.
+
+## Pratique
+
+1. **Reproduza**: rode `pointers.go` e `troca.go`; explique, linha a linha, por que um zera e o outro não.
+2. **Modifique**: escreva `func dobro(n *int)` que dobra o valor apontado (`*n = *n * 2`) e chame com `&x`. Depois faça a mesma coisa recebendo `int` por valor e compare.
+3. **Aplique**: escreva `func paraMaiusculas(s *string)` que converte a string apontada com `strings.ToUpper` — e trate o caso em que o ponteiro é `nil` antes de dereferenciar.
+
+## Próximo passo
+
+Ponteiros brilham quando o dado que eles apontam tem **forma**. Em [Structs](structs) você vai ver como agrupar campos relacionados e por que funções como `newPerson` retornam ponteiros.

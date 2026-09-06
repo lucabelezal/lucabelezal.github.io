@@ -4,8 +4,92 @@ title: Testes e Benchmarks
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Go nasceu com testes na veia: o pacote `testing` é da biblioteca padrão, `go test` roda sem framework externo, e o arquivo `_test.go` ao lado do código é a convenção. Um teste verifica um **comportamento observável**; um benchmark mede **performance**. Os dois vivem no mesmo arquivo — e o `go test` cuida dos dois.
+
 <CodeExplanation
-  title={"Testes e Benchmarks"}
-  code={``}
-  sections={[]}
+  title={"price_test.go"}
+  code={`package price
+
+import "testing"
+
+func Calculate(quantity, unitPrice int) int {
+    return quantity * unitPrice
+}
+
+func TestCalculate(t *testing.T) {
+    tests := []struct {
+        name      string
+        quantity  int
+        unitPrice int
+        want      int
+    }{
+        {name: "single item", quantity: 1, unitPrice: 25, want: 25},
+        {name: "multiple items", quantity: 3, unitPrice: 25, want: 75},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got := Calculate(tt.quantity, tt.unitPrice)
+            if got != tt.want {
+                t.Fatalf("Calculate() = %d, want %d", got, tt.want)
+            }
+        })
+    }
+}
+
+func BenchmarkCalculate(b *testing.B) {
+    for b.Loop() {
+        Calculate(3, 25)
+    }
+}`}
+  sections={[
+    {text: "`func TestCalculate(t *testing.T)` — todo teste é uma função `TestXxx` que recebe `*testing.T`. Em projeto real, `Calculate` ficaria num arquivo de produção e este no `_test.go` correspondente."},
+    {text: "A **tabela** concentra os cenários: entrada + `want`. O `name` dá um rótulo estável a cada comportamento — a saída do teste vira legível."},
+    {text: "`t.Run(nome, fn)` roda cada caso num **subteste**; a falha é atribuída ao cenário certo. `t.Fatalf` para o subteste com a mensagem `got`/`want` — o formato que ajuda a achar o bug."},
+    {text: "`BenchmarkCalculate(b)` mede performance com `for b.Loop()` — o laço de benchmark (Go 1.24+) que o `testing` controla."},
+    {text: "Saída real:\n$ go test -v\n=== RUN   TestCalculate\n=== RUN   TestCalculate/single_item\n=== RUN   TestCalculate/multiple_items\n--- PASS: TestCalculate (0.00s)\n    --- PASS: TestCalculate/single_item (0.00s)\n    --- PASS: TestCalculate/multiple_items (0.00s)\nPASS\nok  \tx\t0.375s\n\n$ go test -bench=. -benchtime=300x\nBenchmarkCalculate-10\t     300\t         4.860 ns/op\nPASS\nok  \tx\t0.244s"}
+  ]}
 />
+
+## O ciclo do `go test`
+
+| Comando | O que faz |
+|---|---|
+| `go test ./...` | Roda a suíte de todos os pacotes |
+| `go test -v` | Modo verboso (mostra cada subteste) |
+| `go test -run TestCalcular` | Roda só um teste |
+| `go test -bench=.` | Roda os benchmarks |
+| `go test -race ./...` | Roda com o detector de corridas (página [Contadores Atômicos](atomic-counters)) |
+| `go test -cover` | Mostra a cobertura |
+
+Sem framework: `go test` encontra os arquivos `_test.go`, executa e reporta. Testes que não passam **quebram o build de `go test`** com exit code diferente de zero — o portão de qualidade do Go.
+
+## O que um bom teste verifica
+
+Teste descreve **comportamento**, não implementação: dada uma entrada, qual a saída? Se amanhã `Calculate` virar um `switch` ou um loop, o teste continua valendo. A tabela ajuda a cobrir as bordas (vazio, zero, negativo, máximo) com pouco código. Um subteste falho diz **qual** cenário quebrou — sem você caçar.
+
+Falha com mensagem útil: `t.Fatalf("Calculate() = %d, want %d", got, want)` mostra o resultado real e o esperado. **Nunca** `t.Fatal("deu errado")` sem o dado.
+
+## Benchmarks: meça, não adivinhe
+
+O `b.Loop()` substituiu o `b.N` manual: o `testing` decide quantas iterações e você escreve só a operação. Resultados como `4.860 ns/op` só fazem sentido **na mesma máquina** — compare relativo, não absoluto. E lembre do conselho das páginas de [Ponteiros](pointers): antes de "otimizar com ponteiro", meça; o benchmark é a régua.
+
+A página [Testes Unitários](unit-testing) aprofunda estratégia (o que testar primeiro, isolamento com fakes). Aqui ficou o esqueleto que você usará em todo pacote.
+
+## Armadilhas comuns
+
+- **Nome errado**: o teste precisa começar com `Test` e receber `*testing.T` — senão é ignorado em silêncio (e `go vet` avisa).
+- **Testar implementação**: amarrar o teste a um detalhe interno quebra quando você refatorar. Teste o contrato público.
+- **Comparar float com `==`**: `0.1+0.2 != 0.3`. Use margem (`math.Abs(got-want) < 1e-9`) ou `cmp`.
+- **`t.Fatal` em goroutine**: `Fatal` chama `Goexit` — numa goroutine que não é a do teste, o comportamento muda. Use `t.Error` ou propague.
+- **Achar que benchmark é teste**: `BenchmarkXxx` não valida resultado; só mede. Se quer os dois, tenha `Test` e `Benchmark`.
+
+## Pratique
+
+1. **Reproduza**: rode `go test -v` e `go test -bench=.` no diretório do `price_test.go`.
+2. **Modifique**: adicione casos `{quantity: 0}` e `{unitPrice: 0}` à tabela e veja os subtestes novos na saída `-v`.
+3. **Aplique**: escreva `TestCalcular` que falha (mude um `want`) e leia a mensagem — depois conserte. Acerte a cobertura com `-cover`.
+
+## Próximo passo
+
+Testar é a base; saber o que testar é estratégia. Em [Testes Unitários](unit-testing) você prioriza as regras que podem quebrar o produto e isola o que depende de banco, rede ou relógio.

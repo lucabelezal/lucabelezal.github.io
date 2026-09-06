@@ -4,8 +4,10 @@ title: Channels
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Goroutines rodam em paralelo; **channels** as fazem conversar. Um channel é um cano tipado entre goroutines: uma envia (`ch <- valor`), outra recebe (`<-ch`), e o dado atravessa — sem locks, sem variável compartilhada. É a materialização do lema de Go: *"não se comunique compartilhando memória; compartilhe memória se comunicando"*.
+
 <CodeExplanation
-  title={"Channels"}
+  title={"channels.go"}
   code={`package main
 
 import "fmt"
@@ -17,13 +19,40 @@ func main() {
     fmt.Println(msg)
 }`}
   sections={[
-    {text: "Crie um channel com `make(chan val-type)`. Channels são tipados pelos valores que transportam."},
-    {text: "_Envie_ um valor para um channel usando a sintaxe `channel <-`. Aqui enviamos `\"ping\"` para o channel `messages` criado acima, a partir de uma nova goroutine."},
-    {text: "A sintaxe `<-channel` _recebe_ um valor do channel. Aqui vamos receber a mensagem `\"ping\"` que enviamos acima e imprimi-la."},
-    {text: "Saída:\n# When we run the program the `\"ping\"` message is\n# successfully passed from one goroutine to another via\n# our channel.\n$ go run channels.go \nping\n\n# By default sends and receives block until both the\n# sender and receiver are ready. This property allowed\n# us to wait at the end of our program for the `\"ping\"`\n# message without having to use any other synchronization."}
+    {text: "`make(chan string)` cria um channel **não-bufferizado** que transporta strings. O tipo do channel é o tipo do valor que ele carrega."},
+    {text: "`messages <- \"ping\"` **envia** o valor pelo channel — aqui dentro de uma goroutine, porque o envio bloqueia até alguém receber."},
+    {text: "`<-messages` **recebe** e bloqueia até um valor chegar. O programa para aqui até a goroutine entregar o \"ping\"."},
+    {text: "Saída:\n$ go run channels.go\nping\n\n# Envios e recebimentos bloqueiam até o outro lado estar\n# pronto — foi essa sincronização que esperou o \"ping\"\n# sem usar WaitGroup nem Sleep."}
   ]}
 />
 
-<a href="https://go.dev/play/p/MaLY7AiAkHM" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Envio e recebimento são a mesma sincronização
+
+Num channel **não-bufferizado**, o `send` bloqueia até haver um `receive` (e vice-versa). Isso é uma feature, não uma limitação: a troca em si **sincroniza** as duas goroutines — quando o `<-messages` retorna, o valor chegou de verdade. Você não precisa de uma segunda primitiva de sincronização.
+
+## Em código real
+
+Channels são o jeito Go de passar trabalho e resultado entre goroutines sem estado compartilhado:
+
+- **Produtor → consumidor**: uma goroutine gera, outra processa (o padrão de [Worker Pools](worker-pools)).
+- **Notificação**: avisar "terminei" ou "pare" (visto em [Sincronização com Channels](channel-synchronization)).
+- **Conexões**: um channel `chan net.Conn` distribui conexões entre workers.
+
+Atenção a dois usos errados comuns: usar channel para passar dados que poderiam ser um retorno comum, e criar channels sem dono claro (quem fecha?). O dono é tema das páginas de fechamento adiante.
+
+## Armadilhas comuns
+
+- **Enviar sem receptor (não-bufferizado)**: `messages <- "x"` na `main` sem goroutine receptor trava para sempre — *deadlock*. Ou receba em outra goroutine ou use buffer (próxima página).
+- **Receber de um channel que nunca recebe**: bloqueia para sempre. Sempre tenha o outro lado.
+- **Achar que channel guarda valor**: sem buffer, não guarda — só transfere na hora, bloqueando até o par estar pronto.
+- **Fechar e enviar**: enviar num channel fechado dá *panic* (detalhe em [Fechando Channels](closing-channels)).
+
+## Pratique
+
+1. **Reproduza**: rode `channels.go`; depois remova a goroutine e veja o deadlock (`fatal error: all goroutines are asleep`).
+2. **Modifique**: envie duas mensagens de duas goroutines e receba as duas — observe a ordem (não garantida).
+3. **Aplique**: crie um canal que passa um número de `main` para uma goroutine, que dobra e devolve por outro canal — o esqueleto do request/response entre goroutines.
+
+## Próximo passo
+
+O channel sem buffer exige receptor na hora. Quando você quer **enfileirar** sem bloquear o remetente, o canal ganha um buffer — em [Buffer de Channels](channel-buffering).

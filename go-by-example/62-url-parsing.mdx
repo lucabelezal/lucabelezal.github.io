@@ -4,8 +4,10 @@ title: Parsing de URLs
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Toda requisição HTTP, conexão de banco e link externo é uma **URL** — e tratá-la como string crua com `strings.Split` é frágil. O pacote `net/url` desmonta uma URL nas partes certas (scheme, usuário, host, porta, path, query, fragmento) e ainda decodifica os *query params* — respeitando escaping e as regras do RFC. Nunca faça parsing de URL na mão.
+
 <CodeExplanation
-  title={"Parsing de URLs"}
+  title={"url-parsing.go"}
   code={`package main
 
 import (
@@ -37,17 +39,66 @@ func main() {
     fmt.Println(m["k"][0])
 }`}
   sections={[
-    {text: "Vamos parsear esta URL de exemplo, com scheme, autenticação, host, porta, path, query params e fragmento."},
-    {text: "Faça parse da URL e garanta ausência de erros."},
-    {text: "Acessar o scheme é direto."},
-    {text: "`User` contém toda info de autenticação; chame `Username` e `Password` para valores individuais."},
-    {text: "`Host` contém hostname e porta, se houver. Use `SplitHostPort` para extrair."},
-    {text: "Aqui extraímos o `path` e o fragmento após `#`."},
-    {text: "Para query params em formato `k=v`, use `RawQuery`. Também pode parsear para map de strings para slices; indexe `[0]` se quiser só o primeiro valor."},
-    {text: "Saída:\n# Running our URL parsing program shows all the different\n# pieces that we extracted.\n$ go run url-parsing.go \npostgres\nuser:pass\nuser\npass\nhost.com:5432\nhost.com\n5432\n/path\nf\nk=v\nmap[k:[v]]\nv"}
+    {text: "`url.Parse` lê a URL inteira e devolve um `*url.URL` estruturado (ou erro — URL malformada não panica)."},
+    {text: "`u.Scheme` → `postgres`. Cada parte tem seu acesso direto."},
+    {text: "`u.User` guarda a autenticação; `Username()` e `Password()` extraem os valores (o `Password` tem segundo retorno indicando se existe)."},
+    {text: "`u.Host` traz host **e porta** juntos (`host.com:5432`). `net.SplitHostPort` separa os dois — sempre com `net`, não com `Split`."},
+    {text: "`u.Path` e `u.Fragment` (o que vem depois de `#`)."},
+    {text: "`u.RawQuery` é a query crua (`k=v`). `url.ParseQuery` a transforma num map `chave → []string` (chaves podem se repetir, por isso slice). `m[\"k\"][0]` pega o primeiro valor."},
+    {text: "Saída:\n$ go run url-parsing.go\npostgres\nuser:pass\nuser\npass\nhost.com:5432\nhost.com\n5432\n/path\nf\nk=v\nmap[k:[v]]\nv"}
   ]}
 />
 
-<a href="https://go.dev/play/p/fHTQn9X7l1B" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## A anatomia de uma URL
+
+```
+postgres://user:pass@host.com:5432/path?k=v#f
+└─scheme─┘ └user:pass┘ └──host──┘└port┘└path┘└qy┘└frag┘
+```
+
+| Campo | O quê |
+|---|---|
+| `Scheme` | `postgres`, `http`, `https`... |
+| `User` | credenciais (raro em HTTP, comum em DSN) |
+| `Host` | hostname **+** porta |
+| `Path` | caminho (`/path`) |
+| `RawQuery` / `Query()` | parâmetros (`k=v`) |
+| `Fragment` | âncora (`#f`) — nunca chega ao servidor |
+
+`u.Query()` é um atalho que já parseia e devolve o map — mas para controle fino (ou re-serializar), use `RawQuery` + `ParseQuery` como no exemplo. Query values são um `map[string][]string` porque `?a=1&a=2` é válido: sempre há uma slice.
+
+## Por que não `strings.Split`?
+
+URLs têm **escaping**: `?q=a%20b` e `+` para espaço em forms; caracteres especiais no path; usuário com `@` dentro. O pacote `net/url` decodifica (`%20` → espaço) e re-codifica corretamente ao montar URLs com `url.Values`:
+
+```go
+q := url.Values{}
+q.Set("busca", "café com leite") // codifica sozinho
+fmt.Println(q.Encode())          // busca=caf%C3%A9+com+leite
+```
+
+Montar URL na mão com concatenação quebra no primeiro caractere especial. E ao **construir** URLs para requests, use `url.URL{Scheme:..., Host:..., Path:...}` e `u.String()`.
+
+## Em código real
+
+- Rotear/inspecionar requests: `req.URL.Path`, `req.URL.Query().Get("page")` — padrão em todo [Servidor HTTP](http-server).
+- Ler DSNs de banco (como o `postgres://` do exemplo) sem "reinventar" o parsing.
+- Sanitizar redirects e validar que um link é `https` olhando o `Scheme`.
+
+## Armadilhas comuns
+
+- **Esquecer o erro do `Parse`**: URL com `%` inválido ou estrutura quebrada devolve erro. Trate (ou use no panic de startup se é config).
+- **Split de `Host` na mão**: IPv6 (`[::1]:8080`) quebra `strings.Split(host, ":")`. `net.SplitHostPort` existe para isso.
+- **`Query().Get` assume um valor**: para `?tag=a&tag=b`, `Get` devolve só o primeiro. Se todos importam, itere o slice.
+- **Fragment não vai ao servidor**: `#f` é cliente-side; não tente ler query depois de `#`.
+- **Esquecer o decode**: `%20` não vira espaço sozinho ao ler `RawQuery`. Use `ParseQuery`/`Query`.
+
+## Pratique
+
+1. **Reproduza**: rode `url-parsing.go` e localize cada campo da saída na URL original.
+2. **Modifique**: parseie `"https://exemplo.com/pesquisa?q=golang%20e%20go&page=2#topo"` e imprima `Scheme`, `Host`, `q` decodificado e o `Fragment`.
+3. **Aplique**: escreva `func montarURL(base, caminho string, params map[string]string) string` usando `url.Values` — e teste com um valor com espaço e `&`.
+
+## Próximo passo
+
+Do mundo dos textos e endereços para o da **integridade**. Em [Hashes SHA256](sha256-hashes), você verifica se um dado não foi alterado — a impressão digital de conteúdo que sustenta downloads, commits e senhas.

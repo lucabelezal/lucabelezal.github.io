@@ -4,8 +4,10 @@ title: Switch
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Quando uma decisão tem muitos caminhos, uma escada de `else if` fica difícil de ler. O **`switch`** de Go resolve isso — e vai além do que você conhece de outras linguagens: além de comparar valores, ele funciona **sem expressão** (para faixas e condições) e compara **tipos** (o *type switch*). E, ao contrário de C, não há `break` automático: cada `case` já encerra sozinho.
+
 <CodeExplanation
-  title={"Switch"}
+  title={"switch.go"}
   code={`package main
 
 import (
@@ -52,14 +54,51 @@ func main() {
     whatAmI("hey")
 }`}
   sections={[
-    {text: "Um `switch` básico."},
-    {text: "Você pode separar múltiplas expressões com vírgulas no mesmo `case`. Usamos também o `default` opcional neste exemplo."},
-    {text: "`switch` sem expressão é uma forma alternativa de expressar lógica if/else. Aqui também mostramos como expressões de `case` podem ser não-constantes."},
-    {text: "Um type `switch` compara tipos em vez de valores. Você pode usá-lo para descobrir o tipo de um valor de interface. Neste exemplo, a variável `t` terá o tipo correspondente à sua cláusula."},
-    {text: "Saída:\n$ go run switch.go \nWrite 2 as two\nIt's a weekday\nIt's after noon\nI'm a bool\nI'm an int\nDon't know type string"}
+    {text: "O `switch` básico compara `i` contra cada `case`, de cima para baixo. Como `i` vale 2, o segundo case roda e imprime \"two\" — e o switch **termina ali**, sem precisar de `break`."},
+    {text: "Um `case` pode listar **vários valores** separados por vírgula: aqui `time.Saturday` e `time.Sunday` caem no mesmo ramo. `default` é opcional e roda quando nenhum case casa."},
+    {text: "`switch` **sem expressão** é um `if`/`else` elegante: cada `case` é uma condição booleana. O primeiro `case` verdadeiro vence — neste caso, `t.Hour() < 12`."},
+    {text: "O *type switch* compara **tipos**, não valores. `i.(type)` só existe dentro de `switch`; dentro de cada `case`, `t` já é o tipo correspondente (aqui, `bool`, `int` ou o tipo original em `default`)."},
+    {text: "Saída:\n$ go run switch.go\nWrite 2 as two\nIt's the weekend\nIt's before noon\nI'm a bool\nI'm an int\nDon't know type string\n\n# As linhas \"It's the weekend\" e \"It's before noon\"\n# dependem do dia e da hora em que você executar.\n# As três últimas linhas são sempre iguais."}
   ]}
 />
 
 <a href="https://go.dev/play/p/0bvw1aIeuFM" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Sem `break`: o comportamento que difere de C
+
+Em C, cada `case` *cai* para o próximo a menos que você escreva `break`. Em Go, **cada `case` encerra o switch automaticamente** — é impossível esquecer o `break` e vazar para o próximo ramo. A palavra-chave `fallthrough` existe para forçar o comportamento de C, mas é rara e deve ser usada com cuidado, pois pula a avaliação do próximo `case`.
+
+## Três switches, três propósitos
+
+| Forma | Quando usar |
+|---|---|
+| `switch expressao { case valor: }` | Comparar um valor contra candidatos fixos |
+| `switch { case condicao: }` | Várias condições/faxas (substitui `else if`) |
+| `switch t := i.(type) { case tipo: }` | Descobrir o tipo dinâmico de um valor de interface |
+
+A avaliação é de cima para baixo e o **primeiro `case` que casa vence** — em qualquer das três formas.
+
+## Em código real
+
+- **Type switch** é a ferramenta para lidar com `any` (o tipo vazio, visto em [Interfaces](interfaces)): funções de logging, serializadores e handlers que recebem payloads de tipos variados usam esse padrão para decidir como tratar cada caso.
+- **Switch sem expressão** aparece em lógica de faixas e regras de negócio com muitas condições.
+- **Switch com valores** é comum em parsing de comandos, estados e opções — você vai vê-lo de novo em [CLI com subcomandos](command-line-subcommands).
+
+## Armadilhas comuns
+
+- **Esperar *fallthrough***: se veio de C, esqueça — em Go o `case` não cai sozinho.
+- **Usar faixas num `switch` com expressão**: `switch nota { case > 7: }` não compila. Para faixas, use `switch` **sem expressão**: `switch { case nota > 7: }`.
+- **Esquecer o `default`**: não é erro, mas um `default` pega os casos inesperados — o que muitas vezes evita um bug silencioso.
+- **Tratar `any` sem type switch**: converter `any` na mão com `.(int)` direto pode causar *panic* se o tipo não bater. O type switch é a forma segura.
+
+## Pratique
+
+1. **Reproduza**: rode `switch.go` e identifique qual das três formas de `switch` produziu cada linha da saída.
+2. **Modifique**: adicione um `case` para `float64` na função `whatAmI` e chame `whatAmI(3.14)`. Depois remova o `break` mental e tente imaginar: o que precisaria mudar em Go para o `case` "vazar"?
+3. **Aplique**: reescreva a cadeia `else if` da página de [If/Else](if-else) como um `switch` sem expressão. Compare as duas versões e decida qual prefere.
+
+## Próximo passo
+
+Com fluxo de controle dominado, você vai precisar guardar **coleções** de valores. Em [Arrays](arrays) começa a jornada pelas estruturas de dados de Go.

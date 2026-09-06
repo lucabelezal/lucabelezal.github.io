@@ -4,8 +4,10 @@ title: WaitGroups
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Você disparou várias goroutines e precisa que o programa só prossiga quando **todas** terminarem. Drenar um channel funciona (como no [Worker Pools](worker-pools)), mas é indireto. O **WaitGroup** é o contador de espera do Go: você registra quantas goroutines vai esperar e bloqueia até o contador zerar. É a resposta certa para "espere este grupo terminar" — e o substituto do `time.Sleep` que nunca deveria ter sido usado.
+
 <CodeExplanation
-  title={"WaitGroups"}
+  title={"waitgroups.go"}
   code={`package main
 
 import (
@@ -29,16 +31,57 @@ func main() {
     wg.Wait()
 }`}
   sections={[
-    {text: "Esta é a função que rodaremos em cada goroutine."},
-    {text: "Sleep para simular tarefa custosa."},
-    {text: "Este WaitGroup espera todas as goroutines terminarem. Nota: se passar WaitGroup para funções, passe *por ponteiro*."},
-    {text: "Dispare várias goroutines usando `WaitGroup.Go`"},
-    {text: "Bloqueie até todas as goroutines de `wg` terminarem. Uma goroutine termina quando sua função retorna."},
-    {text: "Note que esta abordagem não propaga erros facilmente. Para casos avançados, considere [errgroup](https://pkg.go.dev/golang.org/x/sync/errgroup)."},
-    {text: "Saída:\n$ go run waitgroups.go\nWorker 5 starting\nWorker 3 starting\nWorker 4 starting\nWorker 1 starting\nWorker 2 starting\nWorker 4 done\nWorker 1 done\nWorker 2 done\nWorker 5 done\nWorker 3 done\n\n# The order of workers starting up and finishing\n# is likely to be different for each invocation."}
+    {text: "`worker` é o trabalho: imprime início, espera 1s (simulando tarefa custosa) e imprime o fim."},
+    {text: "`var wg sync.WaitGroup` — o contador. Seu *zero value* já é utilizável; e ele **não pode ser copiado** (passar para função é sempre por ponteiro)."},
+    {text: "`wg.Go(func(){...})` — desde o **Go 1.23**: incrementa o contador, dispara a goroutine e a decrementa quando a função retorna. Tudo em uma chamada, sem risco de esquecer o `Done`."},
+    {text: "`wg.Wait()` bloqueia até o contador zerar — ou seja, até as 5 goroutines terminarem."},
+    {text: "Saída (uma execução):\n$ go run waitgroups.go\nWorker 5 starting\nWorker 4 starting\nWorker 1 starting\nWorker 2 starting\nWorker 3 starting\nWorker 3 done\nWorker 2 done\nWorker 1 done\nWorker 4 done\nWorker 5 done\n\n# Todos começam e terminam; a ordem varia a cada execução,\n# mas \"done\" de cada worker só sai depois do seu \"starting\"."}
   ]}
 />
 
-<a href="https://go.dev/play/p/csaELahJTWt" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Como o WaitGroup funciona por dentro
+
+É um **contador atômico** com três operações:
+
+| Operação | Efeito |
+|---|---|
+| `Add(n)` | Soma `n` ao contador (antes de disparar as goroutines) |
+| `Done()` | Subtrai 1 (chamado por cada goroutine ao terminar) |
+| `Wait()` | Bloqueia até o contador chegar a 0 |
+
+O **idioma clássico** (anterior ao Go 1.23) fazia os três passos na mão — e você ainda vai ver muito código assim:
+
+```go
+for i := 1; i <= 5; i++ {
+    wg.Add(1)
+    go func() {
+        defer wg.Done() // garante o decremento mesmo em panic/return
+        worker(i)
+    }()
+}
+wg.Wait()
+```
+
+`wg.Go` é açúcar que faz `Add` + `go` + `Done` automático, eliminando a classe de bugs de "esqueci o `Done`". Se estiver lendo código legado, reconheça o padrão de cima.
+
+## Por que não `time.Sleep`?
+
+É tentador "dar um tempo" para as goroutines acabarem. O problema: `Sleep` não sincroniza nada. Se a goroutine demorar mais que o sono, o programa termina antes; se demorar menos, você esperou à toa. O WaitGroup sincroniza de verdade: `Wait()` só retorna quando o contador zera — nem antes, nem depois.
+
+## Armadilhas comuns
+
+- **Esquecer o `Done` (ou o `defer`)**: o contador nunca zera e o `Wait()` bloqueia **para sempre** — um deadlock silencioso. Com `wg.Go` isso some; no padrão manual, `defer wg.Done()` é obrigatório (e cobre o caso de `panic`).
+- **Copiar o WaitGroup**: `wg` contém um contador com estado interno; passar `wg` por valor para uma função **copia o contador zerado** e o `Wait` original nunca vê os `Done`. Sempre `*sync.WaitGroup`.
+- **`Add` depois do `Wait` começar**: chamar `Add` concorrentemente com `Wait` é corrida. Registre tudo (`Add`/`wg.Go`) **antes** de `Wait`.
+- **Usar WaitGroup como condição**: ele espera *grupo terminar*, não avisa *evento ocorreu*. Para "uma goroutine avisa outra", o certo é [Channel](channels).
+- **Erros engolidos**: goroutine que falha não propaga erro pelo WaitGroup. Para propagar erro/cancelar irmãos, o padrão é `errgroup` do `golang.org/x/sync`.
+
+## Pratique
+
+1. **Reproduza**: rode `waitgroups.go` e confirme que `done` de cada worker vem após o próprio `starting` — e que a ordem entre workers varia.
+2. **Modifique**: remova o `time.Sleep` e observe a ordem ficar quase sempre sequencial. Depois simule um erro: faça um worker dar `panic` e veja o que acontece com os demais.
+3. **Aplique**: reescreva o [Worker Pools](worker-pools) usando `wg.Go` + `wg.Wait()` para esperar os 3 workers, sem drenar `results` manualmente.
+
+## Próximo passo
+
+Muitas goroutines, um recurso compartilhado. Quando todas incrementam o mesmo contador, você precisa de operação atômica — em [Contadores Atômicos](atomic-counters) você vai ver por que `contador++` concorrente perde atualizações.

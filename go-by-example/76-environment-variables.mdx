@@ -4,8 +4,10 @@ title: Variáveis de Ambiente
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Flags mudam por invocação; **variáveis de ambiente** mudam por contexto — `PORT`, `DATABASE_URL`, `API_KEY` não são argumentos, são configuração do ambiente onde o programa roda. Em Go, o `os` dá acesso direto: `Getenv` para ler, `Setenv` para definir (só no processo), `Environ` para listar. É a fonte de configuração do *12-factor app*: mesma imagem, ambientes diferentes.
+
 <CodeExplanation
-  title={"Variáveis de Ambiente"}
+  title={"environment-variables.go"}
   code={`package main
 
 import (
@@ -25,11 +27,51 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Use `os.Environ` para listar pares chave/valor do ambiente. Retorna slice de `KEY=value`. Use `strings.SplitN` para separar. Aqui imprimimos as chaves."},
-    {text: "Saída:\n# Running the program shows that we pick up the value\n# for `FOO` that we set in the program, but that\n# `BAR` is empty.\n$ go run environment-variables.go\nFOO: 1\nBAR: \n\n# The list of keys in the environment will depend on your\n# particular machine.\nTERM_PROGRAM\nPATH\nSHELL\n...\nFOO\n\n# If we set `BAR` in the environment first, the running\n# program picks that value up.\n$ BAR=2 go run environment-variables.go\nFOO: 1\nBAR: 2\n..."}
+    {text: "`os.Setenv(\"FOO\", \"1\")` define uma variável **no processo atual** (não afeta o shell nem outros processos). Útil para config em memória/testes."},
+    {text: "`os.Getenv(\"FOO\")` lê. Se não existe, devolve string **vazia** — aqui `BAR` não existe e imprime vazio."},
+    {text: "`os.Environ()` lista tudo como `KEY=value`; `strings.SplitN(e, \"=\", 2)` separa chave e valor (o `2` evita quebrar valores que contêm `=`)."},
+    {text: "Saída (uma execução):\n$ go run environment-variables.go\nFOO: 1\nBAR: \n\nTERM_PROGRAM\nPATH\nSHELL\n...\nFOO\n\n# A lista de chaves depende da sua máquina. Definir antes no\n# shell também funciona:\n$ BAR=2 go run environment-variables.go\nFOO: 1\nBAR: 2"}
   ]}
 />
 
-<a href="https://go.dev/play/p/2jmwXM264NC" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## `Getenv` × `LookupEnv`: existe mesmo?
+
+`os.Getenv("BAR")` devolve `""` tanto para "não definida" quanto para "definida como vazia". Quando a distinção importa (a config foi **fornecida** ou o default vale?), use `LookupEnv`:
+
+```go
+if v, ok := os.LookupEnv("PORT"); ok {
+    // PORT foi definida no ambiente
+} else {
+    port = "8080" // default
+}
+```
+
+É o mesmo padrão comma-ok de map (página [Maps](maps)): o segundo retorno diz se a chave existia.
+
+## Config, não segredo no código
+
+A regra prática de ambiente: valores que **mudam entre deploys** (URL de banco, porta, nível de log, feature flags) vivem em variáveis de ambiente — nunca no código nem no repositório. Segredos (`API_KEY`) também vêm de ambiente/cofre; e o código que lê deve tratar a ausência com default sensato ou erro claro no startup (o panic da página [Panic](panic) é aceitável: sem config, o programa não tem o que fazer).
+
+## Em código real
+
+- **12-factor**: `os.Getenv("PORT")` no `main`, no lugar de hardcode — a mesma imagem roda em dev (default) e prod (variável).
+- **Testes**: `t.Setenv("FOO", "x")` define e **restaura** no fim do teste automaticamente — o `Setenv` do `os` não desfaz sozinho.
+- **`.env`**: o Go não lê `.env` nativo; para dev local, carregue com uma lib (`godotenv`) ou exporte no shell.
+
+## Armadilhas comuns
+
+- **Confundir ausência com vazio**: `Getenv` devolve `""` nos dois casos. Use `LookupEnv` quando "foi definida?" importa.
+- **Achar que `Setenv` muda o sistema**: afeta **só** o processo atual (e filhos). Seu shell não muda depois que o programa sai.
+- **Segredo no código**: credencial hardcoded vaza no git. Ambiente ou cofre.
+- **Valor que é número**: `os.Getenv("PORT")` é string. Converta com `strconv.Atoi` e trate o erro (página [Parsing de Números](number-parsing)).
+- **Nome com `=` no valor**: separar com `SplitN(e, "=", 2)` — `Split` na medida errada quebraria valores com `=`.
+
+## Pratique
+
+1. **Reproduza**: rode `environment-variables.go` e depois com `BAR=2` prefixado.
+2. **Modifique**: escreva uma função `porta() string` que usa `LookupEnv("PORT")` e cai para `"8080"` se ausente; imprima o resultado.
+3. **Aplique**: escreva um mini-servidor de config que lê `DATABASE_URL` e `DEBUG` (bool com `strconv.ParseBool`), dando erro claro se `DATABASE_URL` faltar.
+
+## Próximo passo
+
+Config lida; agora como o programa **conta o que está fazendo**. Em [Logging](logging), o `log` clássico e o `log/slog` estruturado — de "imprimir no stderr" a logs em JSON que máquinas leem.

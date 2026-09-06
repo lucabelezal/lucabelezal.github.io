@@ -4,8 +4,10 @@ title: Filtros de Linha
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Uma das tradições mais antigas do Unix é o **filtro de linha**: um programa que lê `stdin` linha a linha, transforma cada uma e escreve em `stdout` — para compor com outros no shell (`grep`, `sort`, `awk` são filtros). Em Go, o esqueleto é curto: `bufio.Scanner` sobre `os.Stdin`, um laço `for scanner.Scan()`, e uma checagem de erro no fim.
+
 <CodeExplanation
-  title={"Filtros de Linha"}
+  title={"line-filters.go"}
   code={`package main
 
 import (
@@ -27,14 +29,60 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Aqui um filtro de linha em Go que escreve versão capitalizada de todo input. Use este padrão para seus próprios filtros."},
-    {text: "Envolver `os.Stdin` sem buffer com scanner bufferizado dá o método `Scan` que avança para o próximo token; próxima linha no scanner padrão."},
-    {text: "`Text` retorna o token atual, aqui a próxima linha do input."},
-    {text: "Escreva a linha em maiúsculas."},
-    {text: "Cheque erros durante `Scan`. EOF é esperado e não reportado como erro."}
+    {text: "`bufio.NewScanner(os.Stdin)` — um scanner sobre a entrada padrão, com o método `Scan` que avança para a próxima linha a cada chamada."},
+    {text: "O laço `for scanner.Scan()` itera pelas linhas até o fim da entrada (EOF). O `Scan` devolve `false` no fim."},
+    {text: "`scanner.Text()` devolve a linha atual (sem o `\\n`). Aqui transformamos com `strings.ToUpper`."},
+    {text: "Escrevemos no `stdout` — `fmt.Println` já adiciona a quebra que o `Scan` removeu."},
+    {text: "Depois do laço, `scanner.Err()` checa erros durante a leitura. EOF é esperado e **não** é erro; um problema real de I/O aparece aqui."},
+    {text: "Saída (alimentando via pipe):\n$ printf 'hello\\nfilter line\\n' | go run line-filters.go\nHELLO\nFILTER LINE"}
   ]}
 />
 
-<a href="https://go.dev/play/p/kNcupWRsYPP" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O esqueleto de todo filtro
+
+```go
+scanner := bufio.NewScanner(os.Stdin)
+for scanner.Scan() {
+    linha := scanner.Text()
+    // transforme linha
+    fmt.Println(resultado)
+}
+if err := scanner.Err(); err != nil {
+    // trate (para stderr + exit != 0)
+}
+```
+
+Esse padrão é o `while read line` do shell, mas com segurança de tipos e erros explícitos. Troque `os.Stdin` por um arquivo aberto e o mesmo código processa arquivos — por isso ele vale para logs, listas e CSVs simples.
+
+## Limite padrão do Scanner
+
+O scanner tem um **tampão padrão de 64 KB por linha**. Uma linha maior que isso faz o `Scan` parar com erro (`bufio.Scanner: token too long`). Para linhas gigantes (ou CSV de uma linha só), aumente o buffer:
+
+```go
+scanner := bufio.NewScanner(os.Stdin)
+scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // até 1 MB por linha
+```
+
+Saber isso evita o bug clássico do "meu filtro para no meio do arquivo".
+
+## Em código real
+
+Filtros de linha resolvem transformações unárias — "pegue cada linha e faça X". É também onde o Go mostra sua vocação de ferramenta de texto: você compõe no shell (`cat log | go run filtro.go | sort`) e recebe streams. Para transformações que dependem de **estado entre linhas** (acumular, contar, agrupar), o laço continua o mesmo — o estado vive numa variável fora do `for`.
+
+## Armadilhas comuns
+
+- **Esquecer `scanner.Err()`**: um erro de leitura no meio do arquivo passa despercebido. Cheque depois do laço.
+- **Tratar EOF como erro**: o `Scan` devolve `false` no fim normal — não é `Err()`. Só `Err()` real é problema.
+- **Linha maior que 64 KB**: trava o scanner silenciosamente. Aumente o buffer se o dado pode ter linhas longas.
+- **Escrever erro no `stdout`**: mistura resultado com diagnóstico e quebra o pipe. Vá para `os.Stderr` (`fmt.Fprintln(os.Stderr, ...)`).
+- **`Scanner.Text` reutiliza o buffer**: a string vale só até o próximo `Scan`. Se precisar guardar linhas, copie (ou `scanner.Bytes()` + `append`).
+
+## Pratique
+
+1. **Reproduza**: rode com `printf 'golang\né legal\n' | go run line-filters.go`.
+2. **Modifique**: vire um filtro que **numera** as linhas (`1: ...`), depois um que remove linhas em branco.
+3. **Aplique**: escreva `wc.go` — um filtro que conta linhas, palavras e caracteres do stdin e imprime no fim (use um contador fora do laço).
+
+## Próximo passo
+
+Filtros lidam com conteúdo; **caminhos** são outro problema. Em [Caminhos de Arquivos](file-paths), o `filepath` para juntar, separar e relativizar paths de forma portável — sem concatenar `/` na mão.

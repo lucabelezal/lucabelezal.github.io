@@ -4,8 +4,10 @@ title: Lendo Arquivos
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Ler arquivos em Go é ler **streams de bytes** com o pacote `os` + `io` + `bufio`. Tem três níveis: ler tudo de uma vez (`os.ReadFile`), abrir e ler com controle (`os.Open` + `Read`/`Seek`), e ler bufferizado por linhas (`bufio`). Quase toda chamada devolve erro — o padrão `if err != nil` aparece em cada passo.
+
 <CodeExplanation
-  title={"Lendo Arquivos"}
+  title={"reading-files.go"}
   code={`package main
 
 import (
@@ -58,20 +60,54 @@ func main() {
     f.Close()
 }`}
   sections={[
-    {text: "Ler arquivos exige checar erros na maioria das chamadas. Este helper simplifica as checagens."},
-    {text: "A tarefa mais básica é ler todo o conteúdo do arquivo para memória."},
-    {text: "Frequentemente quer mais controle sobre o que ler. Para isso, faça `Open` para obter um `os.File`."},
-    {text: "Leia alguns bytes do início. Permita até 5, mas note quantos realmente foram lidos."},
-    {text: "Também pode dar `Seek` para uma posição conhecida e `Read` a partir dela."},
-    {text: "Outros seeks são relativos à posição atual,"},
-    {text: "e relativos ao fim do arquivo."},
-    {text: "O pacote `io` fornece funções úteis para leitura. Por exemplo, leituras como acima ficam mais robustas com `ReadAtLeast`."},
-    {text: "Não há rewind embutido, mas `Seek(0, io.SeekStart)` faz isso."},
-    {text: "`bufio` implementa reader bufferizado, útil por eficiência com muitas leituras pequenas e por métodos adicionais."},
-    {text: "Feche o arquivo ao terminar (geralmente agendado logo após `Open` com `defer`)."}
+    {text: "`check` é um helper de exemplo: qualquer erro vira `panic`. Em código real você retornaria `error` (página [Erros](errors)) — aqui o panic mantém o exemplo curto."},
+    {text: "`os.ReadFile(path)` lê o arquivo **inteiro** para a memória — o jeito simples para arquivos pequenos (config, JSON)."},
+    {text: "Para controle fino, `os.Open` devolve um `*os.File`. Precisamos de um buffer `[]byte` para o `Read`."},
+    {text: "`f.Read(b1)` enche até `len(b1)` bytes e devolve quantos leu de verdade (`n1`). **`Read` pode ler menos do que o pedido** — sempre use `b1[:n1]`, não `b1`."},
+    {text: "`f.Seek(6, io.SeekStart)` posiciona o cursor; o `Read` seguinte lê daí. O arquivo (`/tmp/dat`) contém `hello\\ngo\\n`: o byte 6 é o `g` de `go`."},
+    {text: "`Seek` aceita âncoras: `io.SeekCurrent` (relativo à posição atual) e `io.SeekEnd` (a partir do fim, com offset negativo)."},
+    {text: "`io.ReadAtLeast(f, b3, 2)` garante ler pelo menos 2 bytes — mais robusto que `Read` quando o buffer deve encher."},
+    {text: "Não há `rewind`; `Seek(0, io.SeekStart)` volta ao início."},
+    {text: "`bufio.NewReader(f)` embrulha o arquivo num reader **bufferizado**: mais eficiente para muitas leituras pequenas e com métodos extras como `Peek` (olha bytes sem consumir)."},
+    {text: "Feche o arquivo — em código real, com `defer f.Close()` logo após o `Open` (página [Defer](defer))."},
+    {text: "Saída (arquivo `/tmp/dat` com `hello\\ngo\\n`):\n$ go run reading-files.go\nhello\ngo\n5 bytes: hello\n2 bytes @ 6: go\n2 bytes @ 6: go\n5 bytes: hello"}
   ]}
 />
 
-<a href="https://go.dev/play/p/J710-KJyC8z" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Três níveis de leitura
+
+| Nível | Quando | Função |
+|---|---|---|
+| Tudo de uma vez | Config, arquivos pequenos que cabem na memória | `os.ReadFile` |
+| Streaming com controle | Processar pedaço, pular posições | `os.Open` + `Read`/`Seek` |
+| Por linha / token | Texto linha a linha, CSVs | `bufio.Scanner` / `bufio.Reader` |
+
+Escolha pelo tamanho: `ReadFile` carrega tudo; arquivos grandes (logs, downloads) pedem streaming. A leitura **por linha** com `bufio.Scanner` é tão comum que ganha página própria em [Filtros de Linha](line-filters).
+
+## O contrato do `io.Reader`
+
+`Read` não promete encher o buffer — pode devolver menos bytes (ou `io.EOF` no fim). Por isso todo loop de leitura usa o `n` retornado. As funções do `io` (`ReadAll`, `ReadAtLeast`, `Copy`) encapsulam esse contrato para você não repetir o laço à mão. É o mesmo `io.Reader` que alimenta hashes, JSON decoders e `http.Response.Body`.
+
+## Em código real
+
+- `os.ReadFile` para config (ou o embed da página de [Diretiva Embed](embed-directive) para arquivos que viajam no binário).
+- `bufio.Scanner` para logs e arquivos texto.
+- `os.Open` + `io.Copy` quando você só repassa o conteúdo (ex.: servir um arquivo estático).
+
+## Armadilhas comuns
+
+- **Usar `b1` inteiro em vez de `b1[:n1]`**: o resto do buffer tem lixo de leituras anteriores. Sempre corte pelo `n`.
+- **Esquecer o `Close`**: em código longo ou laços, arquivo aberto vaza descritor. `defer f.Close()` logo após abrir.
+- **`ReadFile` em arquivo gigante**: carrega tudo na RAM. Para arquivos grandes, stream.
+- **Ignorar `io.EOF`**: no fim do arquivo, `Read` devolve `(0, io.EOF)`. Trate como fim normal, não como erro.
+- **Caminho com `TempDir`**: em macOS, `os.TempDir()` é um diretório longo do `$TMPDIR`, não `/tmp` literal. Use `filepath.Join(os.TempDir(), ...)`, nunca concatene barra na mão (página [Caminhos de Arquivos](file-paths)).
+
+## Pratique
+
+1. **Reproduza**: crie `/tmp`-equivalente com `hello\ngo\n`, rode `reading-files.go` e relacione cada linha da saída ao `Seek` que a produziu.
+2. **Modifique**: leia o arquivo de trás para frente usando `Seek(-1, io.SeekEnd)` e lendo byte a byte até o início.
+3. **Aplique**: escreva `func primeirasLinhas(caminho string, n int) ([]string, error)` com `bufio.Scanner` — e trate o erro de abertura.
+
+## Próximo passo
+
+Ler é metade; **escrever** é a outra. Em [Escrevendo Arquivos](writing-files) você vê os três níveis do outro lado — `WriteFile`, `File.Write` e o bufferizado com `Flush`.

@@ -4,8 +4,10 @@ title: Constantes
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Alguns valores não devem mudar: o limite de uma fila, a taxa de conversão, o prefixo de um log. Em Go, **constantes** (`const`) travam o valor em tempo de compilação — diferente das variáveis, que podem mudar. O detalhe mais surpreendente para quem vem de outras linguagens é que uma constante numérica não tem tipo fixo até o momento em que é usada.
+
 <CodeExplanation
-  title={"Constantes"}
+  title={"constants.go"}
   code={`package main
 
 import (
@@ -24,15 +26,52 @@ func main() {
     fmt.Println(math.Sin(n))
 }`}
   sections={[
-    {text: "`const` declara um valor constante."},
-    {text: "Uma declaração `const` também pode aparecer dentro de uma função."},
-    {text: "Expressões com constantes fazem aritmética com precisão arbitrária."},
-    {text: "Uma constante numérica não tem tipo até receber um, por exemplo via conversão explícita."},
-    {text: "Um número pode receber um tipo ao ser usado em um contexto que exige um, como atribuição a variável ou chamada de função. Por exemplo, aqui `math.Sin` espera um `float64`."},
-    {text: "Saída:\n$ go run constant.go \nconstant\n6e+11\n600000000000\n-0.28470407323754404"}
+    {text: "`const s string = \"constant\"` declara uma constante **tipada** no nível de package. Constantes podem viver fora de funções; variáveis no nível de package, em geral, deveriam ser evitadas — com `const` é o contrário, é o lugar natural."},
+    {text: "`const n = 500000000` — constantes também podem ser declaradas dentro de funções, e aqui o tipo é **omitido**. Veremos por que isso importa."},
+    {text: "`3e20 / n` faz aritmética com precisão arbitrária. O resultado `d` é `6e+11`, calculado exatamente — sem arredondamento de ponto flutuante, porque nenhum tipo foi aplicado ainda."},
+    {text: "`int64(d)` converte a constante para `int64` de forma explícita: `600000000000`. A conversão é segura porque o valor cabe no tipo."},
+    {text: "`math.Sin(n)` — a função espera um `float64`, e é aqui que a constante `n`, até então sem tipo, **recebe** `float64` para caber no contexto. Se o valor não coubesse, seria erro de compilação."},
+    {text: "Saída:\n$ go run constants.go\nconstant\n6e+11\n600000000000\n-0.28470407323754404"}
   ]}
 />
 
 <a href="https://go.dev/play/p/LfvIxHlpomp" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Constante tipada × constante sem tipo
+
+Esse é o conceito que separa quem entende Go de quem apenas copia:
+
+- **`const s string = "constant"`** — tipada. Se comporta como uma variável `string` que não pode mudar.
+- **`const n = 500000000`** — sem tipo. É um **número puro**: ainda não é `int`, nem `float64`. Ele "vira" o tipo que o contexto exigir.
+
+Por isso `math.Sin(n)` funciona mesmo sem conversão explícita: `n` é uma constante sem tipo e o compilador a adapta para `float64`, o parâmetro de `math.Sin`. Se `n` fosse uma **variável** `int`, essa linha nem compilaria — variáveis não se adaptam, só constantes.
+
+A precisão arbitrária vem daí também: enquanto não há tipo, não há limite de tamanho. `3e20 / n` é calculado exatamente; o arredondamento só aparece quando um tipo concreto é aplicado.
+
+## Em código real
+
+Constantes aparecem para dar nome a valores fixos e evitar "números mágicos":
+
+- Limites e timeouts: `const maxRetries = 3`, `const requestTimeout = 30 * time.Second` (durations são constantes tipadas — assunto da página de [Time](time)).
+- Erros de domínio e códigos de status: em [Enums](enums) você verá `iota`, o mecanismo de Go para sequências de constantes.
+- Configuração que não pode ser alterada em runtime.
+
+A regra é simples: se o valor nunca muda e é conhecido em tempo de compilação, declare como `const`. Se vier de arquivo, variável de ambiente ou entrada do usuário, precisa ser `var`.
+
+## Armadilhas comuns
+
+- **Constante que depende de runtime**: `const x = time.Now()` não compila. Constantes exigem valores conhecidos em tempo de compilação; resultados de funções são sempre `var`.
+- **Achar que constante sem tipo é `int`**: `const n = 500000000` não tem tipo até ser usada. Isso é um recurso, não uma falha — mas explica por que `fmt.Println(n)` escolhe a representação mais natural.
+- **Esperar arredondamento cedo**: `3e20 / 500000000` só arredonda quando vira `float64`/`int64`. Em outras linguagens essa conta já nasceria imprecisa; em Go ela nasce exata.
+
+## Pratique
+
+1. **Reproduza**: rode `constants.go` e confira as três saídas do número `d`.
+2. **Modifique**: troque `math.Sin(n)` por `math.Sin(float64(n))` — mesma saída, conversão explícita. Depois declare `n` com `var` e tente compilar: o erro mostra por que constantes são especiais.
+3. **Aplique**: declare constantes tipada e sem tipo para uma taxa de conversão (ex.: `dollarsPerEuro`) e use a sem tipo em duas operações que exijam tipos diferentes.
+
+## Próximo passo
+
+Com valores, variáveis e constantes você já consegue guardar dados — mas ainda não consegue **repetir** trabalho. Em [Laços For](for) você vai ver o único laço de Go e as suas formas.

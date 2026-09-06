@@ -4,8 +4,10 @@ title: Goroutines
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Uma função roda e espera: se ela faz uma chamada de rede ou espera 1 segundo, o programa fica parado. Para "fazer várias coisas ao mesmo tempo" — responder dois clientes, processar filas, baixar em paralelo — Go usa **goroutines**: funções que rodam de forma independente e concorrente, disparadas com uma única palavra-chave: `go`. São o coração da linguagem, e entender o que elas são (e o que não são) evita os erros mais caros de Go.
+
 <CodeExplanation
-  title={"Goroutines"}
+  title={"goroutines.go"}
   code={`package main
 
 import (
@@ -28,14 +30,75 @@ func main() {
     fmt.Println("done")
 }`}
   sections={[
-    {text: "Suponha a chamada `f(s)`. Assim a chamamos de forma síncrona."},
-    {text: "Para invocar em goroutine, use `go f(s)`. A nova goroutine executa concorrentemente com a chamadora."},
-    {text: "Também pode iniciar uma goroutine para uma função anônima."},
-    {text: "As duas chamadas rodam assincronamente em goroutines separadas. Espere terminarem (para algo robusto, use [WaitGroup](waitgroups))."},
-    {text: "Saída:\n# When we run this program, we see the output of the\n# blocking call first, then the output of the two\n# goroutines. The goroutines' output may be interleaved,\n# because goroutines are being run concurrently by the\n# Go runtime.\n$ go run goroutines.go\ndirect : 0\ndirect : 1\ndirect : 2\ngoroutine : 0\ngoing\ngoroutine : 1\ngoroutine : 2\ndone\n\n# Next we'll look at a complement to goroutines in\n# concurrent Go programs: channels."}
+    {text: "`f(from string)` imprime três linhas — o trabalho que queremos rodar de formas diferentes."},
+    {text: "`f(\"direct\")` é a chamada **síncrona** que você já conhece: roda até o fim, na mesma goroutine (`main`)."},
+    {text: "`go f(\"goroutine\")` dispara uma **nova goroutine** para rodar `f` concorrentemente. A chamada retorna na hora — `main` não espera."},
+    {text: "`go func(...) {...}(\"going\")` — goroutine com função anônima, o idioma para trabalho curto. Nada aqui roda em \"segundo plano\" do SO: é agendado pelo runtime."},
+    {text: "`time.Sleep(time.Second)` é uma **gambiarra didática**: sem ele, `main` termina e o programa morre antes das goroutines rodarem. Forma correta de esperar vem em [WaitGroups](waitgroups) e [Channels](channels)."},
+    {text: "Saída:\n$ go run goroutines.go\ndirect : 0\ndirect : 1\ndirect : 2\ngoing\ngoroutine : 0\ngoroutine : 1\ngoroutine : 2\ndone\n\n# A chamada síncrona termina primeiro. A ordem das linhas\n# \"going\" e \"goroutine : N\" muda a cada execução — são\n# concorrentes."}
   ]}
 />
 
 <a href="https://go.dev/play/p/0fx_WokYVFO" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Concorrência × paralelismo: a distinção que define tudo
+
+> Concorrência é sobre *lidar com* várias coisas ao mesmo tempo. Paralelismo é sobre *fazer* várias coisas ao mesmo tempo. (Rob Pike)
+
+- **Concorrência** é uma propriedade do **código**: você compõe tarefas independentes (goroutines) que progridem se alternando. Funciona até num único núcleo — o runtime pausa uma e retoma outra.
+- **Paralelismo** é uma propriedade da **execução**: duas tarefas rodando literalmente no mesmo instante, em núcleos diferentes. Só existe com hardware de vários núcleos.
+
+O ponto de Pike: Go é uma linguagem **concorrente** — você *escreve* concorrência (estrutura do código). Se o hardware permitir, o runtime também executa em paralelo, mas isso é um detalhe de máquina. Programas concorrentes corretos funcionam num núcleo; paralelismo só acelera o que já está bem estruturado.
+
+## Por que goroutines são leves
+
+Uma *thread* de sistema operacional custa caro: ~1-2 MB de stack fixa, criada pelo kernel, troca de contexto com intervenção do SO. Uma **goroutine** começa com ~2 KB de stack **que cresce conforme o uso** e é gerenciada pelo runtime, em espaço de usuário — sem chamada de kernel para criar ou alternar.
+
+A consequência prática: você pode criar **milhares** (ou centenas de milhares) de goroutines sem estourar memória. Não é "uma por request se você tiver sorte" — é "uma por tarefa concorrente", sem cerimônia. Isso muda o estilo: em Go, você não gerencia *pools* de threads à mão para cada recurso; cria goroutines e deixa o runtime escalar.
+
+## Como o runtime escala: o scheduler M:N
+
+Goroutines não rodam sozinhas — o runtime as agenda sobre threads do SO. O modelo é **M:N** (M goroutines sobre N threads) com três entidades:
+
+- **G (goroutine)** — a unidade de trabalho: stack própria + ponto de execução.
+- **M (machine)** — uma thread do SO; é onde uma G realmente executa.
+- **P (processor)** — contexto lógico com sua própria **fila de goroutines prontas**. O número de Ps é o `GOMAXPROCS`, e só Gs em Ps rodam.
+
+O fluxo: ao criar uma goroutine, o runtime a coloca na fila de um P; o P entrega Gs a threads M livres; quando uma G **bloqueia** (syscall, I/O), o M espera e o P se **desacopla** e vai para outro M — a CPU não fica ociosa esperando I/O. Dois mecanismos mantêm tudo ocupado e justo:
+
+- **Work stealing**: se um P esvazia a fila, rouba trabalho de outro P — melhor uso de vários núcleos.
+- **Preempção**: uma G que roda por tempo demais é pausada para dar vez às outras. E o próprio garbage collector roda em goroutines, minimizando pausas.
+
+**GOMAXPROCS** controla quantas goroutines rodam em paralelo de verdade. O padrão evoluiu: até o Go 1.4 era `1`; a partir do **Go 1.5** usa todos os núcleos lógicos; desde o **Go 1.25**, em Linux, respeita o **limite de CPU do container** (cgroup) em vez de contar os núcleos da máquina — importante para não criar mais threads que a cota permite. Na prática você raramente mexe: o padrão é o certo.
+
+## Antes de disparar uma goroutine
+
+Goroutines criam **concorrência, não garantia de ordem**. A saída do exemplo já mostra: `going` e `goroutine : N` se intercalam de forma diferente a cada execução. Antes de escrever `go`, responda:
+
+1. **Quem é o dono** desta goroutine e como ela termina?
+2. Como ela recebe **cancelamento**?
+3. Quem **espera** por ela?
+4. Quem **fecha** cada channel?
+
+Sem respostas claras, o código ainda não está pronto para concorrência — e `time.Sleep` nunca é a resposta. Esse checklist é o tema da página [Ciclo de Vida de Goroutines](goroutine-lifecycle).
+
+## Armadilhas comuns
+
+- **`main` termina antes**: quando `main` retorna, o programa acaba — goroutines em voo são abandonadas. Sempre garanta que o programa espera as goroutines (WaitGroup/channels).
+- **Sincronizar com `time.Sleep`**: além de lento, é não-determinístico. `Sleep(1s)` não garante que a goroutine terminou — pode ser cedo ou tarde demais. Use [WaitGroups](waitgroups) ou [Channels](channels).
+- **Achar que goroutine é paralela por padrão**: você escreve concorrência; o paralelismo depende de núcleos e do `GOMAXPROCS`. Não assuma velocidade — meça.
+- **Capturar a variável do laço**: closures dentro de `go` capturam a variável do `for`. Desde o **Go 1.22** cada iteração tem a própria variável; em código antigo, passe por argumento.
+- **Criar goroutines sem limite**: cada uma custa stack; "uma goroutine por tarefa" não significa "uma goroutine por *item* numa fila de milhões" — para trabalho massivo, use [Worker Pools](worker-pools).
+- **Compartilhar memória sem sincronização**: duas goroutines escrevendo na mesma variável é *data race*. A regra: "não se comunique compartilhando memória; **compartilhe memória se comunicando**" — channels (ou mutexes) em vez de variável solta.
+
+## Pratique
+
+1. **Reproduza**: rode `goroutines.go` três vezes e observe a saída mudar de ordem.
+2. **Modifique**: remova o `time.Sleep` e rode — a saída "done" some? Explique por quê. Depois troque o `Sleep` por um `WaitGroup` que espera as duas goroutines.
+3. **Aplique**: rode `GOMAXPROCS=1 go run goroutines.go` e depois sem a variável; compare a intercalação. Com um único P não há paralelismo — só alternância.
+
+## Próximo passo
+
+Disparar goroutine é fácil; o difícil é **terminar com segurança**. Em [Ciclo de Vida de Goroutines](goroutine-lifecycle) você vai responder as quatro perguntas de dono, cancelamento, espera e fechamento antes de escrever `go`.

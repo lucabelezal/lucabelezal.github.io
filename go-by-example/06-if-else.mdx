@@ -4,8 +4,10 @@ title: If/Else
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Laços decidem *quando repetir*; **condicionais** decidem *qual caminho tomar*. O `if`/`else` de Go é direto — condição sem parênteses, obrigatoriamente booleana — e tem um recurso que você usará o tempo todo: a **declaração de inicialização** antes da condição. O que não existe é operador ternário.
+
 <CodeExplanation
-  title={"If/Else"}
+  title={"if-else.go"}
   code={`package main
 
 import "fmt"
@@ -31,14 +33,52 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Um exemplo básico."},
-    {text: "Você pode ter um `if` sem `else`."},
-    {text: "Operadores lógicos como `&&` e `||` são úteis em condições."},
-    {text: "Uma instrução pode preceder condicionais; variáveis declaradas nela ficam disponíveis no ramo atual e nos subsequentes."},
-    {text: "Saída:\n$ go run if-else.go\n7 is odd\n8 is divisible by 4\neither 8 or 7 are even\n9 has 1 digit\n\n# There is no [ternary if](https://en.wikipedia.org/wiki/%3F:)\n# in Go, so you'll need to use a full `if` statement even\n# for basic conditions."}
+    {text: "O `if` básico com `else`. A condição `7%2 == 0` é `false` (o resto de 7 por 2 é 1), então o bloco do `else` roda e imprime \"7 is odd\"."},
+    {text: "O `else` é opcional. `8%4 == 0` é verdadeiro, o bloco roda e o programa segue — sem nenhum ramo alternativo."},
+    {text: "Condições compostas com `||` e `&&`, os mesmos operadores booleanos vistos em [Valores](values). `8%2 == 0` já é verdadeiro, então o `||` encurta e o bloco roda."},
+    {text: "A joia do Go: `num := 9` **inicializa antes da condição**. `num` existe apenas dentro do `if`/`else` — não vaza para fora. Útil para guardar o resultado de uma chamada e testá-lo na hora, como em `if err := doThing(); err != nil`."},
+    {text: "`else if` encadeia condições. Como `num` vale 9, o primeiro teste (`num < 0`) falha, o segundo (`num < 10`) passa, e imprime \"9 has 1 digit\"."},
+    {text: "Saída:\n$ go run if-else.go\n7 is odd\n8 is divisible by 4\neither 8 or 7 are even\n9 has 1 digit\n\n# Não existe [if ternário](https://en.wikipedia.org/wiki/%3F:)\n# em Go, então você usa um `if` completo até para\n# condições simples."}
   ]}
 />
 
 <a href="https://go.dev/play/p/RKgKzCe7qcF" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Por que Go não tem operador ternário?
+
+`condicao ? a : b` é compacto, mas fácil de abusar — e o time do Go prioriza legibilidade sobre brevidade. A decisão foi deliberada: se você precisa de um ramo alternativo, escreva um `if`/`else` explícito. Em código Go real, você raramente vê ternários, e ninguém sente falta.
+
+## A condição é sempre booleana
+
+Go não faz *truthiness*: a condição do `if` **precisa ser um `bool`**. Isso significa que `if num` (com `num` inteiro) não compila — você precisa escrever `if num != 0`. Pode parecer verboso no começo, mas elimina uma classe inteira de bugs de linguagens onde qualquer valor vira verdadeiro/falso por regras implícitas.
+
+## Em código real
+
+O padrão que você verá em quase todo arquivo Go é o `if` com inicialização + *early return*:
+
+```go
+if err := doThing(); err != nil {
+    return err
+}
+```
+
+Aqui o `num := 9` do exemplo vira o `err := chamada()`: o resultado da chamada é testado na mesma linha e o erro é tratado imediatamente. Esse idioma é tão central que ganha páginas próprias em [Erros](errors). O `else if` encadeado existe, mas quando a cadeia cresce, o [Switch](switch) costuma ficar mais legível.
+
+## Armadilhas comuns
+
+- **Usar parênteses em volta da condição**: `if (x > 0) {` compila, mas não é o estilo de Go — omita os parênteses.
+- **Testar número direto**: `if num` não compila. Escreva `if num != 0`. Sem *truthiness*, sem surpresa.
+- **Usar `=` em vez de `==`**: atribuição em vez de comparação. O compilador pega na maioria dos casos, mas é o erro de digitação mais comum.
+- **Chamar a variável do `if` fora dele**: `num` declarado na inicialização não existe após o bloco. Se você precisa do valor depois, declare antes do `if`.
+
+## Pratique
+
+1. **Reproduza**: rode `if-else.go` e relacione cada linha da saída com o ramo que a produziu.
+2. **Modifique**: troque `num := 9` por `num := -3` e preveja a saída antes de rodar. Depois teste `num := 12`.
+3. **Aplique**: reescreva a cadeia do último bloco sem `else if`, usando vários `if` independentes com `return` — e compare com a versão original para sentir quando cada estilo é melhor.
+
+## Próximo passo
+
+Cadeias longas de `else if` ficam ilegíveis. Em [Switch](switch) você vai ver a alternativa de Go para múltiplas condições — e por que o `break` automático muda tudo.

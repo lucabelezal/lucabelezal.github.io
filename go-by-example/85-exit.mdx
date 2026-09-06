@@ -4,8 +4,10 @@ title: Exit
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Todo programa termina com um **código de saída**: `0` para sucesso, diferente de zero para falha — e é isso que o shell, o CI e os orquestradores leem. Em Go, o `main` retorna e o processo sai com `0`. Para sair com outro código de qualquer lugar, existe o `os.Exit(código)` — uma faca de dois gumes: ele **não roda `defer`s**.
+
 <CodeExplanation
-  title={"Exit"}
+  title={"exit.go"}
   code={`package main
 
 import (
@@ -18,12 +20,69 @@ func main() {
     os.Exit(3)
 }`}
   sections={[
-    {text: "`defer`s _não_ executam com `os.Exit`, então este `fmt.Println` nunca será chamado."},
-    {text: "Saia com status 3."},
-    {text: "Saída:\n#  If you run `exit.go` using `go run`, the exit\n# will be picked up by `go` and printed.\n$ go run exit.go\nexit status 3\n\n# By building and executing a binary you can see\n# the status in the terminal.\n$ go build exit.go\n$ ./exit\n$ echo $?\n3\n\n# Note that the `!` from our program never got printed."}
+    {text: "`defer fmt.Println(\"!\")` nunca roda: o `os.Exit` encerra o processo **imediatamente**, sem executar os defers pendentes."},
+    {text: "`os.Exit(3)` termina o processo com código 3. O `0` é o sucesso; qualquer outro valor sinaliza erro."},
+    {text: "Saída (real):\n$ go run exit.go\nexit status 3\n\n# O `go run` repassa o código como \"exit status 3\".\n$ go build exit.go\n$ ./exit\n$ echo $?\n3\n\n# O \"!\" do defer nunca foi impresso."}
   ]}
 />
 
-<a href="https://go.dev/play/p/b9aYzlENkb__R" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Por que `defer` não roda no `os.Exit`
+
+O `os.Exit` chama a syscall `exit` do SO na hora — os defers são uma construção do runtime Go, que não tem chance de rodar. Consequência prática:
+
+- **Buffers não são despejados**: um `bufio.Writer` com dados pendentes (ou o `fmt.Print` num buffer) perde o conteúdo.
+- **Arquivos não são fechados** pelo seu `defer f.Close()`.
+- **Logs em buffer** podem sumir.
+
+Se você precisa de cleanup (fechar, flush, avisar), **não** use `os.Exit` no meio — retorne do `main` (ou use um helper que retorna erro) e deixe os defers rodarem no retorno natural.
+
+## Códigos de saída: a linguagem do Unix
+
+| Código | Significado |
+|---|---|
+| `0` | Sucesso |
+| `1` | Erro genérico (o padrão para "deu errado") |
+| `2` | Uso incorreto (muitos CLIs; o `flag` usa) |
+| `126`/`127` | Não executável / comando não encontrado (shell) |
+| `130` | Interrompido por `Ctrl+C` (128 + SIGINT) |
+
+O `main` retornando `0` é o normal; `os.Exit(1)` depois de logar um erro fatal é o idioma dos programas de linha de comando (você viu em [Filtros de Linha](line-filters) e nos `log.Fatal` de servidores). Orquestradores (Kubernetes, Docker) reiniciam com base nesse código — `0` vs não-zero decide se o processo "funcionou".
+
+## Em código real
+
+O padrão limpo: funções devolvem `error`, o `main` decide o código:
+
+```go
+func main() {
+    if err := run(); err != nil {
+        log.Fatal(err) // loga + os.Exit(1)
+    }
+}
+```
+
+`log.Fatal` já combina os dois (página [Logging](logging)) — mas lembre: ele também **não roda defers**. Se o seu programa tem cleanup importante, retorne do `main` com um código explícito e deixe o fluxo natural rodar os defers:
+
+```go
+func main() {
+    code := run()          // defers rodam quando run() retorna
+    os.Exit(code)          // agora sim, com cleanup feito
+}
+```
+
+## Armadilhas comuns
+
+- **`os.Exit` sem cleanup**: fecha o programa no meio e perde flushes/fechamentos. Retorne do `main` quando houver defer importante.
+- **`defer` que "não funciona"**: não é bug do defer — é o `Exit`. Debugue lembrando que Exit é imediato.
+- **Código errado**: sair com `0` quando falhou engana CI/orquestrador. Sempre não-zero em erro.
+- **`os.Exit` dentro de função de biblioteca**: mata o processo do chamador. Quem decide sair é o `main`; bibliotecas retornam erro.
+- **Confundir com `panic`**: `panic` roda os defers (e pode ser recuperado — página [Recover](recover)); `os.Exit` não roda nada.
+
+## Pratique
+
+1. **Reproduza**: rode `exit.go` com `go run` e depois compilado — veja `exit status 3` e o `$?` igual a 3.
+2. **Modifique**: troque o `os.Exit(3)` por `return` com um `defer` no `main` — o "!" agora aparece. Compare os dois comportamentos.
+3. **Aplique**: escreva um `main` que chama `run() error` e sai com `0`/`1` conforme o erro — com um `defer` que imprime "cleanup" para provar que roda no caminho limpo.
+
+## Próximo passo
+
+Com `exit` você fecha o ciclo completo: do `Olá Mundo` ao processo que termina com o código certo. Você percorreu a linguagem, a stdlib, concorrência, rede e o SO — volte ao [início](/go) para revisitar qualquer assunto ou explore o roadmap para decidir o próximo passo da sua trilha Go.

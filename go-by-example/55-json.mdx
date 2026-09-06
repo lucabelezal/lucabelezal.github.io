@@ -4,14 +4,16 @@ title: JSON
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Quando seu programa fala com uma API, um banco ou outro serviço, o formato mais comum de conversa é o **JSON**. Go serializa (`Marshal`) e desserializa (`Unmarshal`) com o pacote `encoding/json`, e a mágica é declarativa: com *struct tags* você diz qual campo vira qual chave — o pacote cuida do resto. A parte que exige atenção é o *caminho de volta*: JSON não tem tipos Go, e decodificar para `map` devolve números como `float64` e objetos aninhados como `any`.
+
 <CodeExplanation
-  title={"JSON"}
+  title={"json.go"}
   code={`package main
 
 import (
-    "bytes"
-    "encoding/json/v2"
+    "encoding/json"
     "fmt"
+    "os"
     "strings"
 )
 
@@ -39,14 +41,10 @@ func main() {
     mapD := map[string]int{"apple": 5, "lettuce": 7}
     mapB, _ := json.Marshal(mapD)
     fmt.Println(string(mapB))
-    res1D := &response1{
-        Page:   1,
-        Fruits: []string{"apple", "peach", "pear"}}
+    res1D := &response1{Page: 1, Fruits: []string{"apple", "peach", "pear"}}
     res1B, _ := json.Marshal(res1D)
     fmt.Println(string(res1B))
-    res2D := &response2{
-        Page:   1,
-        Fruits: []string{"apple", "peach", "pear"}}
+    res2D := &response2{Page: 1, Fruits: []string{"apple", "peach", "pear"}}
     res2B, _ := json.Marshal(res2D)
     fmt.Println(string(res2B))
     byt := []byte(\`{"num":6.13,"strs":["a","b"]}\`)
@@ -62,36 +60,83 @@ func main() {
     fmt.Println(str1)
     str := \`{"page": 1, "fruits": ["apple", "peach"]}\`
     res := response2{}
-    _ = json.Unmarshal([]byte(str), &res)
+    if err := json.Unmarshal([]byte(str), &res); err != nil {
+        panic(err)
+    }
     fmt.Println(res)
     fmt.Println(res.Fruits[0])
     d := map[string]int{"apple": 5, "lettuce": 7}
-    var buf bytes.Buffer
-    _ = json.MarshalWrite(&buf, d)
-    fmt.Println(buf.String())
+    json.NewEncoder(os.Stdout).Encode(d)
     res1 := response2{}
-    _ = json.UnmarshalRead(strings.NewReader(str), &res1)
+    if err := json.NewDecoder(strings.NewReader(str)).Decode(&res1); err != nil {
+        panic(err)
+    }
     fmt.Println(res1)
 }`}
   sections={[
-    {text: "Usaremos estes dois structs para demonstrar encoding e decoding de tipos customizados."},
-    {text: "Apenas campos exportados são codificados/decodificados em JSON. Precisam começar com maiúscula."},
-    {text: "Primeiro, encoding de tipos básicos para JSON. Aqui exemplos de valores atômicos."},
-    {text: "E aqui para slices e maps, que viram arrays e objetos JSON."},
-    {text: "O pacote JSON pode codificar tipos customizados automaticamente. Só inclui campos exportados e usa os nomes como chaves."},
-    {text: "Pode usar tags nos campos para customizar chaves JSON. Veja `response2` acima."},
-    {text: "Agora, decoding de JSON para valores Go. Exemplo com estrutura genérica."},
-    {text: "Precisamos de variável para o pacote JSON depositar os dados. `map[string]any` guarda mapa de strings para tipos arbitrários."},
-    {text: "Aqui o decoding real e checagem de erro. Por brevidade ignoramos erros; em código real sempre verifique."},
-    {text: "Para usar valores do map decodificado, converta para o tipo apropriado. Aqui convertemos `num` para `float64`."},
-    {text: "Acessar dados aninhados exige série de conversões."},
-    {text: "Também podemos decodificar para tipos customizados. Vantagem: mais type-safety e sem type assertions."},
-    {text: "Acima usamos bytes e strings como intermediários. Também podemos fazer stream direto para `io.Writer`s como `os.Stdout` ou bodies HTTP."},
-    {text: "Leitura em stream de `io.Reader`s como `os.Stdin` ou bodies HTTP é feita com `json.UnmarshalRead`."},
-    {text: "Saída:\n$ go run json.go\ntrue\n1\n2.34\n\"gopher\"\n[\"apple\",\"peach\",\"pear\"]\n{\"apple\":5,\"lettuce\":7}\n{\"Page\":1,\"Fruits\":[\"apple\",\"peach\",\"pear\"]}\n{\"page\":1,\"fruits\":[\"apple\",\"peach\",\"pear\"]}\nmap[num:6.13 strs:[a b]]\n6.13\na\n{1 [apple peach]}\napple\n{\"apple\":5,\"lettuce\":7}\n{1 [apple peach]}\n\n\n# We've covered the basic of JSON in Go here, but check\n# out the [JSON and Go](https://go.dev/blog/json)\n# blog post and the [JSON package docs](https://pkg.go.dev/encoding/json/v2)\n# for more."}
+    {text: "`response1` (sem tags) e `response2` (com tags) demonstram como structs viram JSON. Só campos **exportados** participam."},
+    {text: "Marshal de tipos básicos: bool, número, string. Repare que a string vira `\"gopher\"` — com aspas JSON."},
+    {text: "Slices viram arrays (`[\"apple\",...]`); maps viram objetos (`{\"apple\":5,...}`). Maps são serializados com as chaves **ordenadas** no encoding/json — mas nunca dependa de ordem de chaves ao ler JSON."},
+    {text: "Sem tags, o struct usa o nome do campo (`\"Page\"`, `\"Fruits\"`) — chaves em maiúscula, raro em APIs."},
+    {text: "Com tags (`json:\"page\"`), as chaves ficam minúsculas: `{\"page\":1,...}`. Tags também controlam `omitempty`, nomes e opções."},
+    {text: "**Unmarshal** do outro lado: decodificar JSON desconhecido para `map[string]any` — valores genéricos."},
+    {text: "Números decodificados em `any` viram `float64` (6.13 aqui). Se o dado é inteiro, `6` vira `float64(6)` também — converta com cuidado."},
+    {text: "Arrays viram `[]any`; acessar exige type assertion (`strs[0].(string)`). Frágil — a alternativa type-safe vem a seguir."},
+    {text: "Decodificar direto para **struct** (`response2`): o pacote casa as chaves com as tags e preenche — sem assertions, com type-safety."},
+    {text: "**Streaming**: `json.NewEncoder(w).Encode(v)` escreve direto num `io.Writer` (aqui `os.Stdout`; serviria um `http.ResponseWriter`)."},
+    {text: "`json.NewDecoder(r).Decode(&v)` lê de um `io.Reader` (arquivo, body HTTP) — ideal para dados grandes, sem carregar tudo em memória."},
+    {text: "Saída:\n$ go run json.go\ntrue\n1\n2.34\n\"gopher\"\n[\"apple\",\"peach\",\"pear\"]\n{\"apple\":5,\"lettuce\":7}\n{\"Page\":1,\"Fruits\":[\"apple\",\"peach\",\"pear\"]}\n{\"page\":1,\"fruits\":[\"apple\",\"peach\",\"pear\"]}\nmap[num:6.13 strs:[a b]]\n6.13\na\n{1 [apple peach]}\napple\n{\"apple\":5,\"lettuce\":7}\n{1 [apple peach]}\n\n# Consulte o post [JSON and Go](https://go.dev/blog/json)\n# e a [documentação](https://pkg.go.dev/encoding/json)."}
   ]}
 />
 
-<a href="https://go.dev/play/p/09HfDq_PP3G" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Marshal: struct → JSON (campos exportados + tags)
+
+O `json` usa **reflexão**: ele inspeciona seu struct e serializa o que é exportado. Regras que valem ouro:
+
+```go
+type pedido struct {
+    ID      string    `json:"id"`
+    Cliente string    `json:"cliente,omitempty"` // omite se vazio
+    Total   float64   `json:"total"`
+    Criado  time.Time `json:"criado"` // time.Time tem formato próprio
+}
+```
+
+- Campo minúsculo → **ignorado** em silêncio (não é erro — é dado perdido).
+- Tag `json:"nome"` muda a chave; `omitempty` omite valores zero; `-` exclui o campo.
+- `time.Time` serializa em RFC 3339 automaticamente; `[]byte` vira base64.
+- **`nil` slice vira `null`, slice vazio vira `[]`** — a distinção que você viu em [Slices](slices), e que importa para APIs.
+
+## Unmarshal: JSON → Go (e por que `map` é frágil)
+
+JSON não conhece tipos Go: todo número é número, todo objeto é mapa. Ao decodificar para `map[string]any`, Go escolhe os tipos **genéricos**: `float64` para números, `[]any` para arrays, `map[string]any` para objetos. Acessar valores exige uma cadeia de type assertions — verbosa e frágil (um campo ausente derruba a assertion). É por isso que **decodificar direto para struct é o padrão**: o pacote casa chaves por tag, converte tipos e valida — e `json.Unmarshal` devolve erro se o JSON não bater com a estrutura.
+
+## Marshal vs Encoder
+
+- `json.Marshal(v)` → `[]byte`, para dados que você já tem em memória.
+- `json.NewEncoder(w).Encode(v)` → escreve direto num `io.Writer` — respostas HTTP, arquivos, logs. É a forma usada nos handlers (página de [Servidor HTTP](http-server)).
+- `json.NewDecoder(r).Decode(&v)` → lê de `io.Reader`, processando **streaming**: útil para JSON grande ou arquivos que não cabem na memória.
+- Erros: **sempre** verifique o retorno de `Marshal`/`Unmarshal`/`Encode`/`Decode` em código real (os `_` aqui são por brevidade do exemplo). JSON inválido é `error`.
+
+## Nota: `encoding/json/v2` (experimental)
+
+Desde o Go 1.26 existe um `encoding/json/v2` **experimental** (ativado com `GOEXPERIMENT=jsonv2`) com API moderna (`MarshalWrite`, `UnmarshalRead`, tratamento de erros melhor). Não use em produção sem entender a flag — esta página ensina o `encoding/json` estável, que é o que o ecossistema usa hoje.
+
+## Armadilhas comuns
+
+- **Campo minúsculo "some" do JSON**: só campos exportados serializam. Debug de `{}` vazio geralmente é campo minúsculo.
+- **Número decodificado em `any` é `float64`**: `int` grande pode perder precisão (acima de 2^53). Para inteiros exatos, decodifique para struct com campo `int64`, ou use `json.Decoder` com `UseNumber()`.
+- **Type assertion sem `ok`**: `dat["num"].(float64)` pânica se a chave não existir ou o tipo for outro. Em dado desconhecido, use a forma segura `v, ok := x.(T)`.
+- **Ignorar o erro do Unmarshal**: JSON malformado devolve erro; dados parcialmente preenchidos + erro ignorado = bug silencioso.
+- **Depender da ordem das chaves**: JSON é um map — a ordem não é contrato. Compare conteúdo, não string.
+- **Marshal de `map[string]any` com tipos mistos**: `json.Marshal` falha em `NaN`, `Inf` e valores sem suporte — trate antes.
+
+## Pratique
+
+1. **Reproduza**: rode `json.go` e explique por que `response1` e `response2` geram JSON diferentes.
+2. **Modifique**: adicione `omitempty` num campo e um campo minúsculo; serialize e observe. Depois decodifique `{"page": "1"}` para `response2` — string em campo int devolve erro.
+3. **Aplique**: defina `type produto struct` com tags, serialize uma lista para um `bytes.Buffer` com `Encoder`, e leia de volta com `Decoder` — o ciclo completo ida e volta.
+
+## Próximo passo
+
+JSON domina APIs web, mas alguns sistemas legados e formatos de config ainda falam **XML**. Em [XML](xml), o mesmo modelo declarativo de tags — agora com atributos, elementos aninhados e o nome raiz.

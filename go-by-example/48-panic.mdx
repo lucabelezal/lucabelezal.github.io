@@ -4,8 +4,10 @@ title: Panic
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+A maioria das falhas em Go é **valor** (`error`) e segue o fluxo normal. Mas existe um tipo de falha que não devolve erro nenhum — porque **o programa não deveria continuar**: uma invariante quebrada, um bug, um "isto não pode acontecer". Para esses casos Go tem o **`panic`**: derruba a goroutine atual, desempilhando chamadas, e termina o programa se ninguém recuperar.
+
 <CodeExplanation
-  title={"Panic"}
+  title={"panic.go"}
   code={`package main
 
 import (
@@ -22,12 +24,53 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Usaremos panic no site para checar erros inesperados. Este é o único programa projetado para entrar em panic."},
-    {text: "Uso comum de panic é abortar se uma função retorna erro que não sabemos tratar. Aqui um exemplo de panic ao criar arquivo com erro inesperado."},
-    {text: "Saída:\n# Running this program will cause it to panic, print\n# an error message and goroutine traces, and exit with\n# a non-zero status.\n\n# When first panic in `main` fires, the program exits\n# without reaching the rest of the code. If you'd like\n# to see the program try to create a temp file, comment\n# the first panic out.\n$ go run panic.go\npanic: a problem\n\ngoroutine 1 [running]:\nmain.main()\n\\t/.../panic.go:12 +0x47\n...\nexit status 2\n\n# Note that unlike some languages which use exceptions\n# for handling of many errors, in Go it is idiomatic\n# to use error-indicating return values wherever possible."}
+    {text: "`panic(\"a problem\")` para a execução imediatamente. Tudo abaixo de `main` (o `os.Create` etc.) nunca roda."},
+    {text: "Uso comum: abortar quando uma função devolve um erro que não sabemos tratar — ex.: falha ao criar arquivo num setup que não pode falhar."},
+    {text: "Saída:\n$ go run panic.go\npanic: a problem\n\ngoroutine 1 [running]:\nmain.main()\n\t/.../panic.go:12 +0x47\n...\nexit status 2\n\n# O programa imprime a mensagem, o trace das goroutines e\n# sai com status diferente de zero. Para ver o segundo uso\n# (panic(err) no arquivo), comente o primeiro panic."}
   ]}
 />
 
 <a href="https://go.dev/play/p/Z57OSC0ASwn" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Quando panic é a resposta certa — e é raro
+
+A regra do Go: **erro esperado é `error`; situação impossível é `panic`**. Usos legítimos:
+
+- **Invariante quebrada**: o código chegou num estado que "não pode" existir (ex.: `switch` sem `default` num enum que deveria ser exaustivo).
+- **Erro de programação**: indexar fora do slice, dereferenciar `nil`, `assert` de premissa. (Aliás: esses *já* panican sozinhos no Go — `index out of range`, `nil pointer dereference` — sem você chamar `panic`.)
+- **Setup que não pode falhar**: um programa que sem configuração não tem o que fazer.
+- **`main`**: se o programa não consegue nem começar, panic é aceitável — a mensagem + trace vai para o log e o exit code é não-zero.
+
+O que **não** é motivo: erro de entrada, de usuário, de I/O esperado, parsing que pode falhar. Tudo isso retorna `error`. Se você tem um `panic` no caminho feliz do seu programa, é provável que devesse ser um erro.
+
+## Não há try/catch — e isso é de propósito
+
+`panic` não é um mecanismo genérico de erro estilo exceção. Quando um panic não é recuperado, o programa **morre** — sem "catch-all" escondido. Essa escolha força o código a tratar falha como valor e a reservar `panic` para o que é genuinamente inesperado. O `defer` roda durante um panic (antes do programa morrer) — e o [Recover](recover) é a única forma de interceptá-lo, e só na própria goroutine.
+
+Dois detalhes que mordem:
+
+- **Panic numa goroutine derruba o programa inteiro** — não só a goroutine. Um worker que panica leva o processo junto, a menos que a goroutine tenha um `recover` (página de [Goroutines](goroutines) e [Recover](recover)).
+- **`panic` ≠ `os.Exit`**: antes de morrer, o panic roda os `defer`s (úteis para logging/cleanup) e imprime o trace; `os.Exit` termina na hora, sem rodar nada (detalhe em [Exit](exit)).
+
+## Em código real
+
+Panics aparecem em bibliotecas para *premissas de uso*: chamar um método sem inicializar, um tipo inválido numa conversão irrecuperável. Mas a boa biblioteca **documenta** que aquilo é um panic e devolve `error` para tudo que o chamador pode evitar. Frameworks HTTP (como o `net/http`) colocam um `recover` na fronteira de cada request para um handler com bug não derrubar o servidor — você verá o padrão em [Servidor HTTP](http-server).
+
+## Armadilhas comuns
+
+- **Panic para erro de entrada**: validar usuário com `panic` derruba o servidor. Retorne `error`.
+- **Achar que panic é local**: sem recover, ele derruba a **goroutine inteira** — e se for a `main`, o programa.
+- **Recuperar na goroutine errada**: `recover` só funciona na goroutine que panica (e dentro de um `defer`). Tentar recuperar de fora não adianta.
+- **Mensagem vazia**: `panic("")` não diz nada no log. Inclua o contexto: `panic(fmt.Sprintf("estado inválido: %v", s))`.
+
+## Pratique
+
+1. **Reproduza**: rode `panic.go` e leia o trace — identifique a linha que panica e o exit status.
+2. **Modifique**: comente o primeiro `panic` e deixe o segundo rodar; force o erro criando em um caminho inválido (ex.: um diretório que não existe). Observe a mensagem do `os.Create` envolvida no panic.
+3. **Aplique**: numa função de conversão, troque um `panic` que você escreveria por retorno `(T, error)` — e decida em qual caso um `panic` seria genuinamente justificável.
+
+## Próximo passo
+
+Antes de morrer, o panic roda os `defer`s — e essa é a ponte para a próxima ferramenta. Em [Defer](defer) você adia execução para o fim da função: cleanup de arquivos, unlock de mutex, e a ordem exata (LIFO) em que tudo roda.

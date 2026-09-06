@@ -1,11 +1,12 @@
 ---
 title: Sincronização com Channels
 ---
-
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Esperar uma goroutine terminar é um dos atos mais comuns da concorrência. Uma forma — já vista — é o [WaitGroup](waitgroups). Outra é um **channel de sinalização**: a goroutine envia ao terminar, e o chamador bloqueia no receive até o sinal chegar. O channel vira um "avise-me quando acabar".
+
 <CodeExplanation
-  title={"Sincronização com Channels"}
+  title={"channel-synchronization.go"}
   code={`package main
 
 import (
@@ -25,14 +26,42 @@ func main() {
     <-done
 }`}
   sections={[
-    {text: "Esta é a função que rodaremos em goroutine. O channel `done` notificará outra goroutine que o trabalho terminou."},
-    {text: "Envie um valor para notificar que terminamos."},
-    {text: "Inicie uma goroutine worker, passando o channel para notificação."},
-    {text: "Bloqueie até receber notificação do worker no channel."},
-    {text: "Saída:\n$ go run channel-synchronization.go      \nworking...done                  \n\n# If you removed the `<- done` line from this program,\n# the program could exit before the `worker` finished\n# its work, or in some cases even before it started."}
+    {text: "`worker` recebe o channel `done` para avisar quando terminar. O trabalho real é o `Sleep` de 1s."},
+    {text: "`done <- true` — o sinal de conclusão. O buffer 1 evita o envio bloquear (ninguém precisa estar recebendo na hora)."},
+    {text: "`go worker(done)` dispara a goroutine passando o canal."},
+    {text: "`<-done` **bloqueia a main** até o sinal chegar — é aqui que a sincronização acontece. Sem essa linha, o programa acabaria antes do worker."},
+    {text: "Saída:\n$ go run channel-synchronization.go\nworking...done\n\n# Remova o `<-done` e rode de novo: na maioria das vezes\n# o programa termina sem imprimir \"done\"."}
   ]}
 />
 
-<a href="https://go.dev/play/p/Nw-1DzIGk5f" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Channel de sinalização × WaitGroup
+
+| | Channel de sinal | WaitGroup |
+|---|---|---|
+| Sinaliza | "terminou" (1 goroutine ou a última) | "N goroutines terminaram" |
+| Contagem | Não tem — é um evento | Contador com `Add`/`Done` |
+| Valor | Pode carregar um dado (resultado!) | Só contagem |
+| Uso típico | Sincronizar pares, notificar evento | Esperar um grupo de workers |
+
+O channel de sinalização é natural quando a conclusão **carrega um valor** — o "terminei" e o "resultado" chegam juntos: `resultado := <-done`. Para muitos workers, o [WaitGroup](waitgroups) é a ferramenta certa; para "a main espera esta goroutine específica", o channel resolve.
+
+## Em código real
+
+O padrão "goroutine notifica conclusão" é a base de muitos fluxos: um worker que avisa o pool, um produtor que sinaliza "acabei de gerar", um service que aguarda o `done` de inicialização. Combine com `select` (páginas [Select](select)) para esperar **vários** sinais ao mesmo tempo — ou um sinal OU um timeout.
+
+## Armadilhas comuns
+
+- **Esquecer o receive**: `go worker(done)` sem `<-done` — a main não espera e o programa termina cedo. A sincronização exige os dois lados.
+- **Sinal sem buffer**: `done <- true` num channel sem buffer e sem receptor na hora **bloqueia** — se for o último ato do worker, ele trava. O buffer 1 (ou receptor pronto) evita.
+- **Achar que o channel "guarda" o término**: o receive só desbloqueia quando o valor **chega**; enviar antes do trabalho acabar sinaliza cedo.
+- **Misturar com WaitGroup à toa**: para uma goroutine, um channel basta; WaitGroup é para grupos.
+
+## Pratique
+
+1. **Reproduza**: rode `channel-synchronization.go`; remova o `<-done` e observe o comportamento.
+2. **Modifique**: faça o worker enviar um **resultado** (`done <- 42`) em vez de bool e imprima o valor recebido.
+3. **Aplique**: duas goroutines que sinalizam num channel compartilhado; a main recebe **duas** vezes (cada conclusão) antes de seguir.
+
+## Próximo passo
+
+Channels transferem; a **assinatura** diz quem pode o quê. Em [Direção de Channels](channel-directions), `chan<-` (só envia) e `<-chan` (só recebe) — o contrato que o compilador fiscaliza.

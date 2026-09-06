@@ -4,8 +4,10 @@ title: Diretórios
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Criar, listar e percorrer **diretórios** é a base de qualquer ferramenta que anda pelo sistema de arquivos. O `os` traz `Mkdir`/`MkdirAll` para criar (com `mkdir -p` incluído), `ReadDir` para listar, e o `filepath.WalkDir` percorre uma árvore inteira chamando um *callback* para cada arquivo — mais um lugar onde funções como valores aparecem.
+
 <CodeExplanation
-  title={"Diretórios"}
+  title={"directories.go"}
   code={`package main
 
 import (
@@ -62,19 +64,49 @@ func visit(path string, d fs.DirEntry, err error) error {
     return nil
 }`}
   sections={[
-    {text: "Crie um novo subdiretório no diretório atual."},
-    {text: "Ao criar diretórios temporários, é boa prática adiar remoção. `os.RemoveAll` deleta a árvore (como `rm -rf`)."},
-    {text: "Podemos criar hierarquia com `MkdirAll`, incluindo pais. Similar a `mkdir -p`."},
-    {text: "`ReadDir` lista conteúdo, retornando slice de `os.DirEntry`."},
-    {text: "`Chdir` muda o diretório atual, como `cd`."},
-    {text: "Agora veremos o conteúdo de `subdir/parent/child` ao listar o diretório *atual*."},
-    {text: "`cd` de volta ao ponto inicial."},
-    {text: "Também podemos visitar recursivamente, com `WalkDir` e callback para cada arquivo/diretório."},
-    {text: "`visit` é chamada para cada arquivo/diretório encontrado por `filepath.WalkDir`."},
+    {text: "`os.Mkdir(\"subdir\", 0755)` cria um diretório (falha se já existir). O `0755` é a permissão."},
+    {text: "`defer os.RemoveAll(\"subdir\")` — limpa a árvore no fim, como `rm -rf` (e o `defer` garante que rode até com erro no meio)."},
+    {text: "`os.MkdirAll(\"subdir/parent/child\", 0755)` cria a hierarquia **inteira**, criando os pais que faltarem — o `mkdir -p`."},
+    {text: "`os.ReadDir` lista um diretório e devolve `[]os.DirEntry`; cada entrada tem `Name()` e `IsDir()`."},
+    {text: "`os.Chdir` muda o diretório atual do processo (como `cd`); o `ReadDir(\".\")` seguinte lista o diretório novo."},
+    {text: "`filepath.WalkDir(\"subdir\", visit)` percorre a árvore **recursivamente**. `visit` é o callback chamado para cada arquivo/diretório (função como valor — [Funções](functions))."},
+    {text: "`visit(path, d, err)` recebe o caminho, a entrada e um possível erro; devolver `nil` continua a caminhada. Se `err != nil`, propague ou decida parar."},
     {text: "Saída:\n$ go run directories.go\nListing subdir/parent\n  child true\n  file2 false\n  file3 false\nListing subdir/parent/child\n  file4 false\nVisiting subdir\n  subdir true\n  subdir/file1 false\n  subdir/parent true\n  subdir/parent/child true\n  subdir/parent/child/file4 false\n  subdir/parent/file2 false\n  subdir/parent/file3 false"}
   ]}
 />
 
-<a href="https://go.dev/play/p/6saPJU8IfPL" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Criar × listar × percorrer
+
+| Operação | Função | Equivalente |
+|---|---|---|
+| Criar um diretório | `os.Mkdir(dir, perm)` | `mkdir dir` |
+| Criar hierarquia | `os.MkdirAll(dir, perm)` | `mkdir -p dir` |
+| Listar conteúdo | `os.ReadDir(dir)` | `ls dir` |
+| Percorrer recursivo | `filepath.WalkDir(root, fn)` | `find dir` |
+| Remover árvore | `os.RemoveAll(dir)` | `rm -rf dir` |
+
+`WalkDir` é a joia: em vez de você escrever a recursão (página [Recursão](recursion)), ela caminha sozinha e chama seu callback — com a ordem garantida (pais antes dos filhos) e erro propagado pelo retorno do callback.
+
+## Em código real
+
+- **Criar estrutura no startup**: `os.MkdirAll(caminhoConfig, 0o755)` — "garanta que existe".
+- **Varrer arquivos**: procurar por extensão, listar para backup, calcular tamanho de uma árvore — tudo com `WalkDir` + `d.IsDir()`/`d.Info()`.
+- **Limpeza**: `defer os.RemoveAll` em testes e em diretórios temporários (a página de [Arquivos Temporários](temporary-files-and-directories) usa exatamente isso).
+
+## Armadilhas comuns
+
+- **`Mkdir` num diretório que já existe**: devolve erro. Se "garantir que existe" é o objetivo, use `MkdirAll` (que é idempotente) — ou ignore o erro de "já existe".
+- **`WalkDir` com erro no callback**: retornar erro encerra a caminhada. Se um arquivo ilegível deve ser ignorado, trate dentro do callback e devolva `nil`.
+- **Mudar de diretório com `Chdir`**: afeta o processo inteiro (e qualquer goroutine concorrente). Prefira caminhos absolutos a `Chdir` quando possível.
+- **Esquecer de limpar**: árvores criadas em teste/cache acumulam. `RemoveAll` no `defer`.
+- **Caminho com espaço/acento**: `Mkdir`/`ReadDir` lidam bem — o problema é só se você montar path na mão (página [Caminhos](file-paths)).
+
+## Pratique
+
+1. **Reproduza**: rode `directories.go` e explique a ordem da saída do `WalkDir` (pais antes de filhos).
+2. **Modifique**: mude o `visit` para só imprimir **arquivos** (ignorar `IsDir`) e para contar o total de arquivos.
+3. **Aplique**: escreva `func listarPorExt(root, ext string) ([]string, error)` que caminha com `WalkDir` e devolve os caminhos com aquela extensão.
+
+## Próximo passo
+
+Diretórios para trabalho que não merece nome nem permanência. Em [Arquivos e Diretórios Temporários](temporary-files-and-directories), o `CreateTemp`/`MkdirTemp` — nomes únicos, permissões seguras e limpeza garantida.

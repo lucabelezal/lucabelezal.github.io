@@ -4,8 +4,10 @@ title: Arquivos e Diretórios Temporários
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Upload que precisa de um arquivo intermediário, um teste que grava num local isolado, um download parcial: trabalho que merece um arquivo — mas não um **nome** nem um **lar** permanente. O `os.CreateTemp` e o `os.MkdirTemp` criam arquivos/diretórios com **nome único aleatório**, permissões seguras, no diretório temporário do sistema. A regra que acompanha: você cria, usa e **limpa**.
+
 <CodeExplanation
-  title={"Arquivos e Diretórios Temporários"}
+  title={"temporary-files-and-directories.go"}
   code={`package main
 
 import (
@@ -35,16 +37,58 @@ func main() {
     check(err)
 }`}
   sections={[
-    {text: "A forma mais fácil de criar um arquivo temporário é com `os.CreateTemp`. Ele cria o arquivo *e* já abre para leitura/escrita. Passamos `\"\"` como primeiro arg, então `os.CreateTemp` cria no diretório padrão do OS."},
-    {text: "Exiba o nome do arquivo temporário. Em Unix será `/tmp`. O nome começa com o prefixo do segundo arg e o resto é automático para garantir nomes únicos."},
-    {text: "Limpe o arquivo ao terminar. O OS deve limpar temporários após um tempo, mas é boa prática fazer explicitamente."},
-    {text: "Podemos escrever dados no arquivo."},
-    {text: "Se for escrever muitos temporários, prefira diretório temporário. Args de `os.MkdirTemp` são iguais aos de `CreateTemp`, mas retorna *nome* de diretório."},
-    {text: "Agora podemos sintetizar nomes prefixando com o diretório temporário."},
-    {text: "Saída:\n$ go run temporary-files-and-directories.go\nTemp file name: /tmp/sample610887201\nTemp dir name: /tmp/sampledir898854668"}
+    {text: "`os.CreateTemp(\"\", \"sample\")` — o primeiro arg `\"\"` diz \"use o diretório temporário do sistema\"; o segundo é o **prefixo** do nome. O arquivo já nasce **aberto** para leitura/escrita."},
+    {text: "`f.Name()` mostra o caminho: diretório do sistema + prefixo + número aleatório único (`sample3501198187`). Em macOS, o diretório é o `$TMPDIR`, não `/tmp` fixo."},
+    {text: "`defer os.Remove(f.Name())` — você criou, você limpa. O SO limpa temporários eventualmente, mas não conte com isso em programas longos."},
+    {text: "Podemos escrever normalmente no arquivo temporário."},
+    {text: "`os.MkdirTemp(\"\", \"sampledir\")` cria um **diretório** temporário — para muitos arquivos, um diretório é mais organizado que N temporários soltos."},
+    {text: "`defer os.RemoveAll(dname)` remove a árvore inteira no fim."},
+    {text: "Dentro do diretório temporário, monte caminhos com `filepath.Join` (página [Caminhos](file-paths))."},
+    {text: "Saída (uma execução — os números aleatórios mudam):\n$ go run temporary-files-and-directories.go\nTemp file name: /var/folders/.../T/sample3501198187\nTemp dir name: /var/folders/.../T/sampledir1828069348"}
   ]}
 />
 
-<a href="https://go.dev/play/p/hVcPg9RH3_V" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Por que não criar na mão?
+
+`CreateTemp` existe porque "gerar um nome único" é mais difícil do que parece: dois processos podem escolher o mesmo nome (corrida), e o padrão "crie e depois abra" deixa uma janela de segurança. O `CreateTemp` cria com `O_EXCL` (falha se o nome já existir) — atômico e seguro. E os temporários já nascem com permissão `0600` (só você lê), diferente de um `os.Create` manual.
+
+## O padrão completo
+
+```go
+f, err := os.CreateTemp("", "meuapp-")
+if err != nil {
+    return err
+}
+defer os.Remove(f.Name()) // limpeza garantida
+
+// usa o arquivo...
+f.Write(dados)
+f.Sync()
+f.Close() // fecha antes de remover em Windows
+```
+
+Em produção, o ciclo é **criar → usar → fechar → remover**, com `defer` no `Remove`. Em testes, `t.TempDir()` faz tudo isso sozinho (cria diretório temporário e o limpa no fim do teste) — não reinvente.
+
+## Em código real
+
+- **Testes**: `t.TempDir()` para isolar arquivos; `CreateTemp` para testar código que recebe um `*os.File`.
+- **Uploads/downloads parciais**: baixar para um temporário e renomear para o destino só quando completo (escrita atômica aparente).
+- **Processamento intermediário**: formatos que exigem arquivo (compressão, conversão) sem poluir o diretório de trabalho.
+
+## Armadilhas comuns
+
+- **Não limpar**: `CreateTemp` sem `Remove` acumula lixo no sistema. `defer os.Remove` logo após criar.
+- **Remover antes de fechar (Windows)**: feche o arquivo antes de `Remove`/`RemoveAll`; em Unix funciona, no Windows falha.
+- **Achar que o prefixo é o nome final**: `CreateTemp("", "sample")` gera `sample` + sufixo aleatório. Se você precisa do nome exato, temporário não é a ferramenta.
+- **Escrever no diretório errado**: passar `""` usa o do sistema; se quiser "perto de mim", passe `"."`. Escolha de propósito.
+- **`0666` vs `0600`**: para temporários com dado sensível, o padrão seguro (`0600`) do `CreateTemp` já vale — não force `0666` sem motivo.
+
+## Pratique
+
+1. **Reproduza**: rode `temporary-files-and-directories.go` e veja os nomes com sufixo aleatório; rode de novo — mudam.
+2. **Modifique**: crie um arquivo temporário num diretório do projeto (`os.CreateTemp(".", "tmp-")`), escreva texto, leia de volta e remova — conferindo que ele some.
+3. **Aplique**: escreva uma função que baixa (simulado) para um `CreateTemp`, escreve, chama `Sync`, `Close` e só então `Rename` para o destino final — o padrão de escrita "tudo ou nada".
+
+## Próximo passo
+
+E se o arquivo nem precisasse existir no disco — porque **viaja dentro do binário**? Em [Diretiva Embed](embed-directive), arquivos de config e templates embutidos no executável em tempo de build.

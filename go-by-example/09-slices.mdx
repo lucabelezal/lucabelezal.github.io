@@ -4,8 +4,10 @@ title: Slices
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Um array tem tamanho fixo; quase nenhuma lista real é. O **slice** é a resposta de Go: uma visão **dinâmica** sobre um array — cresce, encolhe, fatia — e é o tipo que você usará para a maioria esmagadora das coleções. Entender slice é entender três números: o **ponteiro** para o array, o `len` (quantos elementos você enxerga) e o `cap` (até onde o array vai). Metade dos bugs de quem está começando em Go mora aqui — vale a pena dominar.
+
 <CodeExplanation
-  title={"Slices"}
+  title={"slices.go"}
   code={`package main
 
 import (
@@ -53,21 +55,91 @@ func main() {
     fmt.Println("2d: ", twoD)
 }`}
   sections={[
-    {text: "Diferente de arrays, slices são tipados apenas pelos elementos que contêm (não pelo número de elementos). Um slice não inicializado é `nil` e tem tamanho 0."},
-    {text: "Para criar um slice com tamanho não-zero, use o builtin `make`. Aqui criamos um slice de `string`s de tamanho `3` (inicialmente zero-valued). Por padrão a capacidade é igual ao tamanho; se souber que o slice vai crescer, pode passar a capacidade explicitamente como parâmetro adicional para `make`."},
-    {text: "Podemos atribuir e ler como em arrays."},
-    {text: "`len` retorna o tamanho do slice como esperado."},
-    {text: "Além dessas operações básicas, slices suportam várias outras que os tornam mais ricos que arrays. Uma delas é o builtin `append`, que retorna um slice contendo um ou mais novos valores. Note que precisamos capturar o retorno de `append`, pois podemos receber um novo slice."},
-    {text: "Slices support a \"slice\" operator with the syntax `slice[low:high]`. For example, this gets a slice of the elements `s[2]`, `s[3]`, and `s[4]`."},
-    {text: "Isso fatia até (excluindo) `s[5]`."},
-    {text: "E isso fatia a partir de (incluindo) `s[2]`."},
-    {text: "Também podemos declarar e inicializar um slice em uma única linha."},
-    {text: "O pacote `slices` contém várias funções utilitárias para slices."},
-    {text: "Slices podem ser compostos em estruturas multidimensionais. O tamanho dos slices internos pode variar, diferente de arrays multidimensionais."},
-    {text: "Saída:\n# Note that while slices are different types than arrays,\n# they are rendered similarly by `fmt.Println`.\n$ go run slices.go\nuninit: [] true true\nemp: [  ] len: 3 cap: 3\nset: [a b c]\nget: c\nlen: 3\napd: [a b c d e f]\ncpy: [a b c d e f]\nsl1: [c d e]\nsl2: [a b c d e]\nsl3: [c d e f]\ndcl: [g h i]\nt == t2\n2d:  [[0] [1 2] [2 3 4]]\n\n# Check out this [great blog post](https://go.dev/blog/slices-intro)\n# by the Go team for more details on the design and\n# implementation of slices in Go.\n\n# Now that we've seen arrays and slices we'll look at\n# Go's other key builtin data structure: maps."}
+    {text: "`var s []string` — slice sem inicializar. O tipo `[]string` **não** inclui tamanho. Um slice não inicializado é `nil` e tem `len` 0."},
+    {text: "`make([]string, 3)` cria um slice com 3 elementos zerados sobre um array interno. `len` (3) e `cap` (3, igual por padrão)."},
+    {text: "Atribuir e ler por índice funciona como em array — o slice enxerga os elementos 0..len-1."},
+    {text: "`append(s, \"d\")` adiciona ao **fim lógico**. Repare: `s = append(...)` — o retorno precisa ser capturado, porque o slice pode apontar para um array **novo e maior**."},
+    {text: "`copy(c, s)` copia os dados de `s` para `c`. Copiar *slice* não copia os dados — só o header; `copy` é o que duplica de verdade."},
+    {text: "Fatiar `s[2:5]` pega os elementos 2, 3 e 4 (o fim é **exclusivo**). O resultado **compartilha o mesmo array** de `s`."},
+    {text: "`s[:5]` fatia do início até (sem incluir) o índice 5."},
+    {text: "`s[2:]` fatia do índice 2 até o fim."},
+    {text: "Literal: `[]string{\"g\", \"h\", \"i\"}` cria e inicializa na mesma linha — o mais comum no dia a dia."},
+    {text: "O pacote `slices` traz utilitários: `Equal`, `Sort`, `Contains`, `Delete`, `Clone`... (desde o Go 1.21)."},
+    {text: "Slices de slices (multidimensional): os internos podem ter tamanhos **diferentes** — diferentemente de arrays."},
+    {text: "Saída:\n$ go run slices.go\nuninit: [] true true\nemp: [  ] len: 3 cap: 3\nset: [a b c]\nget: c\nlen: 3\napd: [a b c d e f]\ncpy: [a b c d e f]\nsl1: [c d e]\nsl2: [a b c d e]\nsl3: [c d e f]\ndcl: [g h i]\nt == t2\n2d:  [[0] [1 2] [2 3 4]]\n\n# O [post sobre slices](https://go.dev/blog/slices-intro) da\n# equipe do Go explica o design em detalhe."}
   ]}
 />
 
 <a href="https://go.dev/play/p/9-U3-8sKQun" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Slice por dentro: ponteiro + len + cap
+
+Um slice é um **header** de três campos: um ponteiro para o primeiro elemento do array interno, o `len` (elementos visíveis) e o `cap` (capacidade até o fim do array). É por isso que ele é barato de copiar — copiar o header não copia os dados.
+
+A consequência mais importante: **fatiar não copia dados**. `l := s[2:5]` cria outro header apontando para o **mesmo array**:
+
+<CodeExplanation
+  title={"slice-alias.go"}
+  code={`package main
+
+import "fmt"
+
+func main() {
+    a := []int{1, 2, 3, 4, 5}
+    b := a[:2]
+    b[0] = 99
+    fmt.Println("a:", a)
+    fmt.Println("b:", b)
+}`}
+  sections={[
+    {text: "`a` é um slice de 5 ints sobre um array. `b := a[:2]` fatia os dois primeiros — mas **compartilha o array** de `a`."},
+    {text: "`b[0] = 99` escreve no array compartilhado. Como `a` enxerga o mesmo array, `a[0]` também muda."},
+    {text: "Saída:\n$ go run slice-alias.go\na: [99 2 3 4 5]\nb: [99 2]\n\n# Fatiar é barato porque não copia — mas é exatamente\n# por isso que um slice pode alterar o outro."}
+  ]}
+/>
+
+Isso não é bug — é o *design*. Fatiar é O(1). Mas você precisa saber quando **compartilhar é o que quer** (ler um pedaço sem copiar) e quando precisa de uma **cópia** (`copy` ou `slices.Clone`).
+
+## `append` e a realocação
+
+`append` tem duas vidas: se há espaço no array (`cap` sobrando), escreve no mesmo array — o slice antigo vê a mudança; se não há, aloca um **array novo, maior**, copia tudo e devolve um slice novo. Como você nunca sabe qual dos dois aconteceu, a regra é sagrada: **`s = append(s, x)`** — sempre capture o retorno.
+
+O bug clássico:
+
+```go
+a := []int{1, 2, 3, 4, 5}
+b := a[:2]        // len 2, mas cap alcança o fim do array de a (posições 2..4 livres)
+b = append(b, 99) // cabe no array de a! escreve em a[2]
+fmt.Println(a)    // [1 2 99 4 5] — a foi alterado por "baixo dos panos"
+```
+
+`b` tinha `cap` sobrando, então o `append` não realocou — e sobrescreveu o vizinho de `a`. Se você não quer esse efeito, use `b = append(slices.Clone(a[:2]), 99)` ou reserve capacidade extra de propósito.
+
+## `nil` × slice vazio
+
+`var s []string` é `nil` (len 0). `make([]string, 0)` **não** é `nil` (é um slice vazio com array por baixo). Os dois se comportam igual em `len`, `append` e `range` — mas **diferem na serialização**: em JSON, `nil` vira `null` e o vazio vira `[]`. Para APIs, prefira `make([]T, 0)` quando o campo representa "lista que pode ser vazia".
+
+## Slice já é uma referência — não passe `*[]int`
+
+Retomando a página de [Ponteiros](pointers): slices já carregam um ponteiro interno. Uma função que recebe `[]int` e faz `s[i] = x` **altera o array compartilhado** — sem ponteiro. O único caso que exige retorno é o `append` (realocação). Por isso a assinatura idiomática é `func f(s []int) []int`, **nunca** `func f(s *[]int)` — exceção rara para funções que precisam trocar o slice inteiro (como o `sort.Slice` interno).
+
+## Armadilhas comuns
+
+- **Esquecer o retorno do `append`**: `append(s, x)` sem `s =` não tem efeito quando realoca — e o bug só aparece de vez em quando (quando não realoca). Capture sempre.
+- **`append` num slice fatiado**: sobrescreve o vizinho no array compartilhado (exemplo acima). Conheça o `cap` ou clone.
+- **Indexar fora do `len`**: `s[5]` com len 3 é *panic*. Fatie ou faça `append` em vez de escrever em índice inexistente.
+- **Comparar com `==`**: slices não são comparáveis (exceto com `nil`). Use `slices.Equal`.
+- **`copy` com destino pequeno**: `copy` copia no máximo `len(destino)` — um destino menor que a fonte copia truncado, sem erro. Confira tamanhos.
+- **`range` copia o elemento**: `for _, v := range s` dá a **cópia** de cada elemento; `v = ...` não altera o slice. Para mutar, use o índice.
+
+## Pratique
+
+1. **Reproduza**: rode `slices.go` e explique a linha `emp: [  ]` (3 strings vazias) e por que `sl1` é `[c d e]`.
+2. **Modifique**: rode `slice-alias.go`; depois faça `b := append(a[:2], 99)` e observe `a` mudar — explique com `len`/`cap`.
+3. **Aplique**: escreva `func remover(s []string, i int) []string` que remove o elemento `i` (use `append(s[:i], s[i+1:]...)`) e discuta: quando esse código corrompe o slice original?
+
+## Próximo passo
+
+Coleção por índice é um padrão; mas às vezes a chave é um nome, não um número. Em [Maps](maps) você verá o dicionário de Go — e a pegadinha de distinguir chave ausente de valor zerado.

@@ -1,11 +1,12 @@
 ---
 title: Direção de Channels
 ---
-
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Um channel comum permite enviar e receber. Quando passado a uma função, porém, na maioria das vezes ela só faz **um** dos dois. A assinatura deixa isso explícito e o compilador fiscaliza: `chan<- T` significa "só pode enviar"; `<-chan T`, "só pode receber". É a mesma ideia do *const* para canais — contrato no tipo.
+
 <CodeExplanation
-  title={"Direção de Channels"}
+  title={"channel-directions.go"}
   code={`package main
 
 import "fmt"
@@ -25,12 +26,43 @@ func main() {
     fmt.Println(<-pongs)
 }`}
   sections={[
-    {text: "A função `ping` só aceita channel para envio. Tentar receber seria erro de compilação."},
-    {text: "A função `pong` aceita um channel para receber (`pings`) e outro para enviar (`pongs`)."},
+    {text: "`func ping(pings chan<- string, ...)` — `pings` só pode **enviar**. Tentar `<-pings` aqui é erro de compilação, não de runtime."},
+    {text: "`pong` recebe um canal **somente leitura** (`<-chan`) e um **somente escrita** (`chan<-`): repassa a mensagem de um para o outro."},
+    {text: "O canal real criado no `main` é bidirecional; a restrição vale dentro da função. O compilador garante que `ping` não roube mensagens e `pong` não envie por engano."},
     {text: "Saída:\n$ go run channel-directions.go\npassed message"}
   ]}
 />
 
-<a href="https://go.dev/play/p/mjNJDHwUH4R" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O contrato no tipo
+
+A direção é parte do **tipo** do parâmetro — quem chama passa um canal normal, e a função só enxerga a "metade" que declara:
+
+| Tipo | Pode | Uso |
+|---|---|---|
+| `chan T` | enviar e receber | quem cria/possui o canal |
+| `chan<- T` | só enviar | produtor, writer |
+| `<-chan T` | só receber | consumidor, reader |
+
+É a versão canais do princípio que você já viu em funções: **passe o mínimo necessário**. Uma função que só consome jobs declara `<-chan int` e não pode, por acidente, enviar — e quem lê a assinatura sabe o papel dela sem ler o corpo.
+
+## Em código real
+
+- **Workers** (`func worker(jobs <-chan int, results chan<- int)`) — você já viu essa assinatura em [Worker Pools](worker-pools): os dois canais com direção tornam o papel óbvio.
+- **Produtor**: `func gerar(out chan<- int)` deixa claro que só escreve.
+- **Quem possui o canal fecha**: combinar direção com a regra de dono (quem cria fecha) documenta o ciclo de vida (página [Fechando Channels](closing-channels)).
+
+## Armadilhas comuns
+
+- **Declarar parâmetro com canal bidirecional sem precisar**: perder a direção enfraquece o contrato — o chamador não sabe o papel e erros de uso só aparecem em runtime.
+- **Confundir a seta com envio**: `chan<- T` é o **tipo** "canal para enviar"; `ch <- v` é a **operação** de enviar. A seta aponta para dentro do canal no tipo e para fora dele na direção... na dúvida, leia `chan<-` como "seta no canal = para o canal = enviar".
+- **Conversão de direção**: um `chan T` pode ser passado como `chan<- T`/`<-chan T` (restringe), mas não o contrário — não dá para "ampliar" um canal de direção única.
+
+## Pratique
+
+1. **Reproduza**: rode `channel-directions.go`; depois tente receber dentro de `ping` e observe o **erro de compilação**.
+2. **Modifique**: escreva `func filtro(in <-chan int, out chan<- int, fn func(int) bool)` que repassa apenas os valores que `fn` aceita.
+3. **Aplique**: desenhe as assinaturas de um pipeline produtor→filtro→consumidor com as direções certas — e explique o papel de cada função só pela assinatura.
+
+## Próximo passo
+
+Vários canais, uma goroutine que espera o que vier primeiro. Em [Select](select), o `switch` dos channels — a base de timeouts, cancelamento e operações não-bloqueantes.

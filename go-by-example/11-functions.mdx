@@ -4,8 +4,10 @@ title: Funções
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Se você reparar em código Go real, vai notar uma coisa: **tudo é feito com funções**. Não há classes estáticas, nem métodos globais, nem herança — há funções. Funções são o principal mecanismo de organização, abstração e reuso da linguagem. Nesta página você vai ver a anatomia de uma função e, mais importante, o que torna Go "meio funcional": funções são **valores**, que podem ser guardados em variáveis, passados como argumento e devolvidos por outras funções.
+
 <CodeExplanation
-  title={"Funções"}
+  title={"functions.go"}
   code={`package main
 
 import "fmt"
@@ -23,14 +25,113 @@ func main() {
     fmt.Println("1+2+3 =", res)
 }`}
   sections={[
-    {text: "Uma função que recebe dois `int`s e retorna a soma como `int`."},
-    {text: "Go exige `return` explícito, não retorna automaticamente o valor da última expressão."},
-    {text: "Quando há múltiplos parâmetros consecutivos do mesmo tipo, pode omitir o tipo até o último que declara o tipo."},
-    {text: "Chame a função como esperado, com `name(args)`."},
-    {text: "Saída:\n$ go run functions.go \n1+2 = 3\n1+2+3 = 6\n\n# There are several other features to Go functions. One is\n# multiple return values, which we'll look at next."}
+    {text: "A anatomia de uma função: palavra `func`, nome, parâmetros tipados entre parênteses e o tipo de retorno **no fim**. `func plus(a int, b int) int` recebe dois `int`s e devolve um `int`."},
+    {text: "O `return` é explícito e obrigatório quando a função declara retorno. Go não devolve a última expressão automaticamente como algumas linguagens fazem."},
+    {text: "`func plusPlus(a, b, c int)` mostra o atalho de Go: quando vários parâmetros consecutivos têm o mesmo tipo, você declara o tipo uma vez só, no último. O compilador entende que `a`, `b` e `c` são `int`."},
+    {text: "Chamada é `nome(args)`, com argumentos posicionais. Repare em `res`: a primeira atribuição usa `:=` (declara) e a segunda usa `=` (reatribui). Go diferencia declarar de atribuir."},
+    {text: "Saída:\n$ go run functions.go\n1+2 = 3\n1+2+3 = 6\n\n# Veremos outros recursos das funções de Go a seguir:\n# múltiplos retornos, funções variádicas e closures."}
   ]}
 />
 
 <a href="https://go.dev/play/p/-o49-dQfGbK" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Funções são cidadãs de primeira classe
+
+O traço mais importante de funções em Go não é a sintaxe — é que uma função é um **valor comum**, com um tipo. Você pode guardá-la numa variável:
+
+```go
+dobro := func(n int) int { return n * 2 }
+fmt.Println(dobro(21)) // 42
+```
+
+`func(n int) int { ... }` é uma **função anônima** (sem nome) e `dobro` é uma variável cujo tipo é `func(int) int`. A sintaxe de tipo de função espelha a assinatura: `func(parâmetros) retorno`.
+
+Por serem valores, funções podem ser passadas para outras funções, devolvidas por funções e comparadas com `nil`. É exatamente isso que dá à linguagem um "pé" no paradigma funcional — sem exigir que você programe funcionalmente.
+
+## Funções como argumento (callbacks)
+
+Passar uma função para outra é o padrão de **callback**: você entrega o "o quê fazer" e a função chamadora decide "quando fazer". Em Go isso aparece o tempo todo — ordenação com critério próprio, handlers HTTP, middlewares. Veja um exemplo concreto:
+
+<CodeExplanation
+  title={"callback.go"}
+  code={`package main
+
+import "fmt"
+
+func transformar(nums []int, fn func(int) int) []int {
+    resultado := make([]int, len(nums))
+    for i, n := range nums {
+        resultado[i] = fn(n)
+    }
+    return resultado
+}
+
+func main() {
+    dobro := func(n int) int { return n * 2 }
+    numeros := []int{1, 2, 3}
+    fmt.Println(transformar(numeros, dobro))
+}`}
+  sections={[
+    {text: "`transformar` recebe um slice e uma função `fn func(int) int`. Ela não sabe o que `fn` faz — só sabe a forma: recebe `int`, devolve `int`. Quem decide o comportamento é quem chama."},
+    {text: "`dobro` é uma função anônima guardada numa variável. O corpo `{ return n * 2 }` é o comportamento que vamos injetar."},
+    {text: "Passamos `dobro` **sem parênteses**: queremos entregar a função, não chamá-la agora. É `transformar(numeros, dobro)`, nunca `dobro()`."},
+    {text: "Saída:\n$ go run callback.go\n[2 4 6]\n\n# Para trocar o comportamento, não mudamos `transformar` —\n# passamos outra função: transformar(numeros, func(n int) int { return n * n })"}
+  ]}
+/>
+
+Esse é o padrão por trás de `sort.Slice` (você passa a função de comparação, em [Ordenação com funções](sorting-by-functions)), de `http.HandleFunc` e de toda a biblioteca padrão que aceita callbacks.
+
+## Exportada × interna (pública × privada)
+
+Uma função é **exportada** se o nome começa com **maiúscula** e fica visível para outros packages; começa com **minúscula**, é interna ao package. Não existe palavra-chave `public`/`private` — a caixa do identificador decide.
+
+As funções `plus` e `plusPlus` deste exemplo começam com minúscula: são internas ao package `main`, que não é importado por ninguém. A regra completa — e por que `NewProduct` é exportado — está em [Visibilidade e Packages](visibility-and-packages).
+
+## Construtores: por que `New...`?
+
+Go **não tem construtor**. Em Swift existe `init`, em Java o método com o nome da classe — em Go, nada disso. Não há palavra-chave de construção nem sobrecarga de função. Como então se cria um valor que precisa de regras?
+
+Com uma função exportada que segue a convenção de nome `NewTipo`:
+
+```go
+type Conta struct {
+    titular string
+    saldo   float64
+}
+
+func NewConta(titular string, saldoInicial float64) Conta {
+    return Conta{titular: titular, saldo: saldoInicial}
+}
+```
+
+`NewConta` é só uma função — mas uma função com um **contrato**: concentra as regras de criação num único lugar. Se amanhã `Conta` passar a exigir validação (saldo não pode ser negativo) ou um campo novo, você muda `NewConta` e todos os pontos de criação ficam seguros. Esse padrão fica ainda mais importante quando os campos são internos, porque um literal `Conta{...}` com campos minúsculos não pode ser montado fora do package — assunto das páginas de [Structs](structs) e [Visibilidade e Packages](visibility-and-packages).
+
+## O "pezinho funcional" de Go
+
+Go não é uma linguagem funcional: não impõe imutabilidade e não tem funções de alta ordem na gramática. Mas como funções são valores, o **estilo funcional aparece naturalmente**:
+
+- callbacks para customizar comportamento (como `transformar` acima);
+- funções que **devolvem funções**, para criar variações de um comportamento — o coração de [Closures](closures);
+- middlewares HTTP, que recebem um handler e devolvem outro.
+
+Ao mesmo tempo, Go **não tem sobrecarga nem parâmetros com valor padrão**. Quando você precisa de uma função que aceite combinações diferentes de argumentos, as saídas da linguagem são: parâmetros variádicos (próximas páginas), o padrão `New...` e *functional options*. Essa ausência não é acidente — força a API a ser explícita e legível.
+
+## Armadilhas comuns
+
+- **Esperar sobrecarga**: dois `func soma(...)` com assinaturas diferentes não compilam no mesmo package. Se precisa de "mesma lógica para tipos diferentes", a resposta é [Generics](generics).
+- **Esperar parâmetro opcional**: `func log(msg string, nivel = "info")` não existe. Para opcional, use variádicos ou um parâmetro de configuração.
+- **Chamar a função em vez de passá-la**: no callback, `transformar(numeros, dobro())` passa o *resultado* da chamada (um `int`), não a função — erro de tipo.
+- **Passagem por valor**: `plus` recebe **cópias** de `a` e `b`. Mudar um parâmetro dentro da função não afeta a variável do chamador. Para modificar o original, você precisará de [Ponteiros](pointers).
+- **Esquecer o `return`**: função com retorno declarado que não retorna em todos os caminhos não compila.
+
+## Pratique
+
+1. **Reproduza**: rode `functions.go` e `callback.go` e confira as saídas.
+2. **Modifique**: reescreva `plusPlus` para **compor** chamadas de `plus` (`plus(plus(a, b), c)`) — funções que chamam funções. Depois passe uma função anônima direto para `transformar` (sem variável intermediária).
+3. **Aplique**: escreva `aplicarEmCada(nums []int, fn func(int))` que chama `fn` para cada elemento, e use-a para imprimir apenas os pares. Você acabou de montar um *forEach* como o de linguagens funcionais.
+
+## Próximo passo
+
+A primeira variação poderosa das funções de Go: devolver **mais de um valor** por chamada. Em [Múltiplos Retornos](multiple-return-values) você vai ver o mecanismo que sustenta o tratamento de erros idiomático de Go.

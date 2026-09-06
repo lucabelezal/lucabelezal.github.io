@@ -4,8 +4,10 @@ title: Valores
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Antes de declarar variáveis e estruturas, você precisa conhecer os blocos de construção: os **valores básicos**. Go tem strings, números inteiros, números de ponto flutuante e booleanos — e cada operação respeita o tipo dos operandos. Este exemplo mostra os principais e o que cada um produz.
+
 <CodeExplanation
-  title={"Valores"}
+  title={"values.go"}
   code={`package main
 
 import "fmt"
@@ -19,9 +21,12 @@ func main() {
     fmt.Println(!true)
 }`}
   sections={[
-    {text: "Strings, que podem ser concatenadas com `+`."},
-    {text: "Inteiros e floats."},
-    {text: "Booleanos, com operadores booleanos como esperado."},
+    {text: "Strings são concatenadas com `+`. \"go\" + \"lang\" vira \"golang\", sem espaço automático — o operador junta exatamente o que você passa."},
+    {text: "`1+1` soma dois inteiros e o resultado também é inteiro. Repare que o `+` aqui é **aritmético**, diferente do `+` de strings acima."},
+    {text: "`7.0/3.0` divide dois números com ponto decimal, então o resultado é `2.333...` — divisão de ponto flutuante preserva as casas decimais."},
+    {text: "`&&` (e) só é verdadeiro se os dois lados forem verdadeiros. `false` era esperado: `true && false` é `false`."},
+    {text: "`||` (ou) é verdadeiro se ao menos um lado for verdadeiro. `true || false` é `true`."},
+    {text: "`!` (negação) inverte o booleano: `!true` é `false`."},
     {text: "Saída:\n$ go run values.go\ngolang\n1+1 = 2\n7.0/3.0 = 2.3333333333333335\nfalse\ntrue\nfalse"}
   ]}
 />
@@ -29,3 +34,37 @@ func main() {
 <a href="https://go.dev/play/p/YnVS3LZr8pk" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Os tipos por trás de cada saída
+
+| Linha | Tipo envolvido | Resultado |
+|---|---|---|
+| `"go" + "lang"` | `string` | `golang` |
+| `1+1` | `int` | `2` |
+| `7.0/3.0` | `float64` | `2.3333333333333335` |
+| `true && false` | `bool` | `false` |
+
+Dois detalhes que vão te acompanhar para sempre:
+
+- **A operação herda o tipo dos operandos.** `7/3` (inteiros) resultaria em `2`, porque Go descarta a parte fracionária na divisão de inteiros. Para obter `2.33...`, pelo menos um operando precisa ser float. Não existe conversão implícita entre tipos numéricos em Go — uma decisão de design que evita bugs silenciosos.
+- **`fmt.Println` intercala os argumentos com espaços** e adiciona a quebra de linha. `fmt.Println("1+1 =", 1+1)` imprime `1+1 = 2` com o espaço entre o texto e o número.
+
+## Em código real
+
+Tipos básicos são a fundação de tudo: inteiros para contagens e índices, floats para medidas, strings para texto e bools para decisões. Na prática você quase nunca escreve `true && false` solto — esses operadores aparecem em **condições**: `if autenticado && admin { ... }`, que você vai ver em [If/Else](if-else). A combinação de `&&` com `||` e `!` é o vocabulário de toda decisão em Go.
+
+## Armadilhas comuns
+
+- Tentar concatenar string com número usando `+`: `"total: " + 10` não compila. É preciso converter com `fmt.Sprintf` ou `strconv` — assunto das páginas de [formatação](string-formatting).
+- Esperar `7/3` dar `2.33...`. Divisão entre inteiros trunca. Se o resultado precisa de decimais, use floats nos dois lados ou converta.
+- Assumir que `&&` e `||` avaliam os dois lados sempre: eles fazem **curto-circuito**. Se o primeiro lado de `&&` é `false`, o segundo nem é avaliado — útil para evitar erro ao encadear condições.
+
+## Pratique
+
+1. **Reproduza**: rode `values.go` e confira cada linha da saída.
+2. **Modifique**: troque `7.0/3.0` por `7/3` e rode de novo. O resultado muda para `2` — entenda por quê antes de seguir.
+3. **Aplique**: escreva uma linha que imprima `verdadeiro` quando uma condição composta com `&&` e `||` for satisfeita, usando apenas os operadores deste exemplo.
+
+## Próximo passo
+
+Valores soltos não servem para muito — você precisa de nomes para reutilizá-los. Em [Variáveis](variables) você vai ver como guardar valores, como Go infere tipos e o que acontece quando você declara sem inicializar.

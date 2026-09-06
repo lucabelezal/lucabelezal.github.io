@@ -1,11 +1,12 @@
 ---
 title: Select
 ---
-
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Uma goroutine esperando em **vários** canais? O `select` é o `switch` dos channels: ele bloqueia até um dos casos ficar pronto e executa o primeiro que chegar. Com ele você espera duas fontes ao mesmo tempo, aplica timeout, reage a cancelamento — sem gastar CPU sondando.
+
 <CodeExplanation
-  title={"Select"}
+  title={"select.go"}
   code={`package main
 
 import (
@@ -34,13 +35,40 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Vamos fazer `select` em dois channels."},
-    {text: "Cada channel receberá um valor após um tempo, simulando RPCs bloqueantes em goroutines concorrentes."},
-    {text: "Usaremos `select` para aguardar ambos simultaneamente, imprimindo cada um ao chegar."},
-    {text: "Saída:\n# We receive the values `\"one\"` and then `\"two\"` as\n# expected.\n$ time go run select.go \nreceived one\nreceived two\n\n# Note that the total execution time is only ~2 seconds\n# since both the 1 and 2 second `Sleeps` execute\n# concurrently.\nreal\\t0m2.245s"}
+    {text: "Dois canais que receberão após 1s e 2s — simulando duas chamadas externas concorrentes."},
+    {text: "`select { case msg1 := <-c1: ... case msg2 := <-c2: ... }` bloqueia até um dos receives estar pronto."},
+    {text: "O laço `for range 2` faz o select **duas vezes**: uma para cada mensagem. Se ambos estivessem prontos ao mesmo tempo, o select escolheria um aleatoriamente."},
+    {text: "Saída:\n$ go run select.go\nreceived one\nreceived two\n\n# O tempo total é ~2s: os dois Sleeps rodam em goroutines\n# concorrentes; o select só espera o mais lento."}
   ]}
 />
 
-<a href="https://go.dev/play/p/dOrjUfgGwB2" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Select = espera em N canais
+
+Enquanto `<-ch` espera um canal, o `select` espera **vários** e segue o primeiro pronto. Casos prontos ao mesmo tempo são escolhidos **aleatoriamente** (de propósito — para não favorecer um canal). E o `select` aceita `default`, transformando-o em **não-bloqueante** (próxima página).
+
+Os três usos que sustentam a concorrência Go:
+
+- **Corrida saudável**: "qual resposta chegar primeiro, uso" (requisições a réplicas).
+- **Timeout**: `select` entre o resultado e `time.After` (página [Timeouts](timeouts)).
+- **Cancelamento**: `select` entre o trabalho e `ctx.Done()` (página [Context](context)) — o jeito de parar uma goroutine com elegância.
+
+## Em código real
+
+`select` é onipresente em servidores e workers: o loop do worker espera `job` OU `ctx.Done()` (a página [Ciclo de Vida de Goroutines](goroutine-lifecycle) usa exatamente isso); o ticker espera `tick` OU `done` (página [Tickers](tickers)). Sempre que uma goroutine precisa reagir a "veio trabalho" **ou** "tem que parar", a resposta é um `select`.
+
+## Armadilhas comuns
+
+- **Select sem caso pronto e sem default**: bloqueia para sempre. Se nada pode chegar, é deadlock.
+- **Achar que escolhe o "primeiro"**: com dois prontos, é **aleatório**. Se a ordem importa, trate os casos em sequência, não num select.
+- **Select num laço sem saída**: receber N mensagens exige controlar o fim (contador, ou `range` sobre o canal quando só há um — ver [Range sobre Channels](range-over-channels)).
+- **Receber de canal fechado**: um caso em canal fechado fica **sempre pronto** (devolve zero value) — o select pode "pegar" ele infinitamente. Trate o `ok` ou remova o canal.
+
+## Pratique
+
+1. **Reproduza**: rode `select.go` e confira o tempo total de ~2s.
+2. **Modifique**: inverta os sleeps (2s e 1s) e confirme a ordem mudar; depois adicione um terceiro canal e receba os três com `for range 3`.
+3. **Aplique**: escreva um `select` que espera "resultado" OU um sinal de cancelamento (um canal que você fecha) — e imprima qual venceu.
+
+## Próximo passo
+
+`select` espera o que vier **primeiro**; o timeout transforma isso em "espero até um prazo". Em [Timeouts](timeouts), o `time.After` dentro do select — a operação externa que não pode demorar para sempre.

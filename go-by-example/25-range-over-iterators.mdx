@@ -4,8 +4,10 @@ title: Range sobre Iteradores
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Desde o Go 1.23, `for range` percorre mais que slices, maps e strings: ele itera sobre **funções**. Um *iterador* em Go é uma função com assinatura especial que "entrega" valores a um callback — e qualquer sequência vira `range`-ável: a sua lista encadeada, um gerador infinito de Fibonacci, linhas de um arquivo. É o `foreach` estendido a tipos customizados.
+
 <CodeExplanation
-  title={"Range sobre Iteradores"}
+  title={"range-over-iterators.go"}
   code={`package main
 
 import (
@@ -62,22 +64,56 @@ func main() {
     all := slices.Collect(lst.All())
     fmt.Println("all:", all)
     for part := range strings.SplitSeq("go-by-example", "-") {
-        fmt.Printf("part: %s\
-", part)
+        fmt.Printf("part: %s\n", part)
     }
-    for n := range genFib() {`}
+    for n := range genFib() {
+        if n > 8 {
+            break
+        }
+        fmt.Println(n)
+    }
+}`}
   sections={[
-    {text: "Vejamos o tipo `List` do [exemplo anterior](generics). Lá tínhamos `AllElements` que retornava um slice. Com iteradores de Go, podemos fazer melhor — como abaixo."},
-    {text: "`All` retorna um _iterador_, que em Go é uma função com [assinatura especial](https://pkg.go.dev/iter#Seq)."},
-    {text: "A função iteradora recebe outra função como parâmetro, chamada `yield` por convenção. Ela chama `yield` para cada elemento e observa o retorno para possível término antecipado."},
-    {text: "Iteração não exige estrutura subjacente, nem precisa ser finita! Aqui uma função que retorna iterador sobre Fibonacci: continua enquanto `yield` retornar `true`."},
-    {text: "Como `List.All` retorna um iterador, podemos usá-lo em um `range` normal."},
-    {text: "Pacotes como [slices](https://pkg.go.dev/slices) têm funções úteis para iteradores. Por exemplo, `Collect` coleta todos os valores em um slice."},
-    {text: "Pacotes da stdlib também expõem helpers de iterador. Por exemplo, `strings.SplitSeq` itera sobre partes sem construir um slice intermediário."},
+    {text: "A `List` genérica da página de [Generics](generics): antes, `AllElements` materializava um slice; agora `All` devolve um **iterador** — lazy, sem construir nada."},
+    {text: "`iter.Seq[T]` é a assinatura: `func(yield func(T) bool)`. Um iterador é uma função que recebe outra função."},
+    {text: "Dentro, chamamos `yield(valor)` para cada elemento e respeitamos o retorno: se devolve `false`, o consumidor pediu para **parar** — retornamos na hora (essencial para `break` não desperdiçar trabalho)."},
+    {text: "`genFib` mostra que o iterador **não precisa ser finito**: Fibonacci continua enquanto `yield` devolver `true`. O consumidor decide quando parar com `break`."},
+    {text: "`for e := range lst.All()` — com um iterador, o `range` funciona igual ao de slice (página [Range](range-over-built-in-types))."},
+    {text: "O pacote `slices` tem helpers: `slices.Collect(it)` materializa o iterador num slice — útil para `slices.Sort` e cia."},
+    {text: "A stdlib já expõe iteradores: `strings.SplitSeq` itera partes **sem criar o slice intermediário** que `strings.Split` criaria."},
     {text: "Saída:\n$ go run range-over-iterators.go\n10\n13\n23\nall: [10 13 23]\npart: go\npart: by\npart: example\n0\n1\n1\n2\n3\n5\n8"}
   ]}
 />
 
-<a href="https://go.dev/play/p/lHX3uDqdfUB" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O modelo de "push": quem controla o laço
+
+Iteradores Go usam o modelo *push* com parada cooperativa: o iterador chama `yield` para empurrar cada valor, e o runtime (por trás do `range`) devolve `true` para continuar ou `false` quando o consumidor deu `break`/`return`. Por isso o `if !yield(v) { return }` aparece em todo iterador — é o mecanismo de **cancelamento antecipado**. A lista encadeada para de andar; o Fibonacci infinito encerra no `break`.
+
+## Lazy: iterar sem materializar
+
+A diferença prática para retornar um slice: o iterador **não aloca nem percorre nada até o `range` pedir**. `strings.SplitSeq` divide string por string sob demanda; um iterador de linhas de arquivo lê linha a linha. Quando você **quer** o material (ordenar, indexar, reutilizar), `slices.Collect`/`maps.Collect` materializam — o iterador é a fonte, o slice é o consumo.
+
+## Em código real
+
+- **Coleções próprias**: expor `All() iter.Seq[T]` em vez de vazar a estrutura interna.
+- **Streams**: linhas de arquivo, eventos, paginação de API — itere sem carregar tudo.
+- **Composição**: iteradores compõem com os helpers de `slices`/`maps`/`iter` (`iter.Map`, `iter.Filter` em versões novas).
+- A sintaxe `func(yield func(T) bool)` também suporta **dois valores** (`iter.Seq2[K, V]`), o equivalente a `range` de map — para iteradores chave/valor.
+
+## Armadilhas comuns
+
+- **Esquecer o `if !yield(...) { return }`**: sem respeitar o `false`, um `break` do consumidor não para o iterador — ele continua gerando (e, num infinito, nunca acaba).
+- **Retornar o iterador de uma função que captura estado mutável**: o iterador é avaliado quando o `range` roda; se o estado mudou antes, você itera o que está lá agora. Crie o iterador no momento do uso.
+- **Achar que iterador é slice**: não dá para indexar. Precisa de índice? `slices.Collect` primeiro.
+- **`range` sobre iterador nulo**: se a função devolve `nil` (em vez de um iterador válido), o `range` panica. Sempre devolva a função (mesmo que vazia).
+- **Iterador que nunca devolve `false` no fim**: para sequências finitas, quando os valores acabam a função simplesmente retorna (sem chamar `yield` mais) — é assim que o `range` sabe que terminou.
+
+## Pratique
+
+1. **Reproduza**: rode `range-over-iterators.go` e identifique onde cada bloco da saída veio (lista, `Collect`, `SplitSeq`, Fibonacci).
+2. **Modifique**: troque o `break` do Fibonacci por um limite de 10 iterações com contador; depois itere `strings.SplitSeq` com `range` e `break` no meio.
+3. **Aplique**: dê à sua `List[T]` do exercício de generics um método `All() iter.Seq[T]` e percorra com `for range` — compare com a versão que retornava slice.
+
+## Próximo passo
+
+Com tipos, generics e iteradores, sua caixa de ferramentas de dados está completa. Falta o "ordene para mim" — em [Ordenação](sorting), o `slices.Sort` genérico para tipos nativos e o `IsSorted`.

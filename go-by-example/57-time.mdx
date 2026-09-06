@@ -4,8 +4,10 @@ title: Time
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Tempo é traiçoeiro: instante, fuso, duração e monotonia são conceitos diferentes. Go modela tudo isso num único pacote, `time`, com dois tipos centrais: **`time.Time`** — um instante (ano, mês, dia, hora + localização) — e **`time.Duration`** — uma quantidade de tempo (em nanossegundos). Dominar a diferença entre "que horas são?" (Time) e "quanto tempo passou?" (Duration) é o primeiro passo.
+
 <CodeExplanation
-  title={"Time"}
+  title={"time.go"}
   code={`package main
 
 import (
@@ -42,18 +44,49 @@ func main() {
     p(then.Add(-diff))
 }`}
   sections={[
-    {text: "Vamos começar pegando a hora atual."},
-    {text: "Você pode construir um `time` informando ano, mês, dia, etc. Sempre associado a `Location`, o fuso."},
-    {text: "Você pode extrair os componentes do tempo como esperado."},
-    {text: "O `Weekday` segunda-domingo também está disponível."},
-    {text: "Estes métodos comparam dois tempos, testando se o primeiro ocorre antes, depois ou junto do segundo."},
-    {text: "`Sub` retorna um `Duration` com o intervalo entre dois tempos."},
-    {text: "Podemos computar a duração em várias unidades."},
-    {text: "Use `Add` para avançar um tempo por uma duração, ou `-` para voltar."},
-    {text: "Saída:\n$ go run time.go\n2012-10-31 15:50:13.793654 +0000 UTC\n2009-11-17 20:34:58.651387237 +0000 UTC\n2009\nNovember\n17\n20\n34\n58\n651387237\nUTC\nTuesday\ntrue\nfalse\nfalse\n25891h15m15.142266763s\n25891.25420618521\n1.5534752523711128e+06\n9.320851514226677e+07\n93208515142266763\n2012-10-31 15:50:13.793654 +0000 UTC\n2006-12-05 01:19:43.509120474 +0000 UTC\n\n# Next we'll look at the related idea of time relative to\n# the Unix epoch."}
+    {text: "`time.Now()` devolve o instante atual **com a localização local** (aqui, -03). Repare no `m=+...` no fim: é a leitura **monotônica** do relógio, usada para medir intervalos (ela some quando você converte/`Add`)."},
+    {text: "`time.Date(...)` constrói um instante exato — sempre com um `Location` (fuso). O horário de referência do Go nasce aqui (2009, o ano de lançamento da linguagem)."},
+    {text: "Extrair componentes: ano, mês, dia, hora, minuto, segundo, nanossegundo."},
+    {text: "`Location` e `Weekday` também são acessíveis."},
+    {text: "Comparações: `Before`, `After`, `Equal` — use `Equal`, nunca `==` (dois Times podem representar o mesmo instante em localizações diferentes)."},
+    {text: "`now.Sub(then)` devolve a **duração** entre os instantes: `147281h27m...` — a diferença entre 2009 e 2026."},
+    {text: "Uma `Duration` pode ser expressa em horas, minutos, segundos, nanossegundos."},
+    {text: "`Add(diff)` avança (ou, com negativo, volta) um instante por uma duração."},
+    {text: "Saída (uma execução — os valores de `now` mudam):\n$ go run time.go\n2026-09-06 11:02:46.31293 -0300 -03 m=+0.000066543\n2009-11-17 20:34:58.651387237 +0000 UTC\n2009\nNovember\n17\n20\n34\n58\n651387237\nUTC\nTuesday\ntrue\nfalse\nfalse\n147281h27m47.661542763s\n147281.46323931744\n8.836887794359047e+06\n5.302132676615428e+08\n530213267661542763\n2026-09-06 14:02:46.31293 +0000 UTC\n1993-01-29 03:07:10.989844474 +0000 UTC"}
   ]}
 />
 
-<a href="https://go.dev/play/p/YAM3s1KPc8c" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Time × Duration
+
+- **`time.Time`** é um *ponto* no tempo: "17 de novembro de 2009 às 20:34 UTC". Não tem "tamanho".
+- **`time.Duration`** é um *intervalo*: subjacente é um `int64` de nanossegundos. `now.Sub(then)` → Duration; `then.Add(diff)` → Time. Só se soma Time+Duration e se subtraem Times — nunca se soma Time+Time.
+
+As constantes de duração (`time.Second`, `time.Minute`...) são `Duration` — e escrever `30 * time.Second` funciona porque é multiplicação de `int64` por constante.
+
+## O relógio monotônico
+
+`time.Now()` traz embutida uma leitura **monotônica** (um relógio que só anda para frente, imune a ajustes de hora do sistema). `t2.Sub(t1)` usa essa leitura, então medir intervalos não é distorcido se o relógio de parede mudar. Ao **formatar**, converter para epoch ou passar por `Add`, a leitura monotônica é descartada — o Time continua válido, só perde a parte "medir intervalos".
+
+## Em código real
+
+- **Durações para timeouts**: `time.Second * 30`, `time.Minute` — a base de timers/tickers (páginas de [Timers](timers) e [Tickers](tickers)).
+- **Registrar timestamps**: guarde em UTC (ou como epoch — [Epoch](epoch)) e só converta para local na hora de exibir.
+- **Nunca compare Time com `==`** nem guarde Time em map como chave por "igualdade" de instante — use `Equal`. (Comparar dois Times criados do mesmo jeito com `==` até funciona, mas é frágil.)
+
+## Armadilhas comuns
+
+- **`==` em vez de `Equal`**: dois Times em localizações diferentes que representam o mesmo instante são diferentes com `==`. Use `Equal`.
+- **Ignorar `Location`**: `time.Date(..., time.UTC)` e `time.Date(..., time.Local)` podem ser o mesmo instante com exibição diferente — ou não. Sempre saiba em que fuso o Time está.
+- **Somar Times**: `t1.Add(t2)` não compila. Time é ponto; só Duration soma.
+- **Medir com relógio de parede**: se você salvar `now`, dormir e `now2.Sub(now1)`, um ajuste do sistema corrompe a medida. Para medir, capture os dois com `time.Now()` (usa a parte monotônica) — não formate no meio.
+- **Timezone por string manual**: "22:00 -03:00" escrito na mão é bug esperando acontecer. Use `time.LoadLocation`/RFC3339 (próximas páginas).
+
+## Pratique
+
+1. **Reproduza**: rode `time.go` e identifique o que é Time (`then`, `now`) e o que é Duration (`diff`).
+2. **Modifique**: construa um aniversário com `time.Date(..., time.Local)` e calcule a idade em anos com `now.Sub` — depois em dias.
+3. **Aplique**: escreva uma função que mede quanto tempo outra função levou (`t := time.Now(); fn(); time.Since(t)`) — e explique por que `time.Since` usa o relógio monotônico.
+
+## Próximo passo
+
+O mesmo instante tem outra cara: um número inteiro desde 1970. Em [Epoch](epoch) você vê os segundos/milissegundos/nanossegundos desde o *Unix epoch* — o formato que bancos e APIs adoram.

@@ -4,8 +4,10 @@ title: Templates de Texto
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Concatenar strings para gerar um relatório, e-mail ou config vira bagunça rápido. **Templates** separam o texto estático do que varia: você escreve o molde com `{{.}}` nos pontos dinâmicos, e o pacote `text/template` preenche com os dados na hora. É a mesma ideia de *template strings* de outras linguagens — com a diferença de que o molde é um dado separado, parseado e reutilizável.
+
 <CodeExplanation
-  title={"Templates de Texto"}
+  title={"templates.go"}
   code={`package main
 
 import (
@@ -53,17 +55,59 @@ func main() {
         })
 }`}
   sections={[
-    {text: "Podemos criar um novo template e fazer parse do corpo a partir de string. Templates misturam texto estático e \"actions\" em `{{..."},
-    {text: "Alternativamente, use `template.Must` para panic caso `Parse` retorne erro. Útil para templates globais."},
-    {text: "Ao \"executar\" o template geramos o texto com valores específicos. O `{{."},
-    {text: "Função auxiliar usada abaixo."},
-    {text: "Se o dado é struct, usamos `{{.FieldName"},
-    {text: "O mesmo vale para maps; sem restrição de caixa nos nomes das chaves."},
-    {text: "Blocos range permitem iterar slices, arrays, maps ou channels. Dentro do bloco `{{."},
-    {text: "Saída:\n$ go run templates.go \nValue: some text\nValue: 5\nValue: [Go Rust C++ C#]\nName: Jane Doe\nName: Mickey Mouse\nyes \nno \nRange: Go Rust C++ C#"}
+    {text: "`template.New(\"t1\")` cria um template nomeado; `Parse` lê o corpo. O molde mistura texto estático com *actions* entre `{{` e `}}`."},
+    {text: "`template.Must` faz o `Parse` e dá panic em erro — ideal para templates fixos no nível de package, onde um erro é bug."},
+    {text: "`Execute(w, dados)` gera o texto. `{{.}}` é o *dot* (`.`): representa o valor atual — aqui a string, o inteiro, ou o slice (imprimido como `[...]`)."},
+    {text: "Com struct ou map, `{{.Name}}` acessa o campo/chave. Função auxiliar `Create` só reduz repetição."},
+    {text: "`{{if .}} ... {{else}} ... {{end}}` ramifica: valor vazio (string vazia, zero, nil) é falso. Os `-` em `{{-` e `-}}` cortam espaços em branco do molde."},
+    {text: "`{{range .}}{{.}} {{end}}` itera; **dentro do bloco, o `.` vira o elemento atual** — o mesmo princípio do `range` de Go."},
+    {text: "Saída:\n$ go run templates.go\nValue: some text\nValue: 5\nValue: [Go Rust C++ C#]\nName: Jane Doe\nName: Mickey Mouse\nyes\nno\nRange: Go Rust C++ C#"}
   ]}
 />
 
-<a href="https://go.dev/play/p/pDwkw1iMACF" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## As peças do molde
+
+| Action | O que faz | `dot` vira |
+|---|---|---|
+| `{{.}}` | Imprime o valor atual | — |
+| `{{.Campo}}` | Acessa campo/chave do valor | o valor do campo |
+| `{{if .}}...{{else}}...{{end}}` | Ramifica por *truthiness* Go | o valor do `if` |
+| `{{range .}}...{{end}}` | Itera slice/map; repetir o corpo | cada elemento |
+
+O template é **type-safe na execução**: `{{.Name}}` num map sem a chave, ou num tipo sem o campo, não é erro em `Parse` — mas falha (ou imprime `<no value>`) no `Execute`. Por isso valide com dados reais cedo.
+
+## Parsear uma vez, executar muitas
+
+O custo está no `Parse` (compila o molde). Execute quantas vezes quiser com dados diferentes — é assim que templates viram "fábricas" de texto: um molde de e-mail, N destinatários. O padrão de produção:
+
+```go
+var emailTmpl = template.Must(template.New("email").Parse(corpo)) // uma vez, no package
+
+func enviar(nome string) {
+    emailTmpl.Execute(w, map[string]string{"Nome": nome})
+}
+```
+
+`template.Must` na declaração transforma erro de parse em panic **no startup** — exatamente o caso em que panic é aceitável (página [Panic](panic)): melhor quebrar ao subir do que mandar e-mail quebrado.
+
+## text/template × html/template
+
+O que você vê aqui é texto puro. Para **HTML** (páginas, e-mails HTML), use `html/template` — a mesma sintaxe, mas com **auto-escape**: valores são escapados contra injeção (`<script>` vira texto). Regra de segurança: nunca use `text/template` para gerar HTML com dados de usuário.
+
+## Armadilhas comuns
+
+- **`Must` no lugar errado**: `Must` é para templates que *não podem* falhar (globais, fixos). Para molde vindo de arquivo/usuário, trate o erro do `Parse`.
+- **Campo não exportado**: `{{.name}}` com campo minúsculo imprime vazio/`<no value>` — templates só enxergam campos exportados (mesma regra do [JSON](json)).
+- **Esquecer o `Execute` num writer**: o template precisa de um destino. Em testes, `os.Stdout` ou um `bytes.Buffer` (para inspecionar o resultado).
+- **Espaços indevidos no texto**: `{{if .}} sim {{else}} não {{end}}` preserva os espaços do molde. Os `{{-` e `-}}` cortam — use quando a saída não pode ter espaços soltos.
+- **Usar `text/template` para HTML**: sem auto-escape, é porta aberta para XSS.
+
+## Pratique
+
+1. **Reproduza**: rode `templates.go` e explique por que o slice vira `[Go Rust C++ C#]` com `{{.}}`.
+2. **Modifique**: crie um molde que imprime `Nome: X — Idade: Y` a partir de uma struct `Pessoa`, e use `{{if}}` para mostrar "(maior)" quando a idade ≥ 18.
+3. **Aplique**: gere uma lista HTML simples com `{{range}}` usando `html/template` e um dado com `<b>texto</b>` — observe o escape automático.
+
+## Próximo passo
+
+Templates resolvem texto estruturado; **padrões em texto livre** pedem outra ferramenta. Em [Expressões Regulares](regular-expressions) você vai procurar e validar com padrões — do `MatchString` simples ao `ReplaceAllFunc`.

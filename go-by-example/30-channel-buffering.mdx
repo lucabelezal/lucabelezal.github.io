@@ -4,8 +4,10 @@ title: Buffer de Channels
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+O channel da página anterior não guarda valor: o envio só completa quando um receptor aparece. O **channel bufferizado** (`make(chan T, n)`) guarda até `n` valores — o remetente só bloqueia quando o buffer **enche**. É a diferença entre "entregar na mão" (espera o outro) e "deixar na caixa" (até a caixa lotar).
+
 <CodeExplanation
-  title={"Buffer de Channels"}
+  title={"channel-buffering.go"}
   code={`package main
 
 import "fmt"
@@ -18,13 +20,42 @@ func main() {
     fmt.Println(<-messages)
 }`}
   sections={[
-    {text: "Aqui criamos um channel de strings com buffer para até 2 valores."},
-    {text: "Como é bufferizado, podemos enviar valores sem um receive concorrente."},
-    {text: "Depois podemos receber os dois valores normalmente."},
-    {text: "Saída:\n$ go run channel-buffering.go \nbuffered\nchannel"}
+    {text: "`make(chan string, 2)` — channel com buffer para **2** strings."},
+    {text: "Dois envios sem receptor concorrente: funcionam porque cabem no buffer. Um terceiro enviaria e **bloquearia** até alguém receber."},
+    {text: "Os dois receives drenam o buffer em ordem FIFO (primeiro que entrou, primeiro que sai)."},
+    {text: "Saída:\n$ go run channel-buffering.go\nbuffered\nchannel"}
   ]}
 />
 
-<a href="https://go.dev/play/p/3BRCdRnRszb" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Buffer: quando usar
+
+O buffer desacopla produtor e consumidor no **tempo**: o produtor pode adiantar trabalho sem esperar o consumidor, até o limite. Casos clássicos:
+
+- **Amortecer rajadas** (um burst de trabalho antes do consumidor acordar).
+- **Evitar deadlock em padrões simples** onde produtor e consumidor rodam no mesmo fluxo em momentos diferentes (como este exemplo).
+- **Semáforo de capacidade**: um channel bufferizado de tamanho N usado como limite de concorrência (você verá em [Rate Limiting](rate-limiting)).
+
+O tamanho do buffer é uma **decisão de throughput**, não uma regra de correção: com buffer N, o produtor adianta até N, depois bloqueia igual ao não-bufferizado.
+
+## Em código real
+
+- Channels de **jobs**: um produtor enfileira N tarefas sem esperar os workers (visto em [Worker Pools](worker-pools), que usa `make(chan int, numJobs)`).
+- **Resultados**: o buffer evita o produtor travar enquanto o `main` ainda não começou a coletar.
+- Cuidado: buffer **não** elimina a necessidade de sincronização final — você ainda precisa esperar/drenar (WaitGroup ou receber tudo).
+
+## Armadilhas comuns
+
+- **Buffer como "não preciso me preocupar"**: com buffer cheio, o envio bloqueia igual. O buffer adia o bloqueio, não o elimina.
+- **Tamanho mágico**: `make(chan T, 1)` "por segurança" esconde bugs de ordem. Use buffer quando há um motivo de throughput; senão, não-bufferizado é mais simples de raciocinar.
+- **Achar que buffer = fila infinita**: não é. Escolha o tamanho pelo pico que você quer absorver.
+- **Enviar mais que o buffer sem receiver**: bloqueia (ou deadlock se nunca houver receiver). O buffer não torna o send não-bloqueante.
+
+## Pratique
+
+1. **Reproduza**: rode `channel-buffering.go`; depois troque o buffer para 1 e envie 2 valores sem receiver — observe o deadlock.
+2. **Modifique**: encha o buffer com 5 números numa goroutine e drene num `for range 5` na main, imprimindo em ordem.
+3. **Aplique**: um produtor enfileira 10 tarefas num channel com buffer 3 enquanto um consumidor lê — meça quantas o produtor adianta antes de bloquear.
+
+## Próximo passo
+
+Channels transferem dados; às vezes transferem só um **sinal**. Em [Sincronização com Channels](channel-synchronization), o channel como "avise quando terminar" — o substituto do `time.Sleep` para esperar uma goroutine.

@@ -4,8 +4,10 @@ title: Variáveis
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Valores só são úteis quando você pode nomeá-los e reutilizá-los. Em Go, **variáveis** são declaradas com `var` ou com o atalho `:=`, e cada uma tem um tipo — explícito ou inferido. Este exemplo percorre as formas de declaração e o comportamento mais importante da linguagem: o *zero value*.
+
 <CodeExplanation
-  title={"Variáveis"}
+  title={"variables.go"}
   code={`package main
 
 import "fmt"
@@ -23,11 +25,11 @@ func main() {
     fmt.Println(f)
 }`}
   sections={[
-    {text: "`var` declara uma ou mais variáveis."},
-    {text: "Você pode declarar múltiplas variáveis de uma vez."},
-    {text: "Go infere o tipo de variáveis inicializadas."},
-    {text: "Variáveis declaradas sem inicialização recebem o _zero value_. Por exemplo, o zero value de um `int` é `0`."},
-    {text: "A sintaxe `:=` é um atalho para declarar e inicializar uma variável, por exemplo `var f string = \"apple\"` neste caso. Essa sintaxe só está disponível dentro de funções."},
+    {text: "`var a = \"initial\"` declara `a` e deixa o Go inferir o tipo pelo valor. Como o valor é uma string, `a` é `string`."},
+    {text: "`var b, c int = 1, 2` declara **duas variáveis de uma vez**, ambas do tipo `int`, com os valores `1` e `2`."},
+    {text: "`var d = true` — mesma inferência de antes, agora com `bool`. Inferência não remove o tipo; ela só o calcula para você."},
+    {text: "`var e int` declara sem inicializar. Go atribui automaticamente o *zero value* do tipo: para `int`, o valor é `0`. Nenhuma variável fica sem valor em Go."},
+    {text: "`f := \"apple\"` é o atalho para declarar e inicializar em uma linha — equivalente a `var f string = \"apple\"`. Esse atalho só existe **dentro de funções**."},
     {text: "Saída:\n$ go run variables.go\ninitial\n1 2\ntrue\n0\napple"}
   ]}
 />
@@ -35,3 +37,39 @@ func main() {
 <a href="https://go.dev/play/p/N5rWndIliJW" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## O *zero value* e por que ele existe
+
+Em muitas linguagens, uma variável não inicializada pode conter lixo de memória ou `undefined`. Go eliminou esse problema: **toda declaração deixa a variável pronta para uso**, com um valor padrão por tipo:
+
+- `int` e demais números → `0`
+- `float64` → `0.0`
+- `string` → `""` (string vazia)
+- `bool` → `false`
+
+Isso significa que você nunca lê uma variável "vazia" sem querer. Quando o *zero value* já é um estado válido — como `0` contador ou `""` para texto ausente — você pode declarar e usar direto, sem inicializar. Veremos o mesmo princípio de novo em [Structs](structs), onde cada campo não preenchido também recebe o *zero value* do seu tipo.
+
+## `var` ou `:=`?
+
+A regra prática que você vai ver em código real:
+
+- **Dentro de funções**, use `:=` — é a forma mais comum e legível para a maioria das declarações.
+- **Fora de funções** (nível de package), `:=` não existe; use `var`. Aliás, variáveis no nível de package são raras e devem ser evitadas — prefira declará-las dentro do escopo que as usa.
+- Use `var` com tipo explícito quando a inferência não deixar a intenção clara, ou quando o valor inicial for o *zero value* (`var n int`).
+
+## Armadilhas comuns
+
+- **Declarar e não usar**: Go não compila variáveis sem uso (`declared and not used`). É intencional — evita código morto.
+- **Usar `:=` fora de função**: erro de sintaxe. O atalho é exclusivo de escopo de função.
+- **Redeclarar com `:=`**: `f := "apple"` seguido de `f := "pear"` no mesmo escopo não compila. O atalho só redeclara se **pelo menos uma** variável do lado esquerdo for nova (`g, f := 1, "pear"` funciona).
+- **Confundir inferência com *dynamic typing***: `f := "apple"` ainda é `string` para sempre; atribuir um número a `f` depois é erro de compilação.
+
+## Pratique
+
+1. **Reproduza**: rode `variables.go` e confira que cada declaração imprime o valor esperado.
+2. **Modifique**: declare `var e string` no lugar de `var e int` e preveja a saída antes de rodar — lembre do *zero value* de string.
+3. **Aplique**: reescreva o exemplo inteiro usando apenas `:=`, e depois apenas `var`. Os dois precisam compilar e produzir a mesma saída.
+
+## Próximo passo
+
+Variáveis mudam de valor; **constantes** não. Em [Constantes](constants) você vai ver a diferença fundamental entre `var` e `const`, e por que constantes numéricas em Go têm precisão arbitrária até serem usadas.

@@ -4,8 +4,10 @@ title: Ordenação com Funções
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+`sort` do jeito "ordem natural" não serve para structs nem para critérios como "por tamanho da string" ou "por idade". O **`slices.SortFunc`** resolve: você passa uma **função comparadora** — e o pacote decide a ordem chamando-a. É o padrão *callback* (página [Funções](functions)) aplicado à ordenação: o critério vira um dado que você injeta.
+
 <CodeExplanation
-  title={"Ordenação com Funções"}
+  title={"sorting-by-functions.go"}
   code={`package main
 
 import (
@@ -37,14 +39,53 @@ func main() {
     fmt.Println(people)
 }`}
   sections={[
-    {text: "Implementamos comparação por tamanho de string. `cmp.Compare` ajuda."},
-    {text: "Agora chamamos `slices.SortFunc` com essa comparação para ordenar `fruits` por tamanho."},
-    {text: "Podemos usar a mesma técnica para ordenar slices de tipos não embutidos."},
-    {text: "Ordene `people` por idade com `slices.SortFunc`. Se `Person` for grande, prefira `*Person` e ajuste a função. Em dúvida, faça [benchmark](testing-and-benchmarking)!"},
-    {text: "Saída:\n$ go run sorting-by-functions.go \n[kiwi peach banana]\n[{TJ 25} {Jax 37} {Alex 72}]"}
+    {text: "`lenCmp` é o comparador: recebe dois elementos e devolve um `int` — negativo se `a` vem antes, positivo se depois, zero se iguais."},
+    {text: "`cmp.Compare(x, y)` faz esse trabalho para tipos `cmp.Ordered`: devolve -1/0/1 conforme a ordem. Aqui comparamos `len(a)` com `len(b)` — ordenar **por tamanho**."},
+    {text: "`slices.SortFunc(fruits, lenCmp)` ordena usando o comparador: `kiwi`(4) < `peach`(5) < `banana`(6)."},
+    {text: "Structs: `SortFunc` aceita qualquer `[]E` — o comparador decide o critério (aqui, `Person.age`)."},
+    {text: "Saída:\n$ go run sorting-by-functions.go\n[kiwi peach banana]\n[{TJ 25} {Jax 37} {Alex 72}]"}
   ]}
 />
 
-<a href="https://go.dev/play/p/3EaTknAZHMu" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## A assinatura do comparador
+
+```go
+func(a, b T) int  // <0 → a vem antes; >0 → a vem depois; 0 → iguais
+```
+
+Você nunca chama o comparador — o `SortFunc` chama. E não precisa decorar regra de sinal: `cmp.Compare` produz o int certo para `cmp.Ordered`. Para ordem **decrescente**, inverta: `cmp.Compare(b, a)`.
+
+O comparador também é onde entra a lógica que o `Sort` natural não tem:
+
+```go
+slices.SortFunc(pessoas, func(a, b Pessoa) int {
+    if c := cmp.Compare(a.idade, b.idade); c != 0 {
+        return c          // primário: idade
+    }
+    return cmp.Compare(a.nome, b.nome) // desempate: nome
+})
+```
+
+Composto de critérios = comparadores encadeados. E `slices.SortStableFunc` mantém a ordem original de elementos "iguais" segundo o comparador.
+
+## Em código real
+
+`SortFunc` é o jeito Go de ordenar qualquer coisa: structs por campo, strings por tamanho/ignorando caixa (`strings.ToLower` no comparador), structs por múltiplos campos. É o mesmo espírito do `comparator` de Java e da `key` de Python, mas com o tipo preservado e sem reflexão.
+
+## Armadilhas comuns
+
+- **Comparador inconsistente**: se `cmp(a,b)` e `cmp(b,a)` não forem opostos (ex.: comparar só um lado, ou `float` com NaN), a ordenação vira comportamento indefinido. Faça comparadores **totais** e consistentes.
+- **Esquecer o desempate**: comparar só a idade embaralha pessoas de mesma idade de forma arbitrária. Encadeie o segundo critério se a ordem final importa.
+- **`<0`/`>0` confuso**: não invente regra; use `cmp.Compare` e a ordem fica óbvia.
+- **Struct grande por valor**: `SortFunc` copia os elementos ao comparar. Para structs grandes, use `[]*Person` e compare `a.age` via ponteiro (dica da própria página de referência).
+- **`SortFunc` num slice que não deve mudar**: ordena no lugar. Clone antes se precisar do original.
+
+## Pratique
+
+1. **Reproduza**: rode `sorting-by-functions.go` e explique a ordem dos fruits pelo comprimento.
+2. **Modifique**: ordene `people` por **nome** (decrescente) e depois por idade com desempate por nome.
+3. **Aplique**: ordene uma lista de produtos (`{nome, preco}`) primeiro por preço e depois por nome — e reflita onde um comparador limpo vale mais que reinventar o bubble sort.
+
+## Próximo passo
+
+Com a ordenação você encerra o núcleo da linguagem e da stdlib — do `Olá Mundo` às coleções, concorrência, rede e sistema operacional. A trilha está completa; volte ao [início](/go) para revisar, ou abra o [roadmap](/go/roadmap) para decidir o próximo assunto da sua jornada Go.

@@ -4,8 +4,10 @@ title: Recover
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Um panic derruba a goroutine — a menos que algo o **intercepte**. O **`recover`** faz exatamente isso: chamado dentro de um `defer`, ele captura o valor do panic e devolve o controle para a função continuar. É a ferramenta de fronteira: um servidor HTTP não pode morrer porque um handler teve um bug; um worker não pode derrubar o programa porque um job panica. O `recover` transforma a queda em algo tratável.
+
 <CodeExplanation
-  title={"Recover"}
+  title={"recover.go"}
   code={`package main
 
 import "fmt"
@@ -23,14 +25,62 @@ func main() {
     fmt.Println("After mayPanic()")
 }`}
   sections={[
-    {text: "Esta função entra em panic."},
-    {text: "`recover` deve ser chamado dentro de função adiada. Quando a função entra em panic, o defer ativa e `recover` captura o panic."},
-    {text: "O retorno de `recover` é o erro levantado em `panic`."},
-    {text: "Este código não roda, pois `mayPanic` entra em panic. A execução de `main` para no panic e retoma no closure adiado."},
+    {text: "`mayPanic` entra em panic — uma falha \"inesperada\" que, sem recuperação, mataria o programa."},
+    {text: "`defer func(){...}()` — o `recover` **só funciona dentro de uma função adiada**. É o defer que garante que ele rode no momento do panic."},
+    {text: "`recover()` devolve o valor passado ao `panic` (aqui, `\"a problem\"`). Se não houve panic, devolve `nil`."},
+    {text: "Com o panic capturado, a função retorna ao fluxo normal. A linha `After mayPanic()` **não** roda — o `mayPanic()` panica antes dela, e o controle pula para o defer."},
     {text: "Saída:\n$ go run recover.go\nRecovered. Error:\n a problem"}
   ]}
 />
 
-<a href="https://go.dev/play/p/Sk-SVdofEIZ" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O padrão que vale em produção: panic → error
+
+`recover` brilha na **fronteira**: você não deixa o panic escapar, converte-o em `error` e devolve. O truque usa retorno nomeado + `defer`:
+
+```go
+func executar() (err error) {           // retorno nomeado
+    defer func() {
+        if r := recover(); r != nil {
+            err = fmt.Errorf("falha interna: %v", r) // vira error
+        }
+    }()
+    // código que pode panica (bug, índice, nil...)
+    return nil
+}
+```
+
+Como o `defer` roda depois do `return` ser avaliado mas antes de devolver, ele pode **sobrescrever `err`** (você viu a mecânica em [Defer](defer) e [Múltiplos Retornos](multiple-return-values)). Quem chama `executar()` recebe um `error` normal e trata como qualquer outro — o panic não vaza.
+
+## Onde colocar o recover
+
+Recuperar **tudo** é tão errado quanto recuperar nada. O lugar certo é a fronteira de unidades de trabalho isoláveis:
+
+- um **handler HTTP** (um request com bug não derruba o servidor);
+- um **worker** que processa um job da fila;
+- o topo de uma **goroutine** que você não controla.
+
+Dentro da lógica de negócio, deixe o panic acontecer (é bug) — quem recupera é o contorno que sabe transformar a queda em resposta de erro. A stdlib do `net/http` faz isso por você em cada request; você verá o padrão em [Servidor HTTP](http-server).
+
+## Limitações que pegam todo mundo
+
+- **`recover` só na mesma goroutine**: um panic numa goroutine A não pode ser recuperado por um `recover` na goroutine B. Se cada goroutine pode panica, o `recover` mora **dentro** dela.
+- **`recover` só dentro de `defer`**: chamar `recover()` fora de uma função adiada não faz nada (devolve `nil` e não captura nada).
+- **Só o primeiro**: depois de recuperar, a goroutine segue; um segundo panic no mesmo fluxo precisa de outro defer.
+- **Não é try/catch**: `recover` é para fronteiras e bugs inesperados — não para controle de fluxo. Erro esperado continua sendo `error` (página [Erros](errors)).
+
+## Armadilhas comuns
+
+- **Recuperar e engolir**: `recover()` capturado e ignorado esconde o bug. No mínimo logue o valor com o trace.
+- **Sem o retorno nomeado**: tentar "devolver" o erro num `defer` sem `err` nomeado não funciona — o retorno já foi fixado. Use o padrão acima.
+- **Perder o stack trace**: `fmt.Errorf("...: %v", r)` guarda só a mensagem do panic, não onde aconteceu. Para diagnóstico, registre o trace com `debug.Stack()` (pacote `runtime/debug`) antes de converter, ou logue o panic.
+- **Recuperar tudo com `defer recover()`**: um `recover()` cego no topo de cada função esconde todos os bugs e vira anti-padrão. Recupere nas fronteiras, não em todo lugar.
+
+## Pratique
+
+1. **Reproduza**: rode `recover.go` e explique por que "After mayPanic()" não aparece.
+2. **Modifique**: tire o `recover` do defer e rode — o programa panica e sai com status 2. Depois mova o `recover` para fora do defer (chamada direta) e veja que não captura.
+3. **Aplique**: reescreva o exemplo como `func executar() (err error)` convertendo o panic em `error` com o padrão de retorno nomeado, e trate no `main`.
+
+## Próximo passo
+
+Erros, panic, defer e recover fecham o ciclo de falhas de Go. Daqui o foco muda para o **texto**: em [Funções de Strings](string-functions) você vai ver o kit de ferramentas da stdlib para manipular strings.

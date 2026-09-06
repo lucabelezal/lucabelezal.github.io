@@ -4,8 +4,10 @@ title: Hashes SHA256
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Como garantir que um arquivo baixado não foi corrompido (ou adulterado)? Comparando sua **impressão digital**: o hash. `SHA-256` transforma qualquer dado num valor fixo de 32 bytes — mesma entrada, mesmo hash; mudou um bit, mudou tudo. O pacote `crypto/sha256` segue o padrão *hash.Hash* de Go: um writer em que você despeja os bytes e do qual tira o resumo no final.
+
 <CodeExplanation
-  title={"Hashes SHA256"}
+  title={"sha256-hashes.go"}
   code={`package main
 
 import (
@@ -22,14 +24,56 @@ func main() {
     fmt.Printf("%x\n", bs)
 }`}
   sections={[
-    {text: "Go implementa várias funções de hash em `crypto/*`."},
-    {text: "Aqui começamos com um novo hash."},
-    {text: "`Write` espera bytes. Se tem string `s`, use `[]byte(s)` para converter."},
-    {text: "Isso obtém o hash final como slice de bytes. O argumento de `Sum` pode anexar a um slice existente; geralmente não é necessário."},
-    {text: "Saída:\n# Running the program computes the hash and prints it in\n# a human-readable hex format.\n$ go run sha256-hashes.go\nsha256 this string\n1af1dfa857bf1d8814fe1af8983c18080019922e557f15a8a...\n\n\n# You can compute other hashes using a similar pattern to\n# the one shown above. For example, to compute\n# SHA512 hashes import `crypto/sha512` and use\n# `sha512.New()`.\n\n# Note that if you need cryptographically secure hashes,\n# you should carefully research\n# [hash strength](https://en.wikipedia.org/wiki/Cryptographic_hash_function)!"}
+    {text: "`sha256.New()` cria o hasher — um `hash.Hash`, que é um `io.Writer` especial."},
+    {text: "`h.Write([]byte(s))` despeja os bytes. Strings viram bytes com `[]byte(s)` (conversão copia)."},
+    {text: "`h.Sum(nil)` devolve o hash final (32 bytes). O argumento permite anexar a um slice existente; `nil` = cria novo. O hasher continua válido para mais `Write`."},
+    {text: "Saída:\n$ go run sha256-hashes.go\nsha256 this string\n1af1dfa857bf1d8814fe1af8983c18080019922e557f15a8a0d3db739d77aacb\n\n# O hash é sempre 64 caracteres hex = 32 bytes. Importe\n# crypto/sha512 para SHA-512 (mesmo padrão de uso)."}
   ]}
 />
 
-<a href="https://go.dev/play/p/IHM1lZVm_Jm" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Por que o padrão hash.Hash (writer) existe
+
+Em vez de `hash(dados)` de uma vez, o `hash.Hash` recebe bytes em **pedaços** (`Write`), acumula, e só no `Sum` produz o resumo. Isso permite hashear **arquivos grandes** e streams sem carregar tudo na memória — o mesmo desenho de `io.Writer` que você vê em todo o Go:
+
+```go
+f, _ := os.Open("arquivo.iso")
+defer f.Close()
+h := sha256.New()
+io.Copy(h, f)   // hasheia o arquivo inteiro em streaming
+fmt.Printf("%x\n", h.Sum(nil))
+```
+
+O atalho para dados pequenos é `sha256.Sum256([]byte(s))`, que devolve `[32]byte` pronto:
+
+```go
+sum := sha256.Sum256([]byte("dados"))
+fmt.Printf("%x\n", sum)
+```
+
+## Para que serve (e para que NÃO serve)
+
+**Serve**: verificar integridade de downloads e mensagens; comparar conteúdo sem guardar o original (armazena o hash, compara depois); detecção de mudança. O Git usa SHA-1 para identificar commits; a verificação de checksum de pacotes usa SHA-256.
+
+**Não serve para senha**: SHA-256 é rápido demais — um atacante testa bilhões por segundo. Para senha use um *password hash* lento com salt: `bcrypt`, `argon2` (`golang.org/x/crypto/bcrypt`). E hash **não é assinatura**: qualquer um pode hashear; autenticar a origem exige HMAC ou criptografia de chave pública.
+
+## Em código real
+
+- Comparar dois hashes com `==` em `[32]byte` funciona (arrays são comparáveis). Para dados que são *segredo* (comparar um valor derivado de senha), use `crypto/subtle.ConstantTimeCompare` para evitar ataques de timing.
+- SHA-256 também é a base de checksums em containers e de *Merkle trees* — mas para o dia a dia, o padrão acima resolve.
+
+## Armadilhas comuns
+
+- **Esquecer que SHA não é para senha**: rápido = fraco para senha. Bcrypt/argon2.
+- **`Sum(nil)` reutilizável**: depois do `Sum`, o hasher ainda aceita `Write`. Se você quer um hash "fechado", crie um novo ou saiba que pode continuar.
+- **Comparar hex string com `==`** é ok para integridade, mas para segredos use `subtle.ConstantTimeCompare`.
+- **Hash de string vs bytes**: `sha256.Sum256("texto")` não compila — a função espera `[]byte`. Converta.
+
+## Pratique
+
+1. **Reproduza**: rode `sha256-hashes.go` e confira que o hash tem 64 hex. Rode de novo: idêntico.
+2. **Modifique**: mude um caractere da string e veja o hash mudar por completo. Depois hasheie um arquivo com `io.Copy`.
+3. **Aplique**: escreva `func hashArquivo(caminho string) (string, error)` que devolve o hash hex de um arquivo — e confira que dois arquivos iguais dão o mesmo hash.
+
+## Próximo passo
+
+Hash transforma bytes em "lixo" legível; **base64** faz o oposto útil: bytes viram **texto seguro**. Em [Codificação Base64](base64-encoding), o formato para mandar dados binários em JSON, URLs e e-mails.

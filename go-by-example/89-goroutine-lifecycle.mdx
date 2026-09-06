@@ -9,6 +9,8 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
 
 Uma goroutine não é um trabalho descartável. Quem a cria deve saber como ela termina, como recebe cancelamento e como o chamador espera por ela.
 
+Sobre o que é uma goroutine, por que é leve e como o runtime a agenda (scheduler M:N, GOMAXPROCS), veja [Goroutines](goroutines). Esta página assume que você já entende o `go` e foca no ciclo de vida.
+
 <CodeExplanation
   title={"worker.go"}
   code={`package main

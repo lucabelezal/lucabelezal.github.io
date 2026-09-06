@@ -4,8 +4,10 @@ title: Funções Variádicas
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Algumas funções precisam aceitar **qualquer quantidade** de argumentos: `fmt.Println` imprime 1 ou 100 valores, `append` junta elementos sem saber quantos virão. Em Go, isso é uma **função variádica** — um parâmetro marcado com `...` que absorve os argumentos restantes. Como Go não tem sobrecarga, esse é o mecanismo para uma função "flexível".
+
 <CodeExplanation
-  title={"Funções Variádicas"}
+  title={"variadic-functions.go"}
   code={`package main
 
 import "fmt"
@@ -25,14 +27,46 @@ func main() {
     sum(nums...)
 }`}
   sections={[
-    {text: "Uma função que aceita um número arbitrário de `int`s."},
-    {text: "Dentro da função, `nums` é equivalente a `[]int`. Podemos usar `len(nums)`, iterar com `range`, etc."},
-    {text: "Funções variádicas podem ser chamadas normalmente com argumentos individuais."},
-    {text: "Se já tem múltiplos args em um slice, aplique-os com `func(slice...)`."},
-    {text: "Saída:\n$ go run variadic-functions.go \n[1 2] 3\n[1 2 3] 6\n[1 2 3 4] 10\n\n# Another key aspect of functions in Go is their ability\n# to form closures, which we'll look at next."}
+    {text: "`nums ...int` — o `...` antes do tipo diz: aceite zero ou mais `int`s. Dentro da função, `nums` é um **slice** `[]int` comum: dá para usar `len`, `range`, indexar."},
+    {text: "`fmt.Print(nums, \" \")` imprime o slice como veio; o loop soma elemento a elemento."},
+    {text: "Chamadas normais passam argumentos individuais: `sum(1, 2)` e `sum(1, 2, 3)` — quantos quiser, zero inclusive (`sum()` é válido e soma 0)."},
+    {text: "Se os valores já estão num slice, use `nums...` para **espalhar** os elementos. Sem o `...`, você passaria o slice inteiro como um argumento único — erro de tipo."},
+    {text: "Saída:\n$ go run variadic-functions.go\n[1 2] 3\n[1 2 3] 6\n[1 2 3 4] 10\n\n# Outro recurso importante das funções de Go é a capacidade\n# de formar closures, que veremos a seguir."}
   ]}
 />
 
 <a href="https://go.dev/play/p/glNdE8aKPNq" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Por que variádicas existem
+
+Sem sobrecarga nem parâmetros opcionais, uma função que "aceita 1 ou muitos" precisa de uma única assinatura flexível — é exatamente o que `...` entrega. Você já usa variádicas sem saber: `fmt.Println`, `fmt.Printf`, `log.Printf` e `append` são todas variádicas. O `...` aparece nos dois lados da história:
+
+- **Na definição**, `nums ...int` absorve os argumentos num slice.
+- **Na chamada**, `slice...` espalha um slice em argumentos individuais.
+
+Os dois usos do `...` são a mesma ideia vista de lados opostos: definir é "juntar"; chamar é "espalhar".
+
+## Em código real
+
+- `append(slice, elemento...)` é o jeito de concatenar slices: `total := append(a, b...)`. Você vai usar isso o tempo todo em [Slices](slices).
+- Loggers e emitters de eventos costumam ser variádicos para aceitar campos extras.
+- Combinado com callbacks (da página de [Funções](functions)), variádicas aparecem em APIs que registram vários "ouvinte" de uma vez.
+
+## Armadilhas comuns
+
+- **`...` só no último parâmetro**: `func f(a ...int, b string)` não compila. O parâmetro variádico encerra a lista — e só pode existir um.
+- **Esquecer o `...` na chamada com slice**: `sum(nums)` tenta passar `[]int` onde a função espera `int`s — erro de tipo. É `sum(nums...)`.
+- **Achar que variádico é um array**: dentro da função é `[]int`, um slice. Copiar `nums` para outra variável ou passá-lo adiante segue as regras normais de slice (que você viu em [Slices](slices)).
+- **Confundir com ponteiro para args**: em outras linguagens, variádicos costumam ser *referências*; em Go, os elementos são copiados para o slice novo a cada chamada — alterá-los dentro da função não afeta os argumentos originais do chamador.
+
+## Pratique
+
+1. **Reproduza**: rode `variadic-functions.go` e relacione cada linha da saída a uma chamada.
+2. **Modifique**: acrescente um parâmetro fixo antes do variádico — `func sum(prefixo string, nums ...int)` — e imprima o prefixo. Perceba que o fixo precisa vir antes do `...`.
+3. **Aplique**: escreva `func concatenar(partes ...string) string` que junta strings com `strings.Join(partes, " ")`, e teste passar `[]string{...}` espalhado.
+
+## Próximo passo
+
+Você já viu funções passadas como argumento. Agora o passo que completa o "pé funcional" de Go: funções que **devolvem funções** e lembram do ambiente onde nasceram. Em [Closures](closures).

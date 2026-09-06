@@ -1,11 +1,12 @@
 ---
 title: Tickers
 ---
-
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+O timer dispara uma vez; o **ticker** dispara **repetidamente** a cada intervalo. O `time.NewTicker(d)` entrega um valor no channel `C` a cada `d` — o metrônomo do Go. Ele também tem `Stop()`: pare de ouvir quando não precisar mais.
+
 <CodeExplanation
-  title={"Tickers"}
+  title={"tickers.go"}
   code={`package main
 
 import (
@@ -32,12 +33,44 @@ func main() {
     fmt.Println("Ticker stopped")
 }`}
   sections={[
-    {text: "Tickers usam mecanismo similar a timers: um channel que recebe valores. Aqui usamos `select` para aguardar valores a cada 500ms."},
-    {text: "Tickers podem ser parados como timers. Uma vez parado, não recebe mais valores. Vamos parar o nosso após 1600ms."},
-    {text: "Saída:\n# When we run this program the ticker should tick 3 times\n# before we stop it.\n$ go run tickers.go\nTick at 2012-09-23 11:29:56.487625 -0700 PDT\nTick at 2012-09-23 11:29:56.988063 -0700 PDT\nTick at 2012-09-23 11:29:57.488076 -0700 PDT\nTicker stopped"}
+    {text: "`NewTicker(500ms)` — um valor em `ticker.C` a cada meio segundo."},
+    {text: "A goroutine escuta com `select`: imprime cada tick OU para quando `done` chegar. O `done` é o \"cancela\"."},
+    {text: "Após 1600ms (≈3 ticks), `ticker.Stop()` interrompe os ticks; `done <- true` manda a goroutine encerrar."},
+    {text: "Saída (uma execução — os horários variam):\n$ go run tickers.go\nTick at 2026-09-06 11:29:11.692 ...\nTick at 2026-09-06 11:29:12.192 ...\nTick at 2026-09-06 11:29:12.692 ...\nTicker stopped\n\n# Três ticks em ~1.5s, depois o ticker para."}
   ]}
 />
 
-<a href="https://go.dev/play/p/gs6zoJP-Pl9" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Ticker × Timer
+
+| | Timer | Ticker |
+|---|---|---|
+| Dispara | Uma vez | A cada intervalo |
+| Channel `C` | 1 valor | N valores |
+| Parar | `Stop()` antes de disparar | `Stop()` a qualquer momento |
+| Uso | Timeout, agendar único | Heartbeat, polling periódico |
+
+O ticker sem `Stop()` vaza: ele continua disparando (e a goroutine que o escuta, se existir) mesmo quando ninguém mais liga. **`Stop()` quando terminar** é a regra — e o channel `C` pode ter um tick pendente após o Stop, então o padrão com `done` (como aqui) garante a saída limpa da goroutine.
+
+## Em código real
+
+- **Heartbeat/health check**: enviar um sinal de "vivo" a cada N segundos.
+- **Polling periódico**: checar uma fila, um status, métricas a cada intervalo.
+- **Dashboards/relógios**: atualizar a cada segundo.
+- Combinado com `select` e `done` (como aqui) ele vira a goroutine de fundo controlada — o padrão de ciclo de vida da página [Goroutines com Estado](stateful-goroutines).
+
+## Armadilhas comuns
+
+- **Ticker sem `Stop`**: goroutine/timer vazando. Pare sempre ao terminar.
+- **Depender de ticks exatos**: o ticker entrega no ritmo do agendamento; se o consumidor demora, ticks podem ser **pulados** (o channel não acumula como fila ilimitada). Para agendar com precisão por contagem, acumule você mesmo.
+- **Goroutine que nunca sai**: `Stop()` não mata a goroutine que faz `range ticker.C` — ela fica esperando. Use um canal `done` (como aqui) ou `range` com saída.
+- **`time.Tick(d)` global**: devolve o channel sem `Stop` — vaza. Prefira `NewTicker` explícito.
+
+## Pratique
+
+1. **Reproduza**: rode `tickers.go` e conte os ticks até o Stop.
+2. **Modifique**: mude o intervalo para 200ms e o sleep para 1s — quantos ticks agora? Depois remova o `Stop` e observe o comportamento no fim.
+3. **Aplique**: escreva um ticker de heartbeat que a cada segundo loga \"vivo\" (página [Logging](logging)) e para ao receber um sinal `done` — o esqueleto de um health-check.
+
+## Próximo passo
+
+Timers e tickers controlam *quando*; controlar *quanto* é **rate limiting**. Em [Rate Limiting](rate-limiting), um ticker vira o regulador — N requisições por segundo, com rajada permitida.

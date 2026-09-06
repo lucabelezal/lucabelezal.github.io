@@ -1,11 +1,12 @@
 ---
 title: Range sobre Channels
 ---
-
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+A página anterior consumiu um canal com `v, ok := <-ch` num laço manual. Quando a intenção é só "pegue **todos** os valores até fechar", o **`range`** faz isso numa linha: ele recebe cada valor e termina sozinho quando o canal é fechado.
+
 <CodeExplanation
-  title={"Range sobre Channels"}
+  title={"range-over-channels.go"}
   code={`package main
 
 import "fmt"
@@ -20,12 +21,46 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Vamos iterar sobre 2 valores no channel `queue`."},
-    {text: "Este `range` itera cada elemento recebido de `queue`. Como fechamos o channel acima, a iteração termina após 2 elementos."},
-    {text: "Saída:\n$ go run range-over-channels.go\none\ntwo\n\n# This example also showed that it's possible to close\n# a non-empty channel but still have the remaining\n# values be received."}
+    {text: "`queue` tem 2 valores em buffer."},
+    {text: "`close(queue)` antes de iterar: o `range` precisa do fechamento para saber quando parar."},
+    {text: "`for elem := range queue` recebe \"one\", \"two\" e **termina** quando o canal fecha e esvazia — sem loop manual, sem `ok`."},
+    {text: "Saída:\n$ go run range-over-channels.go\none\ntwo\n\n# Também mostra que dá para fechar um canal não-vazio:\n# os valores em buffer ainda são recebidos antes do fim."}
   ]}
 />
 
-<a href="https://go.dev/play/p/8vAhX6eX1wy" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## A regra implícita: quem não fecha, o range não termina
+
+`range` sobre um canal só termina quando o canal é **fechado**. Um canal aberto (mesmo sem valores) deixa o `range` **bloqueado esperando** — como qualquer receive. Por isso o produtor precisa `close` quando terminar; senão, quem itera fica preso (deadlock se for o fim do programa).
+
+## O padrão consumidor
+
+```go
+for job := range jobs {   // recebe até o produtor fechar
+    processar(job)
+}
+```
+
+É o consumidor de fila mais comum em Go — você já viu em [Worker Pools](worker-pools) e no [Ciclo de Vida](goroutine-lifecycle): produtor envia e fecha; consumidor `range` até o fim.
+
+## Em código real
+
+- **Filas de trabalho**: cada worker `range` no canal de jobs.
+- **Streams**: uma goroutine produtora (leitura de arquivo, eventos) envia e fecha ao acabar; o consumidor processa com `range`.
+- **Não precisa fechar canais de um único uso** se não há `range`/fim esperado — feche para **sinalizar o fim** a quem itera.
+
+## Armadilhas comuns
+
+- **`range` sem `close`**: o laço nunca termina. Garanta o fechamento (e quem fecha é o produtor).
+- **`range` com canal que nunca recebe**: bloqueia esperando o primeiro valor — normal, mas confirme que o produtor existe.
+- **Fechar para "limpar"**: se o consumidor não usa `range`/`ok`, o close é desnecessário (e perigoso se ainda houver envios).
+- **`range` de um canal que outros ainda enviam**: o laço só para no close; produtores paralelos precisam parar de enviar **antes** do close para não dar panic.
+
+## Pratique
+
+1. **Reproduza**: rode `range-over-channels.go`; remova o `close` e observe o deadlock.
+2. **Modifique**: itere um canal que recebe de uma goroutine produtora (que envia 5 números e fecha) — processe e some.
+3. **Aplique**: monte o pipeline produtor→worker com `range` no worker e um `WaitGroup` esperando os workers terminarem de drenar.
+
+## Próximo passo
+
+Fechar e iterar canais dominado. Agora o tempo entra na concorrência: em [Timers](timers), um evento único no futuro — a base de timeouts e agendamentos.

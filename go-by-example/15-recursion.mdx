@@ -4,8 +4,10 @@ title: Recursão
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Toda função que chama a si mesma é **recursiva** — e a recursão é a ferramenta natural para problemas que se repetem em subproblemas menores: percorrer uma árvore, dividir para conquistar, explorar grafos. A mecânica é simples (chamar a si mesma com um caso menor até atingir o **caso base**), mas decidir *quando* recursão é a resposta certa — e quando ela é uma armadilha — é a parte que separa quem entende.
+
 <CodeExplanation
-  title={"Recursão"}
+  title={"recursion.go"}
   code={`package main
 
 import "fmt"
@@ -28,13 +30,57 @@ func main() {
     fmt.Println(fib(7))
 }`}
   sections={[
-    {text: "A função `fact` chama a si mesma até o caso base `fact(0)`."},
-    {text: "Funções anônimas também podem ser recursivas, mas exigem declarar a variável com `var` antes de defini-la."},
-    {text: "Como `fib` foi previamente declarado em `main`, Go sabe qual função chamar aqui."},
-    {text: "Saída:\n$ go run recursion.go \n5040\n13"}
+    {text: "`fact(n)` chama a si mesma com `n-1` até atingir o **caso base** `n == 0`, que devolve 1 e encerra a cadeia. Cada chamada espera o resultado da menor."},
+    {text: "`fact(7)`: 7! = 5040 — calculado por 7 chamadas empilhadas."},
+    {text: "Função anônima recursiva precisa de um nome para se referir a si mesma: `var fib func(n int) int` declara a variável **antes**, e só então o corpo pode chamar `fib`."},
+    {text: "`fib` usa dois casos base (`n < 2` devolve `n`) e soma as duas chamadas menores — a definição clássica de Fibonacci."},
+    {text: "Saída:\n$ go run recursion.go\n5040\n13"}
   ]}
 />
 
 <a href="https://go.dev/play/p/k4IRATLn9cE" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Como a recursão funciona por baixo
+
+Cada chamada a `fact` empilha um **novo frame** (parâmetros + variáveis locais) e pausa a chamada anterior. Quando o caso base retorna, os frames são desempilhados em ordem inversa, cada um completando sua multiplicação:
+
+```
+fact(3)
+→ 3 * fact(2)
+    → 2 * fact(1)
+        → 1 * fact(0) = 1   ← caso base
+    → 2 * 1 = 2
+→ 3 * 2 = 6
+```
+
+Duas consequências: recursão precisa de um **caso base que sempre é atingido** (senão empilha para sempre) e cada nível custa memória de stack. Go não tem *tail-call optimization*: recursão profunda pode estourar a stack (em Go as goroutines crescem a stack, mas há limite).
+
+## Quando recursão é a ferramenta certa
+
+Recursão ganha quando a estrutura do problema é **recursiva por natureza** — dados com forma de árvore (filesystem, JSON aninhado, DOM, expressões), busca em profundidade, `quicksort`/`mergesort`. A versão recursiva espelha a definição do problema e fica legível.
+
+Recursão **perde** quando o problema é linear e o caso base trivial: `fact` e `fib` recursivos são didáticos, mas um `for` resolve com menos memória. E cuidado com o `fib` ingênuo: cada `fib(n)` recalcula `fib(n-1)` e `fib(n-2)` — o custo cresce **exponencialmente** (fib(50) é inviável recursivo sem memoização). Nesses casos, itere ou guarde resultados.
+
+## Em código real
+
+Recursão aparece em parsing, ASTs, algoritmos de árvore/grafo e em funções que percorrem estruturas que não têm profundidade conhecida. Dois cuidados de produção: valide a **profundidade** (uma árvore de 100 mil níveis quebra) e lembre que cada nível recursivo que faz I/O ou espera algo pode ser uma goroutine — combinar recursão com concorrência pede as perguntas de [Ciclo de Vida de Goroutines](goroutine-lifecycle).
+
+## Armadilhas comuns
+
+- **Esquecer o caso base**: `fact` sem `if n == 0` estoura a stack (*stack overflow*).
+- **Caso base inalcançável**: `fib` com argumento negativo nunca chega a `n < 2` — se a entrada pode ser inválida, trate antes.
+- **`fib` exponencial**: a definição recursiva direta recalcula os mesmos subproblemas. Para valores grandes, itere (`for`) ou use memoização.
+- **Anônima recursiva sem `var`**: `fib := func(n int) int { ... fib(n-1) ... }` não compila — a variável ainda não existe no próprio corpo. Declare `var fib func(...)` primeiro.
+- **Esperar otimização de cauda**: Go não otimiza recursão em cauda; recursão muito profunda custa stack. Prefira iteração quando a profundidade pode ser grande.
+
+## Pratique
+
+1. **Reproduza**: rode `recursion.go` e escreva no papel a cadeia de chamadas de `fact(4)`.
+2. **Modifique**: reescreva `fib` com um `for` iterativo e compare com a versão recursiva para `fib(30)` — observe a diferença de velocidade.
+3. **Aplique**: escreva `func profundidade(pasta string) (int, error)` que conta níveis de um filesystem recursivamente (use `os.ReadDir`), tratando o caso base de pasta vazia.
+
+## Próximo passo
+
+Recursão organiza chamadas que se repetem; **iterar sobre dados** é o outro lado da moeda. Em [Range sobre Tipos Embutidos](range-over-built-in-types) você vai ver o laço universal que percorre slices, maps e strings.

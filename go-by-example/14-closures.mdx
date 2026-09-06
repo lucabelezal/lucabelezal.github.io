@@ -4,8 +4,10 @@ title: Closures
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Funções podem devolver funções — e a função devolvida pode **lembrar do ambiente onde nasceu**. Isso é um *closure*: uma função que captura variáveis do escopo externo e continua enxergando-as mesmo depois que a função externa já terminou. É o mecanismo que permite criar "fábricas de comportamento" e dá a Go seu lado funcional mais visível.
+
 <CodeExplanation
-  title={"Closures"}
+  title={"closures.go"}
   code={`package main
 
 import "fmt"
@@ -26,14 +28,66 @@ func main() {
     fmt.Println(newInts())
 }`}
   sections={[
-    {text: "A função `intSeq` retorna outra função, definida anonimamente no corpo de `intSeq`. A função retornada faz _closure_ sobre `i`."},
-    {text: "Chamamos `intSeq` e atribuímos o resultado (uma função) a `nextInt`. Essa função captura seu próprio `i`, atualizado a cada chamada."},
-    {text: "Veja o efeito do closure chamando `nextInt` algumas vezes."},
-    {text: "Para confirmar que o estado é único daquela função, crie e teste uma nova."},
-    {text: "Saída:\n$ go run closures.go\n1\n2\n3\n1\n\n# The last feature of functions we'll look at for now is\n# recursion."}
+    {text: "`intSeq` devolve uma `func() int`. Repare na assinatura: o retorno é uma função. Dentro do corpo, a função anônima **usa `i`**, uma variável local de `intSeq`."},
+    {text: "Quando `intSeq` retorna, você poderia achar que `i` morreu. Não morreu: a função anônima capturou `i`, e enquanto ela existir, `i` continua vivo. Cada chamada a `nextInt()` incrementa esse mesmo `i`."},
+    {text: "Três chamadas a `nextInt()` imprimem 1, 2, 3 — o contador persistiu entre chamadas, sem nenhuma variável global. O estado vive dentro do closure."},
+    {text: "`newInts := intSeq()` cria um **novo** `i` independente. Por isso a primeira chamada de `newInts()` é 1, não 4: cada invocação de `intSeq` fabrica um closure com seu próprio estado."},
+    {text: "Saída:\n$ go run closures.go\n1\n2\n3\n1"}
   ]}
 />
 
 <a href="https://go.dev/play/p/NpgpzS8ZG8y" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## O que o closure captura, exatamente
+
+A função anônima não **copia** `i` — ela **referencia** a variável do escopo externo. O compilador percebe que `i` sobrevive à função que o criou e move a variável para o *heap*, onde continua viva enquanto houver alguma referência a ela. Duas consequências:
+
+- O estado é **compartilhado** entre chamadas do mesmo closure (1, 2, 3).
+- O estado é **isolado** entre closures diferentes (o segundo `intSeq` recomeça em 1).
+
+É um mini-objeto com uma única função pública — sem classe, sem struct: só uma função que lembra.
+
+## Funções que devolvem funções: montar comportamento
+
+O uso prático de closures é **especializar** um comportamento no momento da criação. Em vez de repetir o prefixo a cada chamada, você o fixa uma vez:
+
+```go
+func logComPrefixo(prefixo string) func(string) {
+    return func(msg string) {
+        fmt.Println(prefixo, msg)
+    }
+}
+
+erro := logComPrefixo("[ERRO]")
+info := logComPrefixo("[INFO]")
+erro("conexão falhou") // [ERRO] conexão falhou
+info("servidor iniciou") // [INFO] servidor iniciou
+```
+
+`erro` e `info` são a mesma função com estados diferentes: cada uma capturou o seu `prefixo`. Esse padrão — uma função que recebe configuração e devolve uma versão pronta — é uma das formas mais comuns de closure em código real, e a base de *middlewares* e *factories*.
+
+## Onde o closure aparece em código real
+
+- **Adiar decisões**: você configura um comportamento agora e o executa depois — a essência de [defer](defer) e de callbacks assíncronos.
+- **Ordenação e filtros**: funções como `sort.Slice` recebem closures que capturam o critério de comparação (detalhe em [Ordenação com funções](sorting-by-functions)).
+- **Goroutines**: uma função anônima executada com `go` captura o ambiente — inclusive a variável de iteração de um laço. O bug clássico de capturar a variável do `for` foi corrigido no Go 1.22; você vai rever isso em [Goroutines](goroutines).
+- **Handlers e middlewares HTTP**: um middleware é literalmente "função que recebe um handler e devolve outro que lembra da lógica extra".
+
+## Armadilhas comuns
+
+- **Confundir captura com cópia**: o closure vê a variável *atual*, não o valor do momento da criação. Se a variável mudar depois, o closure enxerga a mudança.
+- **Capturar variável de iteração em Go antigo**: em versões anteriores ao 1.22, closures dentro de `for` capturavam a mesma variável compartilhada — resultado clássico de imprimir sempre o último valor. Com Go 1.22+ a variável é nova por iteração.
+- **Reter estado por engano**: enquanto o closure existir, o estado capturado existe. Guardar um closure num campo de struct de vida longa pode segurar memória mais tempo do que você esperava.
+- **Achar que toda função anônima é closure**: uma função anônima que não usa nada do escopo externo é só uma função comum — sem estado capturado.
+
+## Pratique
+
+1. **Reproduza**: rode `closures.go` e explique, com a saída, por que a última linha é `1` e não `4`.
+2. **Modifique**: escreva `func contadorPartindoDe(inicio int) func() int` que capture `inicio` e incremente a partir dele. Compare com `intSeq`.
+3. **Aplique**: crie uma factory `criarAplicadorDeTaxa(taxa float64) func(float64) float64` que devolve uma função que aplica a taxa a um preço. Use closures diferentes para taxas diferentes e confirme que não interferem.
+
+## Próximo passo
+
+Com funções capazes de chamar a si mesmas, você fecha o conjunto básico de abstração. Em [Recursão](recursion) você verá funções que se invocam — e quando isso é a ferramenta certa.

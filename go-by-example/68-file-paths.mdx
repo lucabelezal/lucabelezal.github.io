@@ -4,8 +4,10 @@ title: Caminhos de Arquivos
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Caminho de arquivo parece simples até você precisar de portabilidade: no Linux é `dir/file`, no Windows `dir\file`, e no meio há `..`, barras duplas e `.` que precisam ser normalizados. O pacote **`path/filepath`** constrói e analisa caminhos do jeito certo do sistema — a regra de ouro: **nunca monte caminho concatenando strings**, use `filepath.Join`.
+
 <CodeExplanation
-  title={"Caminhos de Arquivos"}
+  title={"file-paths.go"}
   code={`package main
 
 import (
@@ -39,18 +41,51 @@ func main() {
     fmt.Println(rel)
 }`}
   sections={[
-    {text: "O pacote `filepath` fornece funções para analisar e construir *caminhos de arquivo* de forma portável entre sistemas; `dir/file` no Linux vs. `dir\\file` no Windows, por exemplo."},
-    {text: "`Join` deve ser usado para construir paths portáveis. Recebe qualquer número de args e constrói path hierárquico."},
-    {text: "Use sempre `Join` em vez de concatenar `/` ou `\\` manualmente. Além de garantir portabilidade, `Join` normaliza o path removendo separadores supérfluos e navegações de diretório."},
-    {text: "`Dir` e `Base` separam path em diretório e arquivo. `Split` retorna ambos na mesma chamada."},
-    {text: "Podemos checar se um path é absoluto."},
-    {text: "Alguns arquivos têm extensão após ponto. Use `Ext` para extrair."},
-    {text: "Para o nome sem extensão, use `strings.TrimSuffix`."},
-    {text: "`Rel` encontra path relativo entre *base* e *target*. Retorna erro se não puder tornar relativo."},
+    {text: "`filepath.Join(...)` monta o caminho com o separador do sistema. Na saída (Linux/macOS): `dir1/dir2/filename`."},
+    {text: "`Join` também **normaliza**: `dir1//` vira `dir1`, e `dir1/../dir1` volta a `dir1`. Nada de caminho sujo."},
+    {text: "`Dir(p)` devolve o diretório; `Base(p)` o nome do arquivo. (Para os dois juntos, `filepath.Split`.)"},
+    {text: "`IsAbs` diz se o caminho é absoluto: `dir/file` não é; `/dir/file` é."},
+    {text: "`filepath.Ext` devolve a extensão com o ponto (`.json`); `strings.TrimSuffix` remove para achar `config`."},
+    {text: "`filepath.Rel(base, target)` calcula o caminho **relativo** de `base` até `target`: `a/b/t/file` a partir de `a/b` é `t/file`; de `a/c/t/file` é `../c/t/file` (sobe um nível)."},
     {text: "Saída:\n$ go run file-paths.go\np: dir1/dir2/filename\ndir1/filename\ndir1/filename\nDir(p): dir1/dir2\nBase(p): filename\nfalse\ntrue\n.json\nconfig\nt/file\n../c/t/file"}
   ]}
 />
 
-<a href="https://go.dev/play/p/5h3lUytvmyO" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Por que `Join` e nunca concatenação
+
+`"dir1" + "/" + "dir2"` funciona no Linux e **quebra no Windows** (que usa `\`). `filepath.Join("dir1", "dir2")` usa o separador certo do sistema. Bônus: `Join` limpa barras duplas e resolve `..`/`.` — então `filepath.Join("a", "../b")` nem deveria ser usado assim (o `Rel`/absoluto cuidam de navegação), mas não deixa caminho "sujo" passar.
+
+Consequência prática para todo o código de arquivos destas páginas: os exemplos usam `filepath.Join(os.TempDir(), "dat")` em vez de `"/tmp/dat"` — porque o diretório temporário varia por SO e usuário.
+
+## Separar arquivo, diretório e extensão
+
+- `filepath.Dir(p)` / `filepath.Base(p)` — diretório e arquivo.
+- `filepath.Ext(p)` — extensão (`.json`), sem saber o resto.
+- `strings.TrimSuffix(nome, ext)` — nome sem extensão.
+- `filepath.Split(p)` — `(dir, file)` numa chamada.
+- `filepath.Clean(p)` — normaliza sem `Join` (remove `..`, `.`, barras duplas).
+
+## Em código real
+
+- Montar caminhos de config/cache/download sempre com `Join`.
+- `Rel` para gerar links relativos e mensagens amigáveis.
+- `Ext`/`TrimSuffix` para trocar extensão (`config.json` → `config.yaml`).
+- Cuidado com segurança: ao aceitar caminho de usuário, valide com `filepath.Clean` e confira que não escapa do diretório esperado (path traversal).
+
+## Armadilhas comuns
+
+- **Concatenar com `/`**: quebra no Windows. `filepath.Join`, sempre.
+- **`filepath.Ext` pega a última extensão**: `a.tar.gz` → `.gz`. Para a "extensão composta", use `strings.TrimSuffix`/lógica própria.
+- **`Rel` pode falhar**: se `base` e `target` estão em volumes/unidades diferentes (Windows), devolve erro — trate.
+- **Assumir `/tmp`**: `os.TempDir()` é o certo; o caminho real varia (macOS → `$TMPDIR` longo).
+- **`IsAbs` no Windows**: `C:\x` é absoluto, `/x` também; não assuma o separador.
+
+## Pratique
+
+1. **Reproduza**: rode `file-paths.go` e explique por que `dir1/../dir1/filename` vira `dir1/filename`.
+2. **Modifique**: monte o caminho de download `~/Downloads/relatorio-2026.csv` com `Join` (use `os.UserHomeDir()`), e extraia diretório, arquivo e extensão.
+3. **Aplique**: escreva `func trocarExt(caminho, novaExt string) string` que usa `Ext` + `TrimSuffix` + concatenação segura.
+
+## Próximo passo
+
+Caminhos analisados; agora a árvore inteira. Em [Diretórios](directories), criar, listar e **percorrer** pastas recursivamente com `MkdirAll`, `ReadDir` e `WalkDir`.

@@ -14,25 +14,46 @@ type CodeExplanationProps = {
   sections?: Section[];
 };
 
+function renderInline(text: string, keyPrefix: string) {
+  return text.split(/(`[^`]+`)/g).map((part, i) => {
+    const key = `${keyPrefix}-${i}`;
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return <code key={key}>{part.slice(1, -1)}</code>;
+    }
+
+    return part.split(/(\[[^\]]+\]\([^\)]+\))/g).map((linkPart, j) => {
+      const linkMatch = linkPart.match(/^\[([^\]]+)\]\(([^\)]+)\)$/);
+      if (linkMatch) {
+        const [, label, href] = linkMatch;
+        const external = /^https?:\/\//.test(href);
+        return (
+          <a
+            key={`${key}-link-${j}`}
+            href={href}
+            {...(external ? {target: '_blank', rel: 'noreferrer'} : {})}
+          >
+            {renderInline(label, `${key}-label-${j}`)}
+          </a>
+        );
+      }
+
+      return linkPart.split(/(\*\*[^*]+\*\*)/g).map((boldPart, k) => {
+        if (boldPart.startsWith('**') && boldPart.endsWith('**')) {
+          return <strong key={`${key}-bold-${j}-${k}`}>{boldPart.slice(2, -2)}</strong>;
+        }
+        return boldPart;
+      });
+    });
+  });
+}
+
 function InlineText({text}: {text: string}) {
-  const lines = text.split('\n');
   return (
     <>
-      {lines.map((line, li) => (
+      {text.split('\n').map((line, li) => (
         <span key={li}>
-          {line.split(/(`[^`]+`)/g).map((part, i) => {
-            if (part.startsWith('`') && part.endsWith('`')) {
-              return <code key={i}>{part.slice(1, -1)}</code>;
-            }
-            const boldParts = part.split(/(\*\*[^*]+\*\*)/g);
-            return boldParts.map((b, j) => {
-              if (b.startsWith('**') && b.endsWith('**')) {
-                return <strong key={`${i}-${j}`}>{b.slice(2, -2)}</strong>;
-              }
-              return b;
-            });
-          })}
-          {li < lines.length - 1 && <br />}
+          {renderInline(line, `line-${li}`)}
+          {li < text.split('\n').length - 1 && <br />}
         </span>
       ))}
     </>

@@ -4,8 +4,10 @@ title: Arrays
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Toda coleção em Go começa num conceito simples: o **array** — um bloco contíguo de N elementos do mesmo tipo, com tamanho **fixo** decidido na declaração. Você vai usar arrays raramente no dia a dia (os *slices*, na próxima página, dominam), mas entendê-los é entender a fundação: um slice é, por baixo, uma janela sobre um array.
+
 <CodeExplanation
-  title={"Arrays"}
+  title={"arrays.go"}
   code={`package main
 
 import "fmt"
@@ -37,18 +39,52 @@ func main() {
     fmt.Println("2d: ", twoD)
 }`}
   sections={[
-    {text: "Aqui criamos um array `a` que guarda exatamente 5 `int`s. O tipo dos elementos e o tamanho fazem parte do tipo do array. Por padrão um array tem zero value, que para `int` significa `0`s."},
-    {text: "Podemos atribuir um valor em um índice com `array[index] = value` e ler com `array[index]`."},
-    {text: "O builtin `len` retorna o tamanho do array."},
-    {text: "Use esta sintaxe para declarar e inicializar um array em uma linha."},
-    {text: "Você também pode deixar o compilador contar os elementos com `...`"},
-    {text: "Se você especificar o índice com `:`, os elementos intermediários serão zerados."},
-    {text: "Tipos de array são unidimensionais, mas você pode compor tipos para construir estruturas multidimensionais."},
-    {text: "Você também pode criar e inicializar arrays multidimensionais de uma vez."},
-    {text: "Saída:\n# Note that arrays appear in the form `[v1 v2 v3 ...]`\n# when printed with `fmt.Println`.\n$ go run arrays.go\nemp: [0 0 0 0 0]\nset: [0 0 0 0 100]\nget: 100\nlen: 5\ndcl: [1 2 3 4 5]\ndcl: [1 2 3 4 5]\nidx: [100 0 0 400 500]\n2d:  [[0 1 2] [1 2 3]]\n2d:  [[1 2 3] [1 2 3]]"}
+    {text: "`var a [5]int` cria um array de 5 `int`s — todos no *zero value* (`0`). O tipo é `[5]int`: **o tamanho faz parte do tipo**."},
+    {text: "Atribuição e leitura por índice: `a[4] = 100` escreve na última posição; `a[4]` lê."},
+    {text: "`len(a)` devolve o tamanho fixo (5). Não existe \"crescer\" um array."},
+    {text: "Literal com tamanho: `[5]int{1, 2, 3, 4, 5}` inicializa em uma linha."},
+    {text: "`[...]int` deixa o **compilador contar** os elementos — o tipo continua sendo `[5]int`."},
+    {text: "`[5]int{100, 3: 400, 500}` usa **índices**: `100` na posição 0, `400` na 3, `500` na 4. As posições puladas (1 e 2) ficam zeradas."},
+    {text: "Arrays são unidimensionais; `[2][3]int` compõe dois arrays de 3 — uma matriz. O laço preenche com `i + j`."},
+    {text: "Literal de matriz numa linha: cada linha é um `[3]int`."},
+    {text: "Saída:\n$ go run arrays.go\nemp: [0 0 0 0 0]\nset: [0 0 0 0 100]\nget: 100\nlen: 5\ndcl: [1 2 3 4 5]\ndcl: [1 2 3 4 5]\nidx: [100 0 0 400 500]\n2d:  [[0 1 2] [1 2 3]]\n2d:  [[1 2 3] [1 2 3]]"}
   ]}
 />
 
 <a href="https://go.dev/play/p/-NFSggT7dFH" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## O tamanho é parte do tipo
+
+`[5]int` e `[3]int` são **tipos diferentes** — não dá para atribuir um ao outro nem usar como se fossem o mesmo. Essa rigidez é proposital: o compilador sabe exatamente o layout de memória (5 × 8 bytes para `int64` em 64 bits) e o array cabe onde for declarado, sem alocação dinâmica. É também o que torna arrays inconvenientes para listas que crescem.
+
+## Array é copiado por valor
+
+Passar um array para uma função **copia todos os elementos** — a função recebe uma cópia e mudanças não refletem no chamador (mesma regra de [Ponteiros](pointers): se você quer mutar o original, passe `*[5]int`). Isso é caro para arrays grandes e é mais um motivo para preferir slices, que já carregam uma janela leve.
+
+## Onde arrays aparecem de verdade
+
+- Como **base dos slices**: todo slice aponta para um array interno (próxima página).
+- **Buffers de tamanho fixo**: hashes `[32]byte`, chaves de criptografia, `[16]byte` de um UUID.
+- Quando você quer valor pequeno e **comparável**: `a == b` funciona entre arrays do mesmo tipo (com elementos comparáveis) — coisa que slices **não** permitem.
+- Structs pequenos e imutáveis que podem ser comparados/copiados como um todo.
+
+No resto, o padrão Go é o **slice**.
+
+## Armadilhas comuns
+
+- **Indexar fora do limite**: `a[5]` num `[5]int` é *panic* em runtime (`index out of range`). Diferente de C, Go checa.
+- **Achar que dá para crescer**: array tem tamanho fixo. Precisa de tamanho dinâmico? É slice.
+- **Esquecer a cópia por valor**: mudar um `[5]int` dentro de uma função não muda o do chamador — e copiar arrays grandes a cada chamada custa caro.
+- **Confundir `[5]int` com `[]int`**: o primeiro é um array (tamanho fixo, tipo inclui o tamanho); o segundo é um slice (dinâmico) — tipos completamente diferentes.
+
+## Pratique
+
+1. **Reproduza**: rode `arrays.go` e explique por que `idx:` imprime `[100 0 0 400 500]`.
+2. **Modifique**: declare `c := [3]string{"a","b","c"}` e tente `c = [...]int{1,2,3}` — observe o erro de tipo. Depois some 4 ao índice 4 de `a` e observe o panic ao estourar o limite.
+3. **Aplique**: escreva `func soma(arr [5]int) int` e depois `func zera(arr *[5]int)` — perceba a diferença entre copiar e apontar, e o porquê de os slices existirem.
+
+## Próximo passo
+
+Arrays são rígidos demais para o dia a dia — o trabalho real é com o **slice**: uma janela dinâmica sobre um array, que cresce e fatia. Em [Slices](slices) você vai ver o tipo que Go usa para quase toda coleção.

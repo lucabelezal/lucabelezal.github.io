@@ -4,8 +4,10 @@ title: Métodos
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Structs agrupam **dados**; **métodos** dão **comportamento** a eles. Um método é uma função com um *receiver* — o valor sobre o qual ela opera — e em Go a decisão mais importante é: receiver por **valor** ou por **ponteiro**? Essa escolha decide se o método pode ou não alterar o original, e é a maior fonte de confusão para quem chega de linguagens orientadas a objeto.
+
 <CodeExplanation
-  title={"Métodos"}
+  title={"methods.go"}
   code={`package main
 
 import "fmt"
@@ -29,14 +31,103 @@ func main() {
     fmt.Println("perim:", rp.perim())
 }`}
   sections={[
-    {text: "O método `area` tem _receiver_ do tipo `*rect`."},
-    {text: "Métodos podem ter receiver por valor ou ponteiro. Aqui um exemplo com receiver por valor."},
-    {text: "Aqui chamamos os 2 métodos definidos para o struct."},
-    {text: "Go converte automaticamente entre valores e ponteiros em chamadas de método. Use receiver por ponteiro para evitar cópia ou permitir mutação."},
-    {text: "Saída:\n$ go run methods.go \narea:  50\nperim: 30\narea:  50\nperim: 30\n\n# Next we'll look at Go's mechanism for grouping and\n# naming related sets of methods: interfaces."}
+    {text: "`func (r *rect) area()` — o receiver é `r *rect` (ponteiro). O método `area` só lê os campos, mas foi declarado com ponteiro."},
+    {text: "`func (r rect) perim()` — o receiver é `r rect` (valor). Aqui o struct é copiado para o método."},
+    {text: "`r.area()` chama o método de ponteiro a partir de um valor: Go converte automaticamente e usa `&r`. Nenhuma cópia é feita."},
+    {text: "`rp.area()` — `rp` já é `*rect`; `perim()` a partir de ponteiro também funciona: Go desreferencia `rp` e copia o valor."},
+    {text: "Saída:\n$ go run methods.go\narea:  50\nperim: 30\narea:  50\nperim: 30\n\n# Em seguida veremos o mecanismo de Go para agrupar e nomear\n# conjuntos de métodos: interfaces."}
   ]}
 />
 
 <a href="https://go.dev/play/p/4wmDCAydC1e" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## A diferença que o receiver faz
+
+Um método com receiver por **valor** recebe uma **cópia**; um método com receiver por **ponteiro** recebe o **endereço** — exatamente a distinção de [Ponteiros](pointers). A consequência prática aparece quando o método precisa *mutar* o receiver:
+
+<CodeExplanation
+  title={"reset.go"}
+  code={`package main
+
+import "fmt"
+
+type Creature struct {
+    Species string
+}
+
+func (c Creature) ResetPorValor() {
+    c.Species = ""
+}
+
+func (c *Creature) ResetPorPonteiro() {
+    c.Species = ""
+}
+
+func main() {
+    c := Creature{Species: "shark"}
+    fmt.Printf("1) %+v\n", c)
+
+    c.ResetPorValor()
+    fmt.Printf("2) %+v  (value receiver: nada mudou)\n", c)
+
+    c.ResetPorPonteiro()
+    fmt.Printf("3) %+v  (pointer receiver: mudou)\n", c)
+}`}
+  sections={[
+    {text: "`ResetPorValor` com receiver `c Creature`: muda a **cópia** local. O `Species` da instância original permanece `shark`."},
+    {text: "`ResetPorPonteiro` com receiver `c *Creature`: altera o **original**, porque `c` é o endereço da instância."},
+    {text: "A saída mostra o efeito silencioso: a chamada `c.ResetPorValor()` *compila e roda*, mas não faz nada na instância — o bug clássico de quem esquece o `*` no receiver."},
+    {text: "Saída:\n$ go run reset.go\n1) {Species:shark}\n2) {Species:shark}  (value receiver: nada mudou)\n3) {Species:}  (pointer receiver: mudou)"}
+  ]}
+/>
+
+## A regra prática para escolher
+
+| Use receiver por **ponteiro** (`*T`) quando... | Use receiver por **valor** (`T`) quando... |
+|---|---|
+| O método **muta** o receiver | O método só **lê** os campos |
+| O struct é **grande** (evitar copiar) | O struct é **pequeno** (2-5 campos básicos) |
+| Você quer **consistência** com outros métodos do tipo que já usam ponteiro | O tipo é imutável por natureza (ex.: `time.Time`) |
+
+Dois conselhos de sênior:
+
+- **Seja consistente no mesmo tipo.** Misturar `func (c Creature)` e `func (c *Creature)` no mesmo struct confunde e causa bugs sutis. Escolha um padrão por tipo e mantenha.
+- **"Vou usar ponteiro para otimizar"** raramente é motivo isolado. A regra de ouro é: muta? struct grande? então ponteiro. Só leitura de struct pequeno? valor.
+
+## Método × função: a diferença sutil
+
+Métodos são declarados como funções, mas com um receiver — e só podem ser chamados numa instância do tipo. O detalhe que separa quem entende Go:
+
+```go
+func (r *rect) area() int   // método: receiver *rect
+r.area()                    // ok — valor addressable vira &r automaticamente
+rp.area()                   // ok — rp já é *rect
+
+func areaFunc(r *rect) int  // função comum
+areaFunc(&r)                // exige o & na mão — não há conversão automática
+```
+
+O Go converte `valor → ponteiro` sozinho só em **chamadas de método**. Numa função comum, você escreve o `&` explicitamente. E há um caso em que isso morde: se um método tem receiver por ponteiro, só o **ponteiro** satisfaz uma interface — o valor não. Esse é o gotcha que você vai ver em [Interfaces](interfaces).
+
+## Em código real
+
+Métodos são como Go faz "encapsulamento" sem classes: campos em minúscula + métodos exportados controlam o acesso (o padrão `Price()` em [Visibilidade e Packages](visibility-and-packages)). E o método mais comum de todos é `String() string` — que faz o tipo se imprimir bem e implementa `fmt.Stringer`. É a ponte perfeita para as interfaces.
+
+## Armadilhas comuns
+
+- **Receiver por valor que deveria mutar**: compila, roda, e o estado não muda (o `ResetPorValor` acima). Sempre desconfie de método que "não funciona".
+- **Copiar um struct com mutex por valor**: structs que guardam `sync.Mutex` (veremos em [Mutexes](mutexes)) **não podem ser copiados**. Receiver por valor neles é bug — use sempre ponteiro.
+- **Receiver por ponteiro + interface**: se o método usa `*T`, apenas `*T` implementa a interface. Passar o valor onde a interface é esperada não compila — e a mensagem do compilador diz exatamente isso.
+- **Chamar método em valor não endereçável**: alguns valores (resultados de chamadas de função, itens de map) não são endereçáveis — chamar um método de ponteiro neles dá erro de compilação.
+
+## Pratique
+
+1. **Reproduza**: rode `methods.go` e `reset.go`; explique por que `r.area()` funciona mesmo com receiver `*rect`.
+2. **Modifique**: no `reset.go`, troque os receivers (valor vira ponteiro e vice-versa) e preveja cada saída antes de rodar.
+3. **Aplique**: adicione `func (c *Creature) Renomear(nome string)` que valida o nome (não vazio) antes de gravar — método com regra de negócio, receiver por ponteiro.
+
+## Próximo passo
+
+Métodos isolados são pouco; o poder aparece quando você os **agrupa por contrato**. Em [Interfaces](interfaces), tipos diferentes que implementam os mesmos métodos passam a ser tratados como um só.

@@ -4,8 +4,10 @@ title: Argumentos de Linha de Comando
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+A forma mais crua de parametrizar um programa é pelos **argumentos posicionais**: `meuprog entrada.txt saida.txt`. Em Go, eles vivem em `os.Args` — um slice de strings em que o **primeiro** elemento é o caminho do próprio executável. Simples, sem parsing: você indexa. Para opções com nome (`-verbose`), a próxima página mostra o pacote `flag`.
+
 <CodeExplanation
-  title={"Argumentos de Linha de Comando"}
+  title={"command-line-arguments.go"}
   code={`package main
 
 import (
@@ -22,12 +24,34 @@ func main() {
     fmt.Println(arg)
 }`}
   sections={[
-    {text: "`os.Args` dá acesso aos argumentos brutos. O primeiro valor é o path do programa, e `os.Args[1:]` são os argumentos."},
-    {text: "Você pode pegar args individuais com indexação normal."},
-    {text: "Saída:\n# To experiment with command-line arguments it's best to\n# build a binary with `go build` first.\n$ go build command-line-arguments.go\n$ ./command-line-arguments a b c d\n[./command-line-arguments a b c d]       \n[a b c d]\nc\n\n# Next we'll look at more advanced command-line processing\n# with flags."}
+    {text: "`os.Args` é o slice completo. `os.Args[0]` é o **caminho do programa** — ele não é um argumento seu."},
+    {text: "`os.Args[1:]` são os argumentos de verdade — o idioma para \"tudo menos o programa\"."},
+    {text: "Indexar direto pega um argumento específico (`os.Args[3]` = quarto elemento, o `c`)."},
+    {text: "Saída:\n# É melhor compilar um binário para testar argumentos.\n$ go build command-line-arguments.go\n$ ./command-line-arguments a b c d\n[./command-line-arguments a b c d]\n[a b c d]\nc"}
   ]}
 />
 
-<a href="https://go.dev/play/p/UYCEvh9d2Zb" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Os argumentos são "sujos" de propósito
+
+`os.Args` não faz parsing nenhum: tudo é string, na ordem exata, sem aspas interpretadas (o shell já as removeu). Se o usuário passa `10` e você precisa de um número, converta com `strconv` (página [Parsing de Números](number-parsing)). E não há `--help`, nem `-flag`, nem valor padrão — se você precisa disso, é hora do pacote `flag` (próxima página) ou de subcomandos (a página seguinte).
+
+## Quando usar argumentos posicionais
+
+Argumentos posicionais são o formato certo para **entrada principal do programa**: `grep PADRAO ARQUIVO`, `cp ORIGEM DESTINO`, `go build ./...`. Opções e configuração vão para flags; a ordem importa e é documentada no help. Programas com várias "ações" (`git commit`, `git push`) usam subcomandos.
+
+## Armadilhas comuns
+
+- **Esquecer que `os.Args[0]` é o programa**: iterar `os.Args` direto inclui o caminho do binário. Sempre `os.Args[1:]`.
+- **Indexar além do fim**: `os.Args[3]` sem 4 argumentos é *panic* (`index out of range`). Valide `len(os.Args)` antes quando o número importa.
+- **Testar com `go run`**: `go run main.go a b c` passa os args ao programa — ok; mas `go run` acrescenta flags próprias antes de `--`. Para comportamento fiel, `go build` + executar o binário.
+- **Achar que arg é número**: tudo é `string`. Converta e trate o erro.
+
+## Pratique
+
+1. **Reproduza**: rode o binário com `a b c d` e explique por que `c` é o terceiro argumento impresso.
+2. **Modifique**: imprima `len(os.Args)` e cada argumento com índice num laço.
+3. **Aplique**: escreva um programa `soma.go` que soma dois inteiros passados como argumentos — validando `len` e convertendo com erro tratado.
+
+## Próximo passo
+
+Argumentos posicionais resolvem a entrada principal; **opções nomeadas** são outro problema. Em [Flags de Linha de Comando](command-line-flags), o pacote `flag` — `-word=opt`, defaults e help automático.

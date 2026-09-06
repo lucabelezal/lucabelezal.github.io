@@ -4,8 +4,10 @@ title: Context
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Uma requisição HTTP chega, o handler chama o banco, o banco espera a rede... e o **cliente desiste**. Todo esse trabalho deveria parar — mas como o cancelamento atravessa camadas? O **`context.Context`** é o veículo: um objeto criado por request que carrega *deadline*, *sinal de cancelamento* e *valores*, e viaja como primeiro parâmetro por toda a cadeia de chamadas. Todo handler HTTP já recebe um pronto: `req.Context()`.
+
 <CodeExplanation
-  title={"Context"}
+  title={"context.go"}
   code={`package main
 
 import (
@@ -33,15 +35,58 @@ func main() {
     http.ListenAndServe(":8090", nil)
 }`}
   sections={[
-    {text: "No exemplo anterior vimos um [servidor HTTP](http-server) simples. Servidores HTTP são bons para demonstrar `context.Context` para controle de cancelamento. Um `Context` carrega deadlines, sinais de cancelamento e valores do request através de boundaries de API e goroutines."},
-    {text: "Um `context.Context` é criado para cada request pelo `net/http` e fica disponível via `Context()`."},
-    {text: "Aguarde alguns segundos antes de responder ao cliente. Isso simula trabalho do servidor. Enquanto trabalha, observe o channel `Done()` do context para sinal de cancelamento e retorne o quanto antes."},
-    {text: "O método `Err()` do context retorna erro explicando por que `Done()` foi fechado."},
-    {text: "Como antes, registramos o handler em \"/hello\" e iniciamos o serviço."},
-    {text: "Saída:\n# Run the server in the background.\n$ go run context.go &\n\n# Simulate a client request to `/hello`, hitting\n# Ctrl+C shortly after starting to signal\n# cancellation.\n$ curl localhost:8090/hello\nserver: hello handler started\n^C\nserver: context canceled\nserver: hello handler ended"}
+    {text: "`req.Context()` — o `net/http` cria um **context por request** e o entrega aqui. Ele é cancelado quando o cliente desiste, a conexão cai ou o servidor encerra."},
+    {text: "O handler simula trabalho de 10s (`time.After`). Enquanto isso, fica de olho no `ctx.Done()` — um channel que **fecha quando o contexto é cancelado**."},
+    {text: "No cancelamento, `ctx.Err()` diz o porquê: aqui, `context canceled` (cliente desistiu)."},
+    {text: "`http.Error` responde com status e mensagem — o handler avisa o cliente (se ainda houver conexão) e termina cedo, sem desperdiçar os 10s."},
+    {text: "Saída (real — o `curl` com `-m 1` desiste após 1s):\n$ go run context.go &\n$ curl -m 1 localhost:8090/hello\n\n# no log do servidor:\nserver: hello handler started\nserver: context canceled\nserver: hello handler ended"}
   ]}
 />
 
-<a href="https://go.dev/play/p/7G1TlQrnbF1" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O que um Context carrega
+
+- **Cancelamento**: um sinal (`ctx.Done()`) disparado quando a operação deve parar.
+- **Deadline**: hora limite (`WithDeadline`) ou prazo a partir de agora (`WithTimeout`).
+- **Valores** (raro): dados do request (IDs de tracing, usuário) — `context.WithValue`. Use com moderação; para parâmetros, prefera argumentos.
+
+O contrato é: **`ctx` é o primeiro parâmetro** de toda função que participa da requisição, e cada camada o propaga — handler → serviço → banco → chamada HTTP. Sem isso, uma camada "esquecida" continua trabalhando depois que o cliente foi embora.
+
+## Como reagir ao cancelamento
+
+Trabalho que pode demorar deve observar `ctx.Done()` — o `select` com `time.After`/chamada real é o padrão:
+
+```go
+select {
+case resultado := <-busca(ctx): // operação que também respeita ctx
+    return resultado, nil
+case <-ctx.Done():
+    return nil, ctx.Err() // cancelado: devolve o erro e para
+}
+```
+
+A stdlib inteira respeita context: `http.NewRequestWithContext`, `db.QueryContext`, `os/exec.CommandContext`. Quando você passa o `ctx`, o cancelamento se propaga sozinho até o nível mais baixo (o socket fecha, a query aborta).
+
+## Em código real
+
+- **Todo handler**: propague `req.Context()` para as camadas — nunca crie `context.Background()` no meio do request (isso *quebra* o cancelamento).
+- **Timeouts por operação**: `context.WithTimeout` limita uma chamada externa (a página [Context e Cancelamento](context-cancellation) mostra o `WithTimeout` + `defer cancel()`).
+- **Tracing**: valores de trace no context (`otel`) viajam sem virar parâmetro.
+- **Testes**: `context.WithCancel` para testar o caminho de cancelamento.
+
+## Armadilhas comuns
+
+- **Guardar `ctx` num struct**: o context pertence à **chamada**, não ao serviço. Passe como parâmetro; guardar vira bug quando a mesma instância serve requests diferentes.
+- **`context.Background()` no meio do request**: perde cancelamento/deadline. Só em `main`/testes.
+- **Não observar `ctx.Done()`**: passar o ctx adiante ajuda, mas se o seu código bloqueia num `time.Sleep`/laço longo, ele não vê o cancelamento. O `select` no `Done` é a forma de "escutar".
+- **Ignorar `ctx.Err()`**: depois do `Done()`, `ctx.Err()` explica (cancelado vs deadline). Logue/retorne — diagnóstico de graça.
+- **`context.WithValue` para tudo**: valores de contexto são para dados transversais raros. Parâmetro obrigatório vai como argumento.
+
+## Pratique
+
+1. **Reproduza**: rode o servidor e o `curl -m 1` — veja o log mostrar o cancelamento após 1s (em vez de esperar 10s).
+2. **Modifique**: adicione `context.WithTimeout` no handler (30s) e compare com o cancelamento do cliente; depois faça um handler que **não** observa `Done()` e veja o trabalho continuar.
+3. **Aplique**: escreva `func busca(ctx context.Context, termo string) (string, error)` que faz um `select` entre `time.After(2s)` (resultado) e `ctx.Done()` — e chame com um contexto com timeout de 100ms.
+
+## Próximo passo
+
+Context governa o cancelamento; **quem dispara** o cancelamento em produção costuma ser um sinal do SO. Em [Context e Cancelamento](context-cancellation), os padrões `WithCancel`/`WithTimeout` — e em [Sinais](signals), o `SIGINT`/`SIGTERM` que encerra um servidor com elegância.

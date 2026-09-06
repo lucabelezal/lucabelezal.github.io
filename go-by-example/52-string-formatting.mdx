@@ -4,8 +4,10 @@ title: Formatação de Strings
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Imprimir um valor "de qualquer jeito" é fácil; imprimir **do jeito certo** é formatação. O `fmt` oferece *verbs* — `%v`, `%d`, `%s`, `%f`... — que controlam como cada valor vira texto. Eles aparecem em `Printf` (stdout), `Sprintf` (retorna string) e `Fprintf` (qualquer `io.Writer`), e valem para logs, mensagens de erro e relatórios.
+
 <CodeExplanation
-  title={"Formatação de Strings"}
+  title={"string-formatting.go"}
   code={`package main
 
 import (
@@ -45,32 +47,68 @@ func main() {
     fmt.Fprintf(os.Stderr, "io: an %s\n", "error")
 }`}
   sections={[
-    {text: "Go offers several printing \"verbs\" designed to format general Go values. For example, this prints an instance of our `point` struct."},
-    {text: "Se o valor é struct, `%+v` inclui os nomes dos campos."},
-    {text: "`%#v` imprime a representação em sintaxe Go, o trecho de código que geraria o valor."},
-    {text: "Para imprimir o tipo, use `%T`."},
-    {text: "Formatar booleanos é direto."},
-    {text: "Há muitas opções para inteiros. Use `%d` para decimal base 10."},
-    {text: "Isso imprime representação binária."},
-    {text: "Isso imprime o caractere correspondente ao inteiro."},
-    {text: "`%x` gera encoding hex."},
-    {text: "Há várias opções para floats. Para decimal básico use `%f`."},
-    {text: "`%e` e `%E` formatam em notação científica (versões levemente diferentes)."},
-    {text: "Para imprimir string básica use `%s`."},
-    {text: "Para strings com aspas duplas como no código Go, use `%q`."},
-    {text: "Como em inteiros, `%x` renderiza a string em base 16, com dois caracteres por byte."},
-    {text: "Para imprimir um ponteiro, use `%p`."},
-    {text: "Ao formatar números, você quer controlar largura e precisão. Para largura de inteiro, use número após `%`. Por padrão, justificado à direita com espaços."},
-    {text: "Também pode especificar largura de floats, geralmente restringindo precisão com `largura.precisao`."},
-    {text: "Para justificar à esquerda, use o flag `-`."},
-    {text: "Também pode controlar largura em strings, para alinhar em saída tabular. Para largura básica justificada à direita."},
-    {text: "Para justificar à esquerda use `-` como em números."},
-    {text: "Vimos `Printf`, que imprime em `os.Stdout`. `Sprintf` formata e retorna a string sem imprimir."},
-    {text: "Você pode formatar e imprimir em `io.Writer`s diferentes de `os.Stdout` com `Fprintf`."},
-    {text: "Saída:\n$ go run string-formatting.go\nstruct1: {1 2}\nstruct2: {x:1 y:2}\nstruct3: main.point{x:1, y:2}\ntype: main.point\nbool: true\nint: 123\nbin: 1110\nchar: !\nhex: 1c8\nfloat1: 78.900000\nfloat2: 1.234000e+08\nfloat3: 1.234000E+08\nstr1: \"string\"\nstr2: \"\\\"string\\\"\"\nstr3: 6865782074686973\npointer: 0xc0000ba000\nwidth1: |    12|   345|\nwidth2: |  1.20|  3.45|\nwidth3: |1.20  |3.45  |\nwidth4: |   foo|     b|\nwidth5: |foo   |b     |\nsprintf: a string\nio: an error"}
+    {text: "`%v` imprime o valor no formato padrão. Para structs: `{1 2}`."},
+    {text: "`%+v` adiciona os nomes dos campos: `{x:1 y:2}`. Ótimo para debug."},
+    {text: "`%#v` imprime a representação em **sintaxe Go** — o código que recriaria o valor: `main.point{x:1, y:2}`. Útil para inspecionar."},
+    {text: "`%T` imprime o **tipo**, não o valor."},
+    {text: "Booleanos (`%t`), inteiros decimal (`%d`), binário (`%b`), caractere (`%c`) e hex (`%x`)."},
+    {text: "Floats: `%f` decimal, `%e`/`%E` notação científica (minúscula/maiúscula no `e`)."},
+    {text: "Strings: `%s` crua; `%q` com aspas e escapes como no código Go (`\"\\\"string\\\"\"`); `%x` em hex por byte."},
+    {text: "`%p` imprime o endereço de um ponteiro — endereço de memória, varia a cada execução (relembre [Ponteiros](pointers))."},
+    {text: "**Largura**: `%6d` reserva 6 colunas, justificado à direita com espaços — alinha colunas."},
+    {text: "**Precisão**: `%6.2f` = largura 6, duas casas decimais."},
+    {text: "`%-6.2f` — o flag `-` justifica à **esquerda**."},
+    {text: "Largura também funciona em strings: `|%6s|` alinha à direita; `|%-6s|` à esquerda. Padrão para saída tabular."},
+    {text: "`Sprintf` formata e **retorna** a string (para guardar em variável, logar, montar mensagem de erro) sem imprimir."},
+    {text: "`Fprintf(w, ...)` escreve em qualquer `io.Writer` — aqui `os.Stderr`; também serviria para um arquivo ou um response HTTP."},
+    {text: "Saída:\n$ go run string-formatting.go\nstruct1: {1 2}\nstruct2: {x:1 y:2}\nstruct3: main.point{x:1, y:2}\ntype: main.point\nbool: true\nint: 123\nbin: 1110\nchar: !\nhex: 1c8\nfloat1: 78.900000\nfloat2: 1.234000e+08\nfloat3: 1.234000E+08\nstr1: \"string\"\nstr2: \"\\\"string\\\"\"\nstr3: 6865782074686973\npointer: 0xc0000ba000\nwidth1: |    12|   345|\nwidth2: |  1.20|  3.45|\nwidth3: |1.20  |3.45  |\nwidth4: |   foo|     b|\nwidth5: |foo   |b     |\nsprintf: a string\nio: an error\n\n# O endereço em \"pointer:\" varia a cada execução."}
   ]}
 />
 
 <a href="https://go.dev/play/p/EZCZX1Uwp6D" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Os verbs que você vai usar 90% do tempo
+
+| Verb | Para quê | Exemplo |
+|---|---|---|
+| `%v` | Valor no formato padrão (o "não sei qual é, imprime" da formatação) | `{1 2}` |
+| `%+v` | Struct com nome dos campos (debug) | `{x:1 y:2}` |
+| `%#v` | Sintaxe Go do valor (debug profundo) | `main.point{x:1, y:2}` |
+| `%T` | O tipo | `main.point` |
+| `%d` | Inteiro decimal | `123` |
+| `%s` / `%q` | String crua / com aspas | `"string"` |
+| `%f` / `%.2f` | Float / com 2 casas | `78.90` |
+| `%t` | Booleano | `true` |
+
+Dois bônus importantes:
+
+- **`%v` respeita `fmt.Stringer`**: se o tipo tem `String() string`, `%v` o chama. É assim que `fmt.Println` "sabe" imprimir bem um tipo — você implementa `String()` (visto em [Interfaces](interfaces)) e todo `fmt` passa a usar.
+- **`%w` não é para `Printf`**: é o verb de *wrap* do `fmt.Errorf`, da página de [Erros](errors) — ele preserva a cadeia de erros. `%v` com um erro imprime só a mensagem.
+
+## Onde cada variante vive
+
+- `fmt.Printf` — imprime em `os.Stdout`.
+- `fmt.Sprintf` — **retorna** a string: montar mensagens, `errors.New(fmt.Sprintf(...))`, logs.
+- `fmt.Fprintf(w, ...)` — escreve em qualquer `io.Writer`: arquivo, `os.Stderr`, um `http.ResponseWriter` (aparece em [Servidor HTTP](http-server)).
+
+Em logs de produção você normalmente não formata na mão — usa um logger estruturado (página de [Logging](logging)). A formatação manual brilha para output de usuário, relatórios e debugging.
+
+## Armadilhas comuns
+
+- **Verb errado**: `%d` com float imprime `%!d(float64=1.2)` — o `fmt` sinaliza o erro no próprio texto. Use o verb certo ou `%v`.
+- **Esquecer o `\n`**: `Printf` **não** adiciona quebra de linha (diferente de `Println`). Saídas grudadas são o sintoma clássico.
+- **`%v` para debug de struct**: esconde os nomes dos campos. Para inspecionar estado, use `%+v`.
+- **Precisão em `%f` vs `%v` de float**: `%v` imprime `78.9`; `%f` imprime `78.900000` (6 casas padrão). Escolha de propósito.
+- **Achar que largura trunca**: `%6d` com um número maior que 6 não corta — só usa mais espaço. Largura é mínimo, não máximo.
+
+## Pratique
+
+1. **Reproduza**: rode `string-formatting.go` e compare `str1` com `str2` — explique as aspas extra.
+2. **Modifique**: formate `point{1,2}` com `%+v` e `%#v` e monte uma tabela alinhada de `{nome, idade}` com `%6s`/`%-6s`.
+3. **Aplique**: crie um tipo `type conta struct{ titular string; saldo float64 }` com `String() string` (use `%s`/`%.2f`) e veja `fmt.Println(conta)` mudar — depois use `Sprintf` para montar uma linha de extrato.
+
+## Próximo passo
+
+Formatar é imprimir valores; **gerar texto a partir de um molde** é outra categoria. Em [Templates de Texto](text-templates) você separa o texto estático das partes que variam (`{{.}}`), para relatórios e mensagens parametrizadas.

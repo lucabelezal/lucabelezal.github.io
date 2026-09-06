@@ -4,8 +4,10 @@ title: Worker Pools
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Disparar uma goroutine por tarefa funciona até a fila ficar grande. Quando você tem muitos jobs e um número controlado de "executores", o padrão é o **worker pool**: N goroutines fixas que consomem jobs de um channel compartilhado. É como uma cozinha com 3 chefs e 5 pratos na comanda — os chefs pegam o próximo prato assim que terminam o atual, e ninguém fica ocioso esperando um chef específico.
+
 <CodeExplanation
-  title={"Worker Pools"}
+  title={"worker-pools.go"}
   code={`package main
 
 import (
@@ -37,15 +39,48 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Aqui está o worker, do qual rodaremos várias instâncias concorrentes. Eles recebem trabalho em `jobs` e enviam resultados em `results`. Dormimos 1s por job para simular tarefa custosa."},
-    {text: "Para usar o pool, precisamos enviar trabalho e coletar resultados. Criamos 2 channels para isso."},
-    {text: "Isso inicia 3 workers, inicialmente bloqueados sem jobs."},
-    {text: "Aqui enviamos 5 `jobs` e fechamos o channel para indicar fim do trabalho."},
-    {text: "Por fim coletamos todos os resultados. Isso também garante que as goroutines terminaram. Outra forma de esperar é usar [WaitGroup](waitgroups)."},
-    {text: "Saída:\n# Our running program shows the 5 jobs being executed by\n# various workers. The program only takes about 2 seconds\n# despite doing about 5 seconds of total work because\n# there are 3 workers operating concurrently.\n$ time go run worker-pools.go \nworker 1 started  job 1\nworker 2 started  job 2\nworker 3 started  job 3\nworker 1 finished job 1\nworker 1 started  job 4\nworker 2 finished job 2\nworker 2 started  job 5\nworker 3 finished job 3\nworker 1 finished job 4\nworker 2 finished job 5\n\nreal\\t0m2.358s"}
+    {text: "O worker: recebe jobs de `jobs` (só leitura) e devolve resultados em `results` (só escrita). As direções são contrato — o compilador impede uso errado. O `Sleep` simula trabalho custoso."},
+    {text: "`jobs` e `results` são **buffered** com capacidade `numJobs`, então produtor e consumidor não precisam andar em lockstep."},
+    {text: "Disparamos **3 workers** concorrentes. Eles ficam bloqueados no `range jobs` até chegarem jobs."},
+    {text: "O **produtor** envia os 5 jobs e **fecha** `jobs`. Fechar é o sinal de \"acabou\" — quem fecha é sempre quem envia (regra de dono, da página de [Ciclo de Vida](goroutine-lifecycle))."},
+    {text: "Coletamos os 5 resultados. Como cada worker envia 1 resultado por job, receber os 5 garante que todos terminaram — um wait implícito."},
+    {text: "Saída (uma execução real):\n$ time go run worker-pools.go\nworker 1 started  job 2\nworker 3 started  job 1\nworker 2 started  job 3\nworker 2 finished job 3\nworker 2 started  job 4\nworker 3 finished job 1\nworker 3 started  job 5\nworker 1 finished job 2\nworker 2 finished job 4\nworker 3 finished job 5\n\nreal\\t0m2.501s\n\n# ~5s de trabalho em ~2.5s: 3 workers em paralelo. A ordem\n# das linhas varia a cada execução."}
   ]}
 />
 
-<a href="https://go.dev/play/p/hiSJJsYZJKL" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Por que um pool em vez de "uma goroutine por job"?
+
+Tudo depende da natureza do trabalho:
+
+- **I/O-bound** (rede, disco, espera): uma goroutine por tarefa é idiomática — a maioria fica *esperando*, e o runtime agenda quem está pronto. Não há problema em ter milhares.
+- **CPU-bound** ou jobs em número enorme: cada goroutine custa stack e agendamento. Um **pool de N workers** limita quantos jobs rodam simultaneamente e controla o consumo de recursos — e dá a mesma "fila" de graça: os workers disputam os jobs do channel e distribuem o trabalho entre si.
+
+O worker pool é o Go equivalente ao *semáforo de capacidade* de outras linguagens: N execuções simultâneas, resto espera. (Uma variação — limitar concorrência com um channel buffer de tamanho N como semáforo — aparece em [Rate Limiting](rate-limiting).)
+
+## O fluxo: produtor fecha, workers consomem, main coleta
+
+O esqueleto se repete em todo pool:
+
+1. Criar channels de `jobs` e `results` (buffered ajuda a não travar o produtor).
+2. Disparar N workers com `go`.
+3. Produtor envia todos os jobs e **fecha** o channel de entrada.
+4. Workers fazem `range jobs` — o `range` termina sozinho quando o channel fecha.
+5. `main` coleta os resultados (ou usa [WaitGroups](waitgroups)).
+
+## Armadilhas comuns
+
+- **Fechar `results` no lugar errado**: quem recebe não fecha. Se `main` fechar `results`, outro consumidor futuro quebraria; o padrão aqui é apenas drenar (`<-results` N vezes).
+- **Deadlock clássico de tamanho de buffer**: se `results` fosse **sem buffer** e `main` enviasse todos os jobs *antes* de ler resultados, os workers travaríam enviando o primeiro resultado, `main` travaria enviando jobs — ninguém anda. Buffered do tamanho certo ou leitura concorrente resolvem.
+- **Esquecer o `close(jobs)`**: os workers ficam bloqueados no `range` para sempre — goroutines vazando. O fechamento é o sinal de término.
+- **Achar que a saída é determinística**: a ordem em que workers pegam jobs e terminam varia. Nunca dependa da ordem de `fmt.Println` de goroutines.
+- **Worker que nunca termina**: se o corpo do `for j := range jobs` fizer `return` num erro sem tratar, o worker sai do `range` e os jobs restantes ficam sem executor — o pool "morre" silenciosamente.
+
+## Pratique
+
+1. **Reproduza**: rode `worker-pools.go` com `time` e compare o tempo com o número de workers (1, 3, 5).
+2. **Modifique**: mude `numJobs` para 8 e `Sleep` para 500ms; observe o balanceamento entre workers.
+3. **Aplique**: reescreva o exemplo usando **WaitGroup** para esperar os workers em vez de drenar `results` — e compare os dois estilos de término.
+
+## Próximo passo
+
+O pool coletou resultados drenando o channel — um *wait* implícito. Para esperar N goroutines de forma explícita e reutilizável, a ferramenta certa é o [WaitGroup](waitgroups).

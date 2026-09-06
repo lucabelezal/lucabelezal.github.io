@@ -4,8 +4,10 @@ title: Codificação Base64
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+JSON e URLs não aceitam bytes arbitrários — um `\x00` ou um `ÿ` quebra o texto. O **base64** codifica dados binários como texto ASCII seguro: a cada 3 bytes vira 4 caracteres do alfabeto `A-Za-z0-9+/`. É o formato de tokens (JWT), *data URLs* de imagem e anexos de e-mail. Go traz dois encoders: o **padrão** e o **URL-safe** (que troca `+`/`/` por `-`/`_` para caber em URLs sem escape).
+
 <CodeExplanation
-  title={"Codificação Base64"}
+  title={"base64-encoding.go"}
   code={`package main
 
 import (
@@ -26,15 +28,50 @@ func main() {
     fmt.Println(string(uDec))
 }`}
   sections={[
-    {text: "Esta sintaxe importa `encoding/base64` como `b64`. Economiza espaço abaixo."},
-    {text: "Aqui a `string` que vamos codificar/decodificar."},
-    {text: "Go suporta base64 padrão e URL-safe. Veja como codificar com o encoder padrão. Ele exige `[]byte`, então convertemos a string."},
-    {text: "Decodificar pode retornar erro, que você pode checar se não souber que o input é bem formado."},
-    {text: "Isso codifica/decodifica com base64 URL-safe."},
-    {text: "Saída:\n# The string encodes to slightly different values with the\n# standard and URL base64 encoders (trailing `+` vs `-`)\n# but they both decode to the original string as desired.\n$ go run base64-encoding.go\nYWJjMTIzIT8kKiYoKSctPUB+\nabc123!?$*&()'-=@~\n\nYWJjMTIzIT8kKiYoKSctPUB-\nabc123!?$*&()'-=@~"}
+    {text: "`b64` é o apelido do pacote `encoding/base64` (atalho comum — como `s \"strings\"`)."},
+    {text: "`StdEncoding.EncodeToString` codifica bytes em base64 **padrão**. O `[]byte` é obrigatório — base64 trabalha com bytes, não strings."},
+    {text: "`DecodeString` faz o caminho inverso e devolve **erro** para input malformado (cheque quando não controla a origem)."},
+    {text: "`URLEncoding` é a variante URL-safe: note o `-` no fim em vez do `+` do padrão — mesma informação, alfabeto diferente para não precisar de escape em URL."},
+    {text: "Saída:\n$ go run base64-encoding.go\nYWJjMTIzIT8kKiYoKSctPUB+\nabc123!?$*&()'-=@~\n\nYWJjMTIzIT8kKiYoKSctPUB-\nabc123!?$*&()'-=@~"}
   ]}
 />
 
-<a href="https://go.dev/play/p/yztzkirFEvv" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Padrão × URL-safe
+
+Os dois alfabetos diferem só nos últimos caracteres:
+
+| | 62º | 63º | Padding |
+|---|---|---|---|
+| `StdEncoding` | `+` | `/` | `=` |
+| `URLEncoding` | `-` | `_` | `=` (opcional no `RawURLEncoding`) |
+
+Num JSON ou token (JWT usa URL-safe), `+` e `/` exigiriam escape — por isso a variante de URL existe. E o `=` no fim é *padding* para completar múltiplos de 4; as variantes `RawStdEncoding`/`RawURLEncoding` omitem o padding.
+
+## O que base64 NÃO é
+
+Base64 **não é criptografia e não é compressão** — é só uma *representação*: qualquer um decodifica. Ela **aumenta** o tamanho em ~33%. Use quando o meio de transporte só aceita texto seguro (JSON, URL, e-mail), não para proteger dado.
+
+## Em código real
+
+- **Data URLs**: `data:image/png;base64,...` para embutir imagem num HTML/JSON.
+- **Tokens**: JWT codifica o header/payload em base64 URL-safe (e assina — a parte segura é a assinatura, não o base64).
+- **Anexos**: e-mail MIME codifica binário em base64.
+- **JSON com binário**: campos como `[]byte` do Go serializam automaticamente em base64 (página [JSON](json)) — o `encoding/json` cuida do encode/decode.
+
+## Armadilhas comuns
+
+- **Confundir encoding com criptografia**: base64 é reversível por qualquer um. Dado sensível precisa de criptografia (e o `crypto/rand` da página de [Números Aleatórios](random-numbers) para chaves).
+- **Alfabeto errado**: string URL-safe decodificada com `StdEncoding` falha no `-`. Use o encoder correspondente ao que produziu.
+- **Esquecer o erro do decode**: input com caractere inválido devolve erro. Valide quando o dado vem de fora.
+- **Codificar string sem `[]byte`**: `EncodeToString(data)` com `data string` não compila. Converta.
+- **Padding**: se o dado veio sem `=` (Raw), `DecodeString` com o encoder normal pode falhar. Use a variante Raw certa ou adicione padding.
+
+## Pratique
+
+1. **Reproduza**: rode `base64-encoding.go` e identifique a única diferença entre as duas linhas codificadas.
+2. **Modifique**: codifique os bytes `[]byte{0x00, 0xff, 0x10}` nos dois alfabetos — binário de verdade, não ASCII.
+3. **Aplique**: escreva `func dataURL(mime string, dados []byte) string` que monta `data:<mime>;base64,<...>` — e decodifique de volta para conferir.
+
+## Próximo passo
+
+Hashes e codificações prontos — hora de trabalhar com o sistema de arquivos. Em [Lendo Arquivos](reading-files), o `os` e o `io` para abrir, ler e interpretar arquivos do disco.

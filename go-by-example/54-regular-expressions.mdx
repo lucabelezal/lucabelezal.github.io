@@ -4,8 +4,10 @@ title: Expressões Regulares
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Quando `strings.Contains` não basta — o padrão é "letra p, um ou mais minúsculas, e depois ch" — você precisa de **expressão regular**. O pacote `regexp` de Go implementa a sintaxe **RE2**: poderosa, sem *backreferences* nem *lookahead* (de propósito — RE2 roda em tempo linear, garantindo que uma regex maliciosa não trave seu servidor).
+
 <CodeExplanation
-  title={"Expressões Regulares"}
+  title={"regular-expressions.go"}
   code={`package main
 
 import (
@@ -35,22 +37,65 @@ func main() {
     fmt.Println(string(out))
 }`}
   sections={[
-    {text: "Isso testa se um padrão casa com uma string."},
-    {text: "Acima usamos padrão direto, mas para outras tarefas precisa compilar com `Compile` um `Regexp` otimizado."},
-    {text: "Muitos métodos estão disponíveis. Aqui um teste de match como antes."},
-    {text: "Isso encontra o match da regexp."},
-    {text: "Também encontra o primeiro match, mas retorna índices de início e fim em vez do texto."},
-    {text: "Variantes `Submatch` incluem o match completo e submatches. Por exemplo, retorna info para `p([a-z]+)ch` e `([a-z]+)`."},
-    {text: "Similarmente, isso retorna índices de matches e submatches."},
-    {text: "Variantes `All` aplicam a todos os matches, não só o primeiro. Por exemplo, encontrar todos os matches."},
-    {text: "Essas variantes `All` também existem para as outras funções vistas."},
-    {text: "Passar inteiro não-negativo como segundo argumento limita o número de matches."},
-    {text: "Exemplos acima usaram strings e nomes como `MatchString`. Também pode passar `[]byte` e remover `String` do nome."},
-    {text: "Para variáveis globais com regex, use `MustCompile`. Ele dá panic em vez de erro, mais seguro para globais."},
-    {text: "A variante `Func` permite transformar texto casado com uma função."}
+    {text: "`regexp.MatchString` testa um padrão numa string — o jeito rápido para uso único. O segundo retorno é o erro de sintaxe do padrão."},
+    {text: "Para reutilizar, **compile uma vez** com `regexp.Compile`: devolve um `*Regexp` otimizado. Compilar a cada chamada é desperdício."},
+    {text: "`MatchString` idem; `FindString` devolve o **primeiro match** (\"peach\"); `FindStringIndex` devolve as posições `[início fim]` ([0 5])."},
+    {text: "`FindStringSubmatch` inclui os **grupos** `(...)`: o match completo e o conteúdo de `([a-z]+)` → `[peach ea]`. As variantes `SubmatchIndex` devolvem os índices de cada grupo."},
+    {text: "`FindAllString(..., -1)` devolve **todos** os matches; o `-1` significa sem limite. `FindAllString(..., 2)` limita a 2."},
+    {text: "Há versões para `[]byte` (sem o `String` no nome): `Match`, `Find`... úteis ao trabalhar com dados brutos."},
+    {text: "`MustCompile` compila e dá panic em erro — para regex globais no nível de package, onde padrão inválido é bug de startup."},
+    {text: "`ReplaceAllFunc` chama uma **função** para transformar cada match: `bytes.ToUpper` (que tem a assinatura certa) é passado como argumento — funções como valores, da página de [Funções](functions)."},
+    {text: "Saída:\n$ go run regular-expressions.go\ntrue\ntrue\npeach\nidx: [0 5]\n[peach ea]\n[0 5 1 3]\n[peach punch pinch]\nall: [[0 5 1 3] [6 11 7 9] [12 17 13 15]]\n[peach punch]\ntrue\nregexp: p([a-z]+)ch\na PEACH"}
   ]}
 />
 
-<a href="https://go.dev/play/p/fI2YIfYsCaL" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Compile uma vez, use muitas
+
+`MatchString` compila o padrão a cada chamada — ok para um teste isolado, caro num laço. O idioma é **compilar no nível de package**:
+
+```go
+var corHex = regexp.MustCompile(`^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
+```
+
+O `MustCompile` faz duas coisas: compila uma vez (no startup) e transforma padrão inválido em panic — certo, porque uma regex literal errada é bug. Em Go, use **raw strings** (crases) para padrões e evite a dupla fuga de barras: `` `\d+` `` em vez de `"\\d+"`.
+
+## O que cada família de método devolve
+
+| Método | Devolve |
+|---|---|
+| `MatchString` | `bool` (casa ou não) |
+| `FindString` / `FindAllString` | o match (ou todos) |
+| `FindStringIndex` / `SubmatchIndex` | posições `[início, fim)` (por grupo no `Submatch`) |
+| `ReplaceAllString` / `ReplaceAllFunc` | texto com os matches trocados |
+| `Split` | pedaços em volta dos matches |
+
+Sem match, `Find...` devolve `nil`/`-1` — não um erro. Cheque o retorno em vez de assumir.
+
+## Limite de RE2: sem backreference nem lookahead
+
+Se você vem de PCRE/JavaScript, vai sentir falta de `\1` (backreference) e `(?=...)` (lookahead). É **de propósito**: essas features exigem retrocesso que pode explodir exponencialmente. RE2 garante tempo linear no tamanho da entrada — uma regex Go não consegue travar seu servidor. Quando você realmente precisa de backreference, o caminho é um parser de verdade, não regex.
+
+## Em código real
+
+- **Validação**: e-mail, CEP, formato (`regexp.MustCompile` + `MatchString`).
+- **Extração**: achar tokens num log com `FindAllStringSubmatch` (grupos dão o dado já separado).
+- **Sanitização**: `ReplaceAllString` para limpar texto; `ReplaceAllFunc` com uma função customizada.
+- Cuidado com o outro extremo: regex não é para **parsear HTML/JSON/linguagens**. Para isso existem parsers próprios (a próxima página, [JSON](json), é o exemplo). Regex em markup quebrado gera bugs sutis — use a ferramenta certa.
+
+## Armadilhas comuns
+
+- **Recompilar a cada chamada**: `MatchString` direto num laço compila o padrão N vezes. Compile uma vez (`MustCompile` no package).
+- **Esperar backreference/lookahead**: não existem em RE2. Refatore o padrão ou use um parser.
+- **Grupos demais**: cada `(...)` vira uma posição em `SubmatchIndex`. Se você só quer "casa ou não", sem grupos, o índice fica mais simples.
+- **Ignorar o erro de sintaxe**: `Compile` devolve erro para padrão inválido (`[` sem fechar, etc.). Sempre trate ou use `MustCompile`.
+- **`*` e `+` são gulosos**: `p.*ch` em `peach punch` casa até o **último** `ch`, não o primeiro. Para casar o mínimo, ajuste o padrão (ex.: `p[^ ]*ch`).
+
+## Pratique
+
+1. **Reproduza**: rode `regular-expressions.go` e interprete `all: [[0 5 1 3] ...]` — cada par é `[match inicio, match fim, grupo inicio, grupo fim]`.
+2. **Modifique**: valide um CEP brasileiro (`^\d{5}-?\d{3}$`) com `MustCompile` + `MatchString`; depois extraia todos os números de um texto com `FindAllString`.
+3. **Aplique**: escreva `func mascarar(s string) string` que troca dígitos de cartão por `*` usando `ReplaceAllString` com `\d` — e faça a versão com `ReplaceAllFunc`.
+
+## Próximo passo
+
+Regex valida e extrai texto; quando o dado é **estruturado** e precisa viajar entre sistemas, o formato é JSON. Em [JSON](json) você vê a serialização mais usada do planeta — marshal, unmarshal e as tags que controlam os nomes das chaves.

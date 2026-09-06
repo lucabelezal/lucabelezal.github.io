@@ -4,8 +4,10 @@ title: Flags de Linha de Comando
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Argumentos posicionais não têm nome nem valor padrão. Para opções como `-port=8080` ou `-verbose`, Go tem o pacote **`flag`** da stdlib: você declara a flag com nome, default e descrição; o `flag.Parse()` preenche; e o **help** (`-h`) sai de graça. Simples o bastante para ferramentas — e é o que o próprio `go` usa.
+
 <CodeExplanation
-  title={"Flags de Linha de Comando"}
+  title={"command-line-flags.go"}
   code={`package main
 
 import (
@@ -27,16 +29,72 @@ func main() {
     fmt.Println("tail:", flag.Args())
 }`}
   sections={[
-    {text: "Go fornece o pacote `flag` para parsing básico. Vamos usá-lo neste exemplo."},
-    {text: "Basic flag declarations are available for string, integer, and boolean options. Here we declare a string flag `word` with a default value `\"foo\"` and a short description. This `flag.String` function returns a string pointer (not a string value); we'll see how to use this pointer below."},
-    {text: "Isso declara flags `numb` e `fork`, similar a `word`."},
-    {text: "Também pode declarar opção usando var existente. Precisa passar ponteiro para a função."},
-    {text: "Após declarar flags, chame `flag.Parse()` para fazer o parsing."},
-    {text: "Aqui apenas imprimimos opções parseadas e args posicionais restantes. Precisa dereferenciar com `*wordPtr` para obter valores."},
-    {text: "Saída:\n# To experiment with the command-line flags program it's\n# best to first compile it and then run the resulting\n# binary directly.\n$ go build command-line-flags.go\n\n# Try out the built program by first giving it values for\n# all flags.\n$ ./command-line-flags -word=opt -numb=7 -fork -svar=flag\nword: opt\nnumb: 7\nfork: true\nsvar: flag\ntail: []\n\n# Note that if you omit flags they automatically take\n# their default values.\n$ ./command-line-flags -word=opt\nword: opt\nnumb: 42\nfork: false\nsvar: bar\ntail: []\n\n# Trailing positional arguments can be provided after\n# any flags.\n$ ./command-line-flags -word=opt a1 a2 a3\nword: opt\n...\ntail: [a1 a2 a3]\n\n# Note that the `flag` package requires all flags to\n# appear before positional arguments (otherwise the flags\n# will be interpreted as positional arguments).\n$ ./command-line-flags -word=opt a1 a2 a3 -numb=7\nword: opt\nnumb: 42\nfork: false\nsvar: bar\ntail: [a1 a2 a3 -numb=7]\n\n# Use `-h` or `--help` flags to get automatically\n# generated help text for the command-line program.\n$ ./command-line-flags -h\nUsage of ./command-line-flags:\n  -fork=false: a bool\n  -numb=42: an int\n  -svar=\"bar\": a string var\n  -word=\"foo\": a string\n\n# If you provide a flag that wasn't specified to the\n# `flag` package, the program will print an error message\n# and show the help text again.\n$ ./command-line-flags -wat\nflag provided but not defined: -wat\nUsage of ./command-line-flags:\n..."}
+    {text: "`flag.String(\"word\", \"foo\", \"a string\")` declara a flag `-word` com default `\"foo\"` e descrição para o help. Devolve um **ponteiro** para o valor final."},
+    {text: "`flag.Int` e `flag.Bool` idem. Booleans aceitam `-fork` (true) ou `-fork=false`."},
+    {text: "`flag.StringVar(&svar, ...)` é a variante que grava numa **variável existente** — útil quando a flag já tem um lar no seu código."},
+    {text: "`flag.Parse()` lê os args e preenche tudo. Sem ele, nenhuma flag tem efeito."},
+    {text: "Valores: `*wordPtr` desreferencia o ponteiro; `svar` já é o valor direto. `flag.Args()` são os argumentos **posicionais** que sobraram após as flags."},
+    {text: "Saída (real):\n$ ./command-line-flags -word=opt -numb=7 -fork -svar=flag\nword: opt\nnumb: 7\nfork: true\nsvar: flag\ntail: []\n\n$ ./command-line-flags -word=opt\nword: opt\nnumb: 42\nfork: false\nsvar: bar\ntail: []"}
   ]}
 />
 
-<a href="https://go.dev/play/p/IUPZlYSigc3" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## A regra que pega todo mundo: flags antes dos posicionais
+
+O parsing do `flag` para no **primeiro argumento posicional** — tudo depois dele é `flag.Args()`, mesmo que pareça flag:
+
+```
+$ ./command-line-flags -word=opt a1 a2 a3 -numb=7
+word: opt
+numb: 42        ← -numb=7 foi para o tail, não virou flag
+tail: [a1 a2 a3 -numb=7]
+```
+
+Flags primeiro, posicionais depois. É o comportamento do pacote; documente no help.
+
+## Help e erro, de graça
+
+`-h`/`--help` gera o help automaticamente a partir das descrições:
+
+```
+$ ./command-line-flags -h
+Usage of ./command-line-flags:
+  -fork
+    	a bool
+  -numb int
+    	an int (default 42)
+  -svar string
+    	a string var (default "bar")
+  -word string
+    	a string (default "foo")
+```
+
+E flag desconhecida é erro + help + exit:
+
+```
+$ ./command-line-flags -wat
+flag provided but not defined: -wat
+Usage of ./command-line-flags:
+...
+```
+
+## Em código real
+
+O pacote `flag` é o padrão para **ferramentas** (`go run`, `go test`, linters usam o próprio ou wrappers). Limites dele aparecem quando você quer flags de subcomando (próxima página), aliases (`-v` e `-verbose`), ou help customizado — aí o ecossistema tem `cobra`/`pflag` para CLIs maiores. Comece com `flag`; ele cobre a maioria.
+
+## Armadilhas comuns
+
+- **Esquecer `flag.Parse()`**: declaração sem parse = defaults eternos. A linha `flag.Parse()` é obrigatória.
+- **Dereferenciar o ponteiro errado**: `flag.String` devolve ponteiro — usar `wordPtr` sem `*` imprime o endereço. `flag.StringVar` evita o ponteiro quando você prefere variável.
+- **Flags depois de posicional**: viram `flag.Args()`. Reordene ou documente.
+- **`-h` sair do programa**: o `flag` trata `-h` como pedido de help e termina com exit 0 — não é erro.
+- **Comparar com `go run`**: `go run main.go -flag=x` funciona, mas `go run -flag=x main.go` não — o `-flag` iria para o `go run`. Compile ou use `--`.
+
+## Pratique
+
+1. **Reproduza**: rode o binário com todas as flags, com só o default, e com `-h` — compare as saídas.
+2. **Modifique**: declare uma flag `-nome` com default `"mundo"` e imprima `Olá, <nome>!`; teste a regra de posicional com `./prog -nome=Go arquivo.txt -nome=x`.
+3. **Aplique**: escreva um `saudacao` com flags `-nome`, `-gritar` (bool) e um argumento posicional de destinatário — e monte a mensagem condicionalmente.
+
+## Próximo passo
+
+Flags resolvem uma "ação" com opções; ferramentas como `git` têm **várias ações**. Em [Subcomandos de Linha de Comando](command-line-subcommands), um `flag.FlagSet` por subcomando — `meuprog foo ...` e `meuprog bar ...` com flags independentes.

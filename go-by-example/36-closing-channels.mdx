@@ -1,11 +1,12 @@
 ---
 title: Fechando Channels
 ---
-
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Um channel comunica valores; o **`close`** comunica o fim: "não virá mais nada". Quem recebe enxerga o fechamento pelo segundo valor do receive — `v, ok := <-ch` com `ok == false`. É a forma de um produtor dizer aos consumidores que o trabalho acabou, sem enviar um valor especial de "fim".
+
 <CodeExplanation
-  title={"Fechando Channels"}
+  title={"closing-channels.go"}
   code={`package main
 
 import "fmt"
@@ -36,14 +37,58 @@ func main() {
     fmt.Println("received more jobs:", ok)
 }`}
   sections={[
-    {text: "Neste exemplo usamos um channel `jobs` para comunicar trabalho da goroutine `main` para a worker. Quando não houver mais jobs, fazemos `close` no channel."},
-    {text: "A goroutine worker recebe repetidamente de `jobs` com `j, more := <-jobs`. Nesta forma com 2 valores, `more` será `false` se `jobs` foi fechado e todos os valores já foram recebidos. Usamos isso para notificar em `done` all our jobs."},
-    {text: "Isso envia 3 jobs para o worker via `jobs` e depois fecha o channel."},
-    {text: "Aguardamos o worker usando a abordagem de [sincronização](channel-synchronization) vista antes."},
-    {text: "Saída:\n$ go run closing-channels.go \nsent job 1\nreceived job 1\nsent job 2\nreceived job 2\nsent job 3\nreceived job 3\nsent all jobs\nreceived all jobs\nreceived more jobs: false\n\n# The idea of closed channels leads naturally to our next\n# example: `range` over channels."}
+    {text: "`jobs` (buffer 5) transporta o trabalho da main para o worker; `done` sinaliza o fim."},
+    {text: "`j, more := <-jobs` — a forma com dois valores: `more == true` enquanto há dados; `false` quando o canal **foi fechado e esvaziado**."},
+    {text: "No `else`, o worker sabe que acabou: avisa no `done` e retorna."},
+    {text: "A main envia 3 jobs e **`close(jobs)`** — o sinal de \"não vem mais\". Quem envia fecha; o receptor só observa."},
+    {text: "Após o `done`, `_, ok := <-jobs` num canal fechado e vazio devolve `ok == false` — confirma que não há mais nada."},
+    {text: "Saída:\n$ go run closing-channels.go\nsent job 1\nreceived job 1\nsent job 2\nreceived job 2\nsent job 3\nreceived job 3\nsent all jobs\nreceived all jobs\nreceived more jobs: false"}
   ]}
 />
 
-<a href="https://go.dev/play/p/yZijZHYe22y" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## A regra de ouro: quem envia fecha
+
+- **Quem cria e envia** num canal é quem o **fecha** — não o receptor.
+- Receber de um canal fechado devolve o **zero value** imediatamente (com `ok == false`). Por isso `range` sobre canal fecha sozinho (próxima página).
+- **Enviar num canal fechado dá panic**. Fechar duas vezes dá panic.
+
+A regra de dono resolve: o produtor fecha quando termina de produzir; o consumidor nunca fecha o que não possui. É a mesma disciplina que você viu no checklist de [Ciclo de Vida de Goroutines](goroutine-lifecycle).
+
+## `more` ou `range`?
+
+As duas formas de consumir até o fim:
+
+```go
+for {
+    j, ok := <-jobs      // controle fino (visto aqui)
+    if !ok { break }
+    ...
+}
+for j := range jobs {    // açúcar para o padrão acima
+    ...
+}
+```
+
+O `range` (próxima página) é a forma idiomática quando você só quer "todos os valores até fechar". A forma com `ok` dá controle (ex.: avisar outro canal — como o `done` aqui).
+
+## Em código real
+
+O par **produtor fecha / consumidor `range`** é o esqueleto de filas de trabalho: o [Worker Pools](worker-pools) usa `close(jobs)` exatamente assim. Channels de *broadcast* (fechar para liberar N goroutines ao mesmo tempo) também usam o close como sinal — sem enviar valor nenhum.
+
+## Armadilhas comuns
+
+- **Enviar depois do close**: panic em runtime. Garanta que nenhum produtor envia após o fechamento.
+- **Fechar duas vezes**: panic. Um dono só, um close só.
+- **Receptor que fecha**: quebra produtores que ainda enviam (panic). Receptor observa, não fecha.
+- **Ler de canal fechado sem o `ok`**: recebe zero value **sem erro** — bug silencioso. Use `v, ok :=` ou `range`.
+- **Close como "limpeza"**: não precisa fechar canais que o GC vai coletar — feche para **sinalizar fim**, não por higiene.
+
+## Pratique
+
+1. **Reproduza**: rode `closing-channels.go` e explique a última linha (`ok == false`).
+2. **Modifique**: remova o `close(jobs)` — o worker fica preso esperando (deadlock no `<-done`). Depois envie após o close e veja o panic.
+3. **Aplique**: reescreva o consumo do worker com `for j := range jobs`, mantendo o `done` — compare com a versão com `ok`.
+
+## Próximo passo
+
+Fechar canais e consumir até o fim tem um açúcar sintático: o **`range` sobre o canal**. Em [Range sobre Channels](range-over-channels), iterar todos os valores até o `close` — sem o loop manual.

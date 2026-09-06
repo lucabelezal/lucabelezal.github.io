@@ -4,8 +4,10 @@ title: Enums
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Go não tem a palavra `enum` — mas tem o padrão: um **tipo com valores constantes**. Você declara `type ServerState int` e as constantes com **`iota`**, que numera automaticamente. O que transforma isso num enum de verdade é a **segurança de tipo**: um `int` cru não vira `ServerState` sem conversão, e `switch`/`String()` fecham o círculo.
+
 <CodeExplanation
-  title={"Enums"}
+  title={"enums.go"}
   code={`package main
 
 import "fmt"
@@ -48,16 +50,56 @@ func transition(s ServerState) ServerState {
     }
 }`}
   sections={[
-    {text: "Nosso enum `ServerState` tem tipo subjacente `int`."},
-    {text: "Os valores possíveis são constantes. A keyword `iota` gera valores sucessivos automaticamente; aqui 0, 1, 2, etc."},
-    {text: "Ao implementar `fmt.Stringer`, valores de `ServerState` podem ser impressos ou convertidos para string. Com muitos valores, use a ferramenta [stringer](https://pkg.go.dev/golang.org/x/tools/cmd/stringer) com `go:generate`. Veja [este post](https://eli.thegreenplace.net/2021/a-comprehensive-guide-to-go-generate)."},
-    {text: "Se temos um `int`, não podemos passar para `transition` — o compilador reclama de tipo incompatível. Isso dá alguma segurança de tipo em tempo de compilação."},
-    {text: "`transition` emula transição de estado de um servidor; recebe o estado atual e retorna o novo."},
-    {text: "Suponha que verificamos predicados aqui para determinar o próximo estado..."},
+    {text: "`type ServerState int` — o tipo subjacente é `int`, mas `ServerState` é um tipo **novo**, não um `int` qualquer."},
+    {text: "`iota` começa em 0 e incrementa a cada linha: `StateIdle=0, StateConnected=1, StateError=2, StateRetrying=3`. É o gerador de sequência do Go."},
+    {text: "`stateName` mapeia cada estado para um rótulo legível. Com `func (ss ServerState) String() string`, o tipo implementa `fmt.Stringer` (página [Interfaces](interfaces)) — e `fmt.Println` passa a imprimir \"connected\" em vez de `1`."},
+    {text: "`transition` é uma máquina de estados: `switch` decide o próximo estado. O `default` com `panic` pega valores inválidos — a página [Panic](panic) explica por que isso é aceitável aqui."},
     {text: "Saída:\n$ go run enums.go\nconnected\nidle"}
   ]}
 />
 
-<a href="https://go.dev/play/p/prQMptP_p1s" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Por que `iota` e tipo novo, não constantes soltas
+
+Sem o tipo, você teria `const Idle = 0` — e qualquer `int` com valor `0` seria \"idle\" por acidente. Com `type ServerState int` + constantes tipadas, o compilador **recusa** `transition(5)` e `transition(algumInt)` — um `int` não é um `ServerState` sem conversão explícita. É a segurança do enum: estados válidos são só os que você declarou.
+
+`iota` é conveniente, mas preste atenção: se você inserir uma linha no meio do bloco, **todos os valores seguintes mudam** (a numeração é posicional). Para enums com valores que precisam ser estáveis (guardados em banco, serializados), atribua números explícitos:
+
+```go
+const (
+    StateIdle      ServerState = iota // 0
+    StateConnected                    // 1
+    StateError                        // 2
+)
+```
+
+## String() e a ferramenta stringer
+
+Implementar `String()` manualmente para muitos valores é repetitivo — e o nome do estado pode divergir do código. A ferramenta oficial `stringer` gera o método para você:
+
+```go
+//go:generate stringer -type=ServerState
+```
+
+roda o código, que produz o `String()` automaticamente. (É a diretiva de geração do ecossistema — complementar ao `//go:embed` de [Diretiva Embed](embed-directive).)
+
+## Em código real
+
+Enums tipados aparecem em todo estado de máquina: status de pedido, estado de conexão, nível de log, tipo de evento. O trio `type + iota + String()` é o padrão; o map de nomes também permite o caminho inverso (string → enum) quando você faz parse de input.
+
+## Armadilhas comuns
+
+- **`iota` reordenada muda valores**: inserir uma constante no meio renumerou tudo. Para valores persistidos, use números explícitos.
+- **Achar que `switch` é obrigatório**: `String()` via map (como aqui) é mais simples; `switch` só quando cada caso tem lógica.
+- **Valor zero não declarado**: `iota` começa em 0 — se `0` deveria ser \"inválido\", declare o primeiro caso como `StateUnknown ServerState = iota` e use o resto a partir daí.
+- **Esquecer o `String()`**: imprimir um enum sem `Stringer` mostra o número — difícil de debugar.
+- **`panic` no default sem motivo**: só faz sentido quando o enum é fechado (não deveria ter valores desconhecidos); para entrada externa, retorne erro em vez de panic.
+
+## Pratique
+
+1. **Reproduza**: rode `enums.go` e explique por que `ns2` é \"idle\" (a transição de `connected`).
+2. **Modifique**: adicione um `StateShuttingDown` (novo iota) e sua transição; veja os valores mudarem.
+3. **Aplique**: crie `type StatusPedido int` com `nova_pagamento`, `pago`, `enviado`, `entregue` — com `String()` e uma função `proximo(p StatusPedido) StatusPedido` que ignora pedidos entregues (retorna o mesmo).
+
+## Próximo passo
+
+Enums tipam estados fixos; **generics** tipam o código que não quer repetir por tipo. Em [Generics](generics), uma função que serve para qualquer slice comparável — o `[]E` com restrições.

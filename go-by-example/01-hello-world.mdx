@@ -4,8 +4,10 @@ title: Olá Mundo
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+A primeira missão de quem aprende Go: fazer o programa falar. `Olá Mundo` parece trivial, mas carrega a estrutura mínima que todo executável Go exige — `package`, ponto de entrada e import. Entender essas três peças agora evita o primeiro erro de compilação sem explicação.
+
 <CodeExplanation
-  title={"Olá Mundo"}
+  title={"hello-world.go"}
   code={`package main
 
 import "fmt"
@@ -14,15 +16,44 @@ func main() {
     fmt.Println("hello world")
 }`}
   sections={[
-    {text: "Nosso primeiro programa vai imprimir a mensagem clássica \"hello world\". Antes de executar, vamos entender a estrutura mínima de um programa Go."},
-    {text: "`package main` informa que este arquivo pertence ao pacote `main`. Em Go, esse nome tem um significado especial: ele indica que o pacote será compilado como um executável."},
-    {text: "`func main()` define a função `main`. Quando executamos um programa, o runtime do Go procura essa função e começa a execução por ela."},
-    {text: "`import \"fmt\"` declara que o programa usa o pacote `fmt`, da biblioteca padrão. Imports tornam explícito de onde vêm funções como `fmt.Println`, em vez de deixá-las disponíveis sem declaração."},
-    {text: "Essas três peças formam a base do exemplo: o pacote organiza o código, `main` marca o ponto de entrada e o import disponibiliza a funcionalidade que vamos usar. Agora podemos executá-lo e, em seguida, avançar para valores e sintaxe básica."},
-    {text: "Saída:\n# Para executar o programa, coloque o código em `hello-world.go`\n# e use `go run`.\n$ go run hello-world.go\nhello world\n\n# Também podemos compilar o programa em um binário com `go build`.\n$ go build hello-world.go\n$ ls\nhello-world\\thello-world.go\n\n# Depois, executamos o binário diretamente.\n$ ./hello-world\nhello world"}
+    {text: "`package main` diz que este arquivo pertence ao package `main`. Em Go, esse nome tem um papel especial: quando o package se chama `main`, o compilador gera um **executável**, não uma biblioteca para ser importada."},
+    {text: "`func main()` é o ponto de entrada. `go run` procura essa função e começa a execução por ela. Se o package `main` não tiver `main`, não existe \"de onde começar\" e nada é gerado."},
+    {text: "`import \"fmt\"` declara que o programa usa o pacote `fmt` da biblioteca padrão. O import torna explícito que `fmt.Println` vem de `fmt` — nenhuma função fica disponível sem você declarar de onde ela vem."},
+    {text: "`fmt.Println` imprime a string e adiciona uma quebra de linha no final. É por isso que cada chamada aparece em uma linha própria no terminal."},
+    {text: "Saída:\n# `go run` compila em um passo só e executa:\n$ go run hello-world.go\nhello world\n\n# `go build` gera um binário dentro da pasta:\n$ go build hello-world.go\n$ ls\nhello-world\thello-world.go\n\n# E o binário é executado diretamente:\n$ ./hello-world\nhello world"}
   ]}
 />
 
 <a href="https://go.dev/play/p/NeviD0awXjt" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Por que `main` aparece duas vezes?
+
+Não é coincidência — são dois `main` com papéis diferentes:
+
+- `package main` define o **tipo de artefato**: executável em vez de biblioteca.
+- `func main` define o **ponto de entrada**: a função que o runtime chama ao iniciar.
+
+Em uma biblioteca, o package tem outro nome (ex.: `package fmt`) e não existe `func main`. Um package `main` só serve para gerar um programa que roda de pé.
+
+## Em código real
+
+`go run` é o atalho de desenvolvimento: protótipos, exemplos e experimentos. Em produção, o fluxo típico é `go build` e distribuir o binário — ele roda sem Go instalado na máquina de destino. Programas de verdade raramente fazem tudo dentro de `main`: o `main` costuma ler configuração, montar dependências e chamar o resto do código.
+
+## Armadilhas comuns
+
+- Confundir `package main` (executável) com `func main` (ponto de entrada).
+- Deixar um import sem uso: `imported and not used` é erro de compilação. Go trata código morto como erro de propósito.
+- Achar que o nome do arquivo importa. Pode ser `hello.go`, `main.go` ou `x.go`: o que define o programa é o `package main` + `func main`.
+- Usar `fmt.Print` no lugar de `fmt.Println` e estranhar a falta de quebra de linha — `Print` não adiciona nada; `Println` adiciona quebra.
+
+## Pratique
+
+1. **Reproduza**: crie `hello-world.go`, rode `go run hello-world.go` e depois `go build` + `./hello-world`.
+2. **Modifique**: imprima seu nome. Depois chame `fmt.Println` duas vezes seguidas e observe que cada chamada quebra a linha.
+3. **Aplique**: remova a linha `import "fmt"` e rode `go run`. Leia o erro de compilação — ele aponta exatamente o problema. Restaure o import depois.
+
+## Próximo passo
+
+Um programa que só imprime texto é pouco. Em [Valores](values) você vai ver os tipos básicos da linguagem — números, strings e booleanos — e como as operações se comportam com cada um deles.

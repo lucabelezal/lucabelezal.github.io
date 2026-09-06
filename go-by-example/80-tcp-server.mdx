@@ -4,8 +4,10 @@ title: Servidor TCP
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+HTTP, banco de dados e SSH rodam sobre **TCP** — e o `net` expõe o TCP cru para quando você precisa do protocolo no seu controle. O esqueleto de um servidor TCP é o mesmo de sempre: `net.Listen` abre a porta, um laço `Accept` aceita conexões, e cada conexão ganha uma **goroutine** — o padrão "uma goroutine por conexão" que torna servidores Go simples de escrever.
+
 <CodeExplanation
-  title={"Servidor TCP"}
+  title={"tcp-server.go"}
   code={`package main
 
 import (
@@ -47,20 +49,58 @@ func handleConnection(conn net.Conn) {
     }
 }`}
   sections={[
-    {text: "O pacote `net` fornece ferramentas para construir servidores TCP facilmente."},
-    {text: "`net.Listen` inicia o servidor na rede (TCP) e endereço (porta 8090 em todas as interfaces)."},
-    {text: "Feche o listener para liberar a porta ao sair."},
-    {text: "Loop infinito para aceitar novas conexões."},
-    {text: "Aguarde uma conexão."},
-    {text: "Usamos goroutine para tratar a conexão e manter o loop aceitando novas."},
-    {text: "`handleConnection` trata uma conexão, lendo uma linha do cliente e retornando resposta."},
-    {text: "Fechar a conexão libera recursos ao terminar."},
-    {text: "Use `bufio.NewReader` para ler uma linha do cliente (terminada em newline)."},
-    {text: "Crie e envie resposta ao cliente, demonstrando comunicação bidirecional."},
-    {text: "Saída:\n# Run the TCP server in the background.\n$ go run tcp-server.go &\n\n# Send data and capture the response using netcat.\n$ echo \"Hello from netcat\" | nc localhost 8090\nACK: HELLO FROM NETCAT"}
+    {text: "`net.Listen(\"tcp\", \":8090\")` abre o socket na porta 8090 (todas as interfaces). O `:porta` sem host escuta em tudo."},
+    {text: "`defer listener.Close()` libera a porta quando o servidor terminar."},
+    {text: "O laço infinito: `Accept` **bloqueia** esperando uma conexão e devolve o `net.Conn` quando um cliente conecta."},
+    {text: "`go handleConnection(conn)` — cada conexão roda numa **goroutine própria** (página [Goroutines](goroutines)); o laço volta a aceitar a próxima. Esse é o padrão \"uma goroutine por conexão\"."},
+    {text: "`handleConnection` lê uma linha do cliente com `bufio` e escreve a resposta — comunicação bidirecional sobre o mesmo `net.Conn`."},
+    {text: "`defer conn.Close()` fecha a conexão ao terminar o handler."},
+    {text: "Saída (real):\n# servidor em segundo plano, cliente com netcat:\n$ go run tcp-server.go &\n$ echo \"Hello from netcat\" | nc localhost 8090\nACK: HELLO FROM NETCAT"}
   ]}
 />
 
-<a href="https://go.dev/play/p/G0k2jHMA6ei" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O esqueleto universal de servidores
+
+```go
+ln, _ := net.Listen("tcp", ":porta")
+for {
+    conn, err := ln.Accept()
+    ...
+    go handleConn(conn) // goroutine por conexão
+}
+```
+
+Esse é o mesmo formato de `http.Server` por baixo (o HTTP aceita, parseia e entrega o request a uma goroutine). A diferença: aqui **você** controla o protocolo — lê bytes e escreve bytes como quiser (uma linha, um frame binário, um handshake).
+
+## Leitura e escrita
+
+`net.Conn` é um `io.Reader` + `io.Writer` simultâneo: tudo que você aprendeu sobre leitura/escrita de streams (páginas de [Arquivos](reading-files) e `io`) vale aqui. O `bufio.Reader` + `ReadString('\n')` é o jeito simples de ler "uma linha"; para protocolos binários, leia um header e depois N bytes.
+
+## Escala e limites
+
+O padrão goroutine-por-conexão é idiomático em Go: milhares de conexões = milhares de goroutines (leves, página [Goroutines](goroutines)). O limite real costuma estar no que cada handler faz — conexões ociosas seguram goroutines e descritores. Em produção: timeouts de leitura/escrita (`conn.SetDeadline`), limite de conexões e, para HTTP, os timeouts do servidor (página anterior).
+
+## Em código real
+
+- **Protocolos próprios**: jogos, chat, IoT, proxy TCP.
+- **Conversar com serviços legados** que não falam HTTP.
+- Base para entender `net/http`, banco de dados e SSH — todos servidores TCP com um protocolo em cima.
+- Para enviar dados de forma confiável mas não bloquear leituras, combine com goroutines + channels — o padrão de [Goroutines com Estado](stateful-goroutines).
+
+## Armadilhas comuns
+
+- **`Accept` num loop sem goroutine**: processar a conexão no próprio laço bloqueia o `Accept` — só uma conexão por vez. `go handle(...)` é obrigatório.
+- **Erro de `Accept` e `continue`**: um erro temporário não deve derrubar o servidor; logue e continue (como no código).
+- **Sem deadline**: um cliente que conecta e nunca envia segura a goroutine para sempre. `conn.SetDeadline` para evitar conexões ociosas.
+- **Escrever e não verificar erro**: `conn.Write` pode falhar (cliente caiu). Trate — o código loga.
+- **`log.Fatal` no `Listen`**: se a porta já está ocupada, `Fatal` sai com a mensagem — certo para startup.
+
+## Pratique
+
+1. **Reproduza**: rode o servidor e fale com ele via `nc` (ou `curl telnet`); depois derrube.
+2. **Modifique**: responda com a **data/hora** (`time.Now().Format(...)`) em vez do ACK; faça o servidor ecoar várias linhas até receber `bye`.
+3. **Aplique**: escreva um cliente TCP em Go (`net.Dial`) que envia uma linha e lê a resposta — o par do servidor deste exemplo.
+
+## Próximo passo
+
+Rede no nível certo: servidores usam **context** para parar trabalho quando o cliente desiste. Em [Context](context), o `req.Context()` que carrega cancelamento por request — e a página [Context e Cancelamento](context-cancellation) aprofunda.

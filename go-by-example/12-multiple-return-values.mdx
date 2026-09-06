@@ -4,8 +4,10 @@ title: Múltiplos Retornos
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+A maioria das linguagens devolve **um** valor por função. Go devolve quantos quiser — e essa escolha simples sustenta o idioma mais famoso da linguagem: a função que retorna `(resultado, erro)`. Antes de chegar nos [Erros](errors), você precisa dominar o mecanismo: múltiplos valores de retorno e o identificador `_` para descartar.
+
 <CodeExplanation
-  title={"Múltiplos Retornos"}
+  title={"multiple-return-values.go"}
   code={`package main
 
 import "fmt"
@@ -21,13 +23,58 @@ func main() {
     fmt.Println(c)
 }`}
   sections={[
-    {text: "O `(int, int)` na assinatura mostra que a função retorna 2 `int`s."},
-    {text: "Aqui usamos os 2 retornos com _multiple assignment_."},
-    {text: "Se quiser apenas um subconjunto dos retornos, use o identificador `_`."},
-    {text: "Saída:\n$ go run multiple-return-values.go\n3\n7\n7\n\n# Accepting a variable number of arguments is another nice\n# feature of Go functions; we'll look at this next."}
+    {text: "`(int, int)` na assinatura anuncia: esta função devolve **dois** valores inteiros. Em Go, o retorno é uma lista, não um único valor."},
+    {text: "`return 3, 7` devolve os dois, na ordem. O `return` precisa entregar exatamente o que a assinatura prometeu — nem mais, nem menos."},
+    {text: "`a, b := vals()` é *multiple assignment*: o primeiro retorno vai para `a`, o segundo para `b`, numa linha só."},
+    {text: "`_, c := vals()` — o `_` (blank identifier) descarta o primeiro valor. Se você não quer um retorno, joga-o fora de forma explícita, sem criar variável morta."},
+    {text: "Saída:\n$ go run multiple-return-values.go\n3\n7\n7"}
   ]}
 />
 
 <a href="https://go.dev/play/p/vZdUvLB1WbK" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## O uso que define Go: `(valor, erro)`
+
+O padrão que você vai encontrar em quase toda função de Go é devolver o resultado **junto com um possível erro**:
+
+```go
+func buscarUsuario(id int) (Usuario, error) {
+    // se algo falhar: return Usuario{}, err
+    // se der certo:    return usuario, nil
+}
+```
+
+Quem chama decide o que fazer com o erro — normalmente com um `if err != nil` logo na sequência (você já viu o formato em [If/Else](if-else), e a página de [Erros](errors) aprofunda). Isso substitui o mecanismo de *exceção* de outras linguagens: em Go, falha é um valor que transita pelo fluxo normal do código, não um desvio de controle escondido.
+
+## Retornos nomeados
+
+Além de devolver vários valores, você pode **nomear** os retornos na assinatura:
+
+```go
+func dividir(a, b int) (quociente, resto int) {
+    quociente = a / b
+    resto = a % b
+    return // devolve quociente e resto (naked return)
+}
+```
+
+Os nomes viram variáveis locais, já declaradas e zeradas. O `return` sem argumentos (*naked return*) devolve os valores atuais delas. Use com critério: em funções curtas os nomes documentam o que cada retorno significa; em funções longas, o `return` sem argumentos esconde o que está sendo devolvido e atrapalha a leitura.
+
+## Armadilhas comuns
+
+- **Contar retornos errado**: atribuir `a, b, c := vals()` quando a função devolve dois valores não compila (`assignment mismatch`). O compilador exige que a quantidade bata.
+- **Declarar variável e não usar**: `a, b := vals()` seguido de código que nunca lê `a` é erro. Use `_` quando um retorno não interessa.
+- **Achar que `_` é uma variável**: `_` não pode ser lido. Ele existe só para descartar.
+- **Abusar de *naked return***: economiza uma linha, mas se a função tem 20 linhas, ninguém sabe o que volta. Nomeie retornos para clareza, não por preguiça.
+
+## Pratique
+
+1. **Reproduza**: rode `multiple-return-values.go` e explique por que `7` aparece duas vezes na saída.
+2. **Modifique**: crie `func vals3() (int, int, int)` devolvendo três valores, atribua-os e imprima com `_` descartando o do meio.
+3. **Aplique**: reescreva a função `dividir` com retornos nomeados e *naked return*, depois reescreva-a de novo com `return` explícito. Compare a legibilidade das duas versões.
+
+## Próximo passo
+
+Outra variação das funções de Go: receber uma **quantidade variável** de argumentos. Em [Funções Variádicas](variadic-functions) você verá o `...`, a ferramenta por trás de `fmt.Println` e `append`.

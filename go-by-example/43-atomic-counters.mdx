@@ -4,8 +4,10 @@ title: Contadores Atômicos
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Cem goroutines incrementando o mesmo contador é o experimento que todo mundo faz uma vez — e que mostra por que concorrência tem regras. `contador++` parece uma operação, mas por baixo são **três**: ler, somar, escrever. Quando duas goroutines leem o mesmo valor antes de escrever, uma atualização se perde. O pacote `sync/atomic` resolve para contadores simples: a operação vira **uma** instrução indivisível.
+
 <CodeExplanation
-  title={"Contadores Atômicos"}
+  title={"atomic-counters.go"}
   code={`package main
 
 import (
@@ -28,16 +30,85 @@ func main() {
     fmt.Println("ops:", ops.Load())
 }`}
   sections={[
-    {text: "Usaremos um inteiro atômico para representar nosso contador (sempre positivo)."},
-    {text: "Um WaitGroup ajuda a esperar todas as goroutines terminarem."},
-    {text: "Vamos iniciar 50 goroutines que incrementam o contador 1000 vezes cada."},
-    {text: "Para incrementar atomicamente usamos `Add`."},
-    {text: "Espere todas as goroutines terminarem."},
-    {text: "Aqui nenhuma goroutine escreve em 'ops', mas com `Load` é seguro ler atomicamente mesmo enquanto outras atualizam."},
-    {text: "Saída:\n# We expect to get exactly 50,000 operations. Had we\n# used a non-atomic integer and incremented it with\n# `ops++`, we'd likely get a different number,\n# changing between runs, because the goroutines\n# would interfere with each other. Moreover, we'd\n# get data race failures when running with the\n# `-race` flag.\n$ go run atomic-counters.go\nops: 50000\n\n# Next we'll look at mutexes, another tool for managing\n# state."}
+    {text: "`ops` é um `atomic.Uint64` — um inteiro sem sinal de 64 bits com operações atômicas. O pacote moderno expõe tipos (`.Add`, `.Load`) em vez de funções soltas."},
+    {text: "`wg.Go` dispara as goroutines e espera todas — o padrão da página de [WaitGroups](waitgroups)."},
+    {text: "50 goroutines × 1000 incrementos = 50.000 operações. `ops.Add(1)` incrementa **atomicamente**: nenhuma goroutine consegue interromper no meio da operação."},
+    {text: "`wg.Wait()` garante que todas terminaram antes de ler."},
+    {text: "`ops.Load()` lê o valor final com segurança, mesmo sem nenhuma escrita em andamento (as goroutines já terminaram)."},
+    {text: "Saída:\n$ go run atomic-counters.go\nops: 50000"}
   ]}
 />
 
-<a href="https://go.dev/play/p/yiGAVfTH49v" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O que acontece sem `atomic`: a corrida
+
+Vamos repetir o experimento **sem** atômico — só `contador++`:
+
+<CodeExplanation
+  title={"race.go"}
+  code={`package main
+
+import (
+    "fmt"
+    "sync"
+)
+
+func main() {
+    var contador int
+    var wg sync.WaitGroup
+    for range 100 {
+        wg.Go(func() {
+            for range 1000 {
+                contador++
+            }
+        })
+    }
+    wg.Wait()
+    fmt.Println("contador:", contador)
+}`}
+  sections={[
+    {text: "100 goroutines × 1000 incrementos. O esperado seria 100.000 — mas `contador++` não é atômico: é ler, somar, escrever."},
+    {text: "Duas goroutines podem ler `contador` com o mesmo valor (ex.: 42), somar 1 cada uma e escrever 43 duas vezes — **uma atualização se perde**."},
+    {text: "Saída (várias execuções reais):\n$ go run race.go\ncontador: 55780\ncontador: 49283\ncontador: 52671\ncontador: 48236\ncontador: 51872\ncontador: 48647\n\n# Nunca 100.000 — e o número muda a cada execução.\n# Isso é uma data race: resultado indefinido."}
+  ]}
+/>
+
+O pior: numa execução o resultado pode *parecer* certo. É por isso que a ferramenta certa é o **detector de corridas**:
+
+```
+$ go run -race race.go
+==================
+WARNING: DATA RACE
+Read at 0x00c00019e038 by goroutine 12:
+  main.main.func1()
+      race.go:14 +0x38
+...
+Previous write at 0x00c00019e038 by goroutine 8:
+  main.main.func1()
+      race.go:14 +0x48
+```
+
+O `-race` instrumenta o programa e aponta o par (leitura/escrita) concorrente, com as linhas exatas. **Rode testes com `-race` desde o início** — corridas são os bugs mais caros de Go, e o detector os pega antes da produção. (O mesmo `grelhados++` do exemplo da grelha no churrasco: cada execução dava um número diferente — exatamente esta corrida.)
+
+## Atômico × mutex: quando cada um?
+
+- **Atômico** resolve o caso simples: **um contador** (ou um único valor). `Add`, `Load`, `Store`, `Swap`, `CompareAndSwap` são para escalares.
+- **Mutex** resolve o caso composto: **estado com vários campos ou estrutura** (um map, um struct com 3 campos que precisam mudar juntos). Atômico não protege "leia o map, decida, escreva" — essa sequência precisa de exclusão mútua (próxima página).
+
+Regra: para contar/flag de um valor, `atomic`; para seção crítica com estado, `sync.Mutex`. Contadores de métricas e operações (como o `readOps` da página de [Goroutines com Estado](stateful-goroutines)) são o uso clássico de atômicos.
+
+## Armadilhas comuns
+
+- **Achar que `int` é atômico por natureza**: não é. `++` é ler-somar-escrever e perde atualizações sob concorrência.
+- **Confiar em "deu certo na minha máquina"**: corrida é não-determinística. O número certo numa execução não prova nada — rode `-race`.
+- **Usar atômico para estado composto**: `atomic.AddUint64` não torna um `map` seguro. Mecanismo errado para o problema.
+- **Misturar APIs**: `atomic.Uint64` (tipos modernos, Go 1.19+) e `atomic.AddUint64(&x, 1)` (funções clássicas) coexistem — escolha um estilo por arquivo para não confundir leitores.
+
+## Pratique
+
+1. **Reproduza**: rode `race.go` várias vezes (números variam), depois `go run -race race.go` e leia o relatório.
+2. **Modifique**: troque `contador++` por `atomic.Int64` com `.Add(1)`/`.Load()` e confirme que agora é sempre 100.000.
+3. **Aplique**: no programa, registre quantas vezes uma função é chamada por goroutines concorrentes usando `atomic.Uint64`, e imprima com `Load` depois de um `WaitGroup`.
+
+## Próximo passo
+
+Atômico protege um valor. Para proteger um **estado inteiro** — como um map compartilhado — você precisa de exclusão mútua: em [Mutexes](mutexes).

@@ -4,8 +4,10 @@ title: Escrevendo Arquivos
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Escrever arquivos espelha a leitura em três níveis: gravar tudo de uma vez (`os.WriteFile`), abrir e escrever com controle (`os.Create` + `Write`), e escrever bufferizado (`bufio.Writer` + `Flush`). As escolhas que importam: **quem fecha**, **quando o dado chega ao disco** e **as permissões** do arquivo.
+
 <CodeExplanation
-  title={"Escrevendo Arquivos"}
+  title={"writing-files.go"}
   code={`package main
 
 import (
@@ -44,18 +46,50 @@ func main() {
     w.Flush()
 }`}
   sections={[
-    {text: "Para começar, como despejar uma string (ou bytes) em um arquivo."},
-    {text: "Para escrita mais granular, abra um arquivo para escrita."},
-    {text: "É idiomático adiar `Close` logo após abrir o arquivo."},
-    {text: "Você pode dar `Write` em slices de bytes como esperado."},
-    {text: "`WriteString` também está disponível."},
-    {text: "Chame `Sync` para flush em storage estável."},
-    {text: "`bufio` fornece writers bufferizados além dos readers já vistos."},
-    {text: "Use `Flush` para garantir que operações bufferizadas foram aplicadas ao writer."},
-    {text: "Saída:\n# Try running the file-writing code.\n$ go run writing-files.go \nwrote 5 bytes\nwrote 7 bytes\nwrote 9 bytes\n\n# Then check the contents of the written files.\n$ cat /tmp/dat1\nhello\ngo\n$ cat /tmp/dat2\nsome\nwrites\nbuffered\n\n# Next we'll look at applying some of the file I/O ideas\n# we've just seen to the `stdin` and `stdout` streams."}
+    {text: "`os.WriteFile(path, dados, 0644)` cria/trunca o arquivo e grava tudo — o `WriteFile` da leitura. O terceiro arg é a **permissão** (0644 = dono lê/escreve, outros leem)."},
+    {text: "Para escrita granular, `os.Create` abre (ou trunca) e devolve o `*os.File`."},
+    {text: "`defer f.Close()` logo após abrir — o idioma de sempre (página [Defer](defer))."},
+    {text: "`f.Write([]byte{...})` grava bytes crus e devolve quantos foram. Os bytes `{115,111,109,101,10}` são \"some\\n\"."},
+    {text: "`f.WriteString` grava string direto, sem converter na mão."},
+    {text: "`f.Sync()` força o **flush para o disco** — sem ele, os dados podem estar só no cache do SO quando o processo cair."},
+    {text: "`bufio.NewWriter(f)` embrulha num writer bufferizado — muitas escritas pequenas viram poucas chamadas grandes."},
+    {text: "`w.Flush()` despeja o buffer no arquivo. Esquecer o `Flush` = dados perdidos."},
+    {text: "Saída (uma execução):\n$ go run writing-files.go\nwrote 5 bytes\nwrote 7 bytes\nwrote 9 bytes\n\n$ cat \"$TMPDIR/dat1\"\nhello\ngo\n$ cat \"$TMPDIR/dat2\"\nsome\nwrites\nbuffered\n\n# \"wrote 9 bytes\" é o bufferizado: `w.WriteString` ainda\n# não tocou o disco — o Flush depois é que grava."}
   ]}
 />
 
-<a href="https://go.dev/play/p/iuKQDnKfl2T" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Os três níveis de escrita
+
+| Nível | Função | Uso |
+|---|---|---|
+| Tudo de uma vez | `os.WriteFile(path, data, perm)` | Dado pronto na memória (JSON, config) |
+| Direto no arquivo | `os.Create` + `Write`/`WriteString` | Escrita incremental controlada |
+| Bufferizado | `bufio.NewWriter` + `Flush` | Muitas escritas pequenas (eficiência) |
+
+Regra de ouro do bufferizado: **`Flush` é o que grava**. O `bufio.Writer` segura bytes em memória até encher ou até você chamar `Flush`/`Close` — se o programa terminar sem `Flush`, a escrita some.
+
+## Permissões e o mundo real
+
+O `0644` (e `0666`, no exemplo de temporários) é o `mode` aplicado na criação — respeitado pelo `umask` do sistema. E três observações de produção:
+
+- **Quem fecha**: `defer f.Close()` logo após criar. Em programas longos, verifique o erro do `Close` (flush final pode falhar).
+- **`Sync` para durabilidade**: se perder o dado é caro (logs críticos, banco local), `f.Sync()` após escrever. Custa performance — use com critério.
+- **Arquivos temporários** não precisam de nome bonito: a página de [Arquivos Temporários](temporary-files-and-directories) mostra `CreateTemp`/`MkdirTemp`, que já criam com nome único e permissões seguras.
+
+## Armadilhas comuns
+
+- **Esquecer `Flush` no bufferizado**: os bytes ficam no buffer; se o programa fecha sem `Flush`, nada é gravado.
+- **`WriteFile` trunca arquivos existentes**: útil ou perigoso — se quer **acrescentar**, abra com `os.O_APPEND` em vez de `WriteFile`.
+- **Ignorar o `n` retornado pelo `Write`**: em teoria, `Write` pode gravar menos que o pedido. Em arquivos locais é raro; em rede (writers) acontece — cheque `n`.
+- **Não fechar**: `Create` sem `Close` vaza descritor e pode deixar o arquivo incompleto no Windows. `defer`, sempre.
+- **Permissão 000**: com `0600`/`0644` você decide quem lê. Para dados sensíveis, `0600`.
+
+## Pratique
+
+1. **Reproduza**: rode `writing-files.go` e confira os conteúdos de `dat1` e `dat2` — repare que o `Flush` do fim é o que grava `buffered`.
+2. **Modifique**: escreva um arquivo **sem** `Flush` e veja o que acontece; depois acrescente linhas a um arquivo existente com `os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0644)`.
+3. **Aplique**: escreva `func salvarJSON(caminho string, v any) error` que serializa com `json.MarshalIndent`, grava com `WriteFile` e trata o erro.
+
+## Próximo passo
+
+Arquivos de verdade têm formato linha a linha — e o Unix tem uma categoria clássica de programas que os transformam. Em [Filtros de Linha](line-filters), o `bufio.Scanner` lê `stdin`, processa e escreve `stdout`: o padrão por trás de `grep`, `sort` e cia.

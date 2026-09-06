@@ -4,8 +4,10 @@ title: Servidor HTTP
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+O outro lado do `net/http`: um **servidor HTTP**. A peça central é o *handler* — uma função que recebe o pedido e escreve a resposta. O `http.HandleFunc` registra handlers no mux padrão e o `ListenAndServe` põe o servidor no ar. E o detalhe que muita gente descobre tarde: **cada request roda numa goroutine própria** — o servidor é concorrente de graça.
+
 <CodeExplanation
-  title={"Servidor HTTP"}
+  title={"http-server.go"}
   code={`package main
 
 import (
@@ -29,16 +31,63 @@ func main() {
     http.ListenAndServe(":8090", nil)
 }`}
   sections={[
-    {text: "Escrever um servidor HTTP básico é fácil com `net/http`."},
-    {text: "Conceito fundamental em servidores `net/http` são *handlers*. Um handler implementa `http.Handler`. Forma comum é usar `http.HandlerFunc` em funções com assinatura apropriada."},
-    {text: "Functions serving as handlers take a `http.ResponseWriter` and a `http.Request` as arguments. The response writer is used to fill in the HTTP response. Here our simple response is just \"hello\\\n\"."},
-    {text: "Este handler lê todos os headers e os ecoa no body."},
-    {text: "Registramos handlers nas rotas com `http.HandleFunc`. Configura o *default router* e recebe função como argumento."},
-    {text: "Por fim chamamos `ListenAndServe` com porta e handler. `nil` usa o default router configurado."},
-    {text: "Saída:\n# Run the server in the background.\n$ go run http-server.go &\n\n# Access the `/hello` route.\n$ curl localhost:8090/hello\nhello"}
+    {text: "`hello` é um handler: recebe um `http.ResponseWriter` (onde se escreve a resposta) e um `*http.Request` (o pedido). Assinatura padrão de handler."},
+    {text: "`fmt.Fprintf(w, ...)` escreve no `ResponseWriter` — que é um `io.Writer`. Aqui, a resposta é o texto `hello\\n`."},
+    {text: "`headers` itera `req.Header` — um `map[string][]string` — e ecoa cada header do pedido na resposta."},
+    {text: "`http.HandleFunc(\"/hello\", hello)` registra o handler no **mux padrão**: qualquer GET/POST em `/hello` chama `hello`. A função com a assinatura certa vira um `http.Handler` (o adaptador de [Interfaces](interfaces))."},
+    {text: "`http.ListenAndServe(\":8090\", nil)` sobe o servidor na porta 8090 usando o mux padrão (`nil`). Ele bloqueia para sempre — e devolve erro se a porta falhar."},
+    {text: "Saída (real):\n$ go run http-server.go &\n$ curl localhost:8090/hello\nhello\n$ curl localhost:8090/headers\nUser-Agent: curl/8.7.1\nAccept: */*"}
   ]}
 />
 
-<a href="https://go.dev/play/p/s3xMMt9Ytry" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Anatomia de um request
+
+O servidor `net/http` faz por você: aceita a conexão TCP, parseia a requisição HTTP, monta o `*http.Request` e chama o handler **numa goroutine nova** (por isso N requests simultâneos não se bloqueiam — relembre [Goroutines](goroutines)). O handler só precisa:
+
+1. Ler o que precisa do `req` (`req.Method`, `req.URL.Path`, `req.Header`, body).
+2. Escrever a resposta no `w` (`fmt.Fprintf`, `json.NewEncoder(w).Encode`).
+3. Definir o status se não for 200 (`w.WriteHeader(http.StatusNotFound)`).
+
+## Handler = função que vira interface
+
+`HandleFunc` é o atalho do padrão que você viu em [Interfaces](interfaces): a stdlib define `type HandlerFunc func(ResponseWriter, *Request)` com um método `ServeHTTP` que chama a função — então uma **função implementa a interface** `http.Handler`. É por isso que `HandleFunc("/x", minhaFuncao)` aceita a função direto. Se você tem um tipo com `ServeHTTP`, registre com `http.Handle`.
+
+## Timeouts: o servidor padrão também precisa
+
+Assim como o cliente, o `http.Server` padrão de `ListenAndServe` não configura timeouts — um cliente lento pode segurar recursos. Para produção, monte um servidor explícito:
+
+```go
+srv := &http.Server{
+    Addr:              ":8090",
+    Handler:           mux,
+    ReadHeaderTimeout: 5 * time.Second,
+}
+log.Fatal(srv.ListenAndServe())
+```
+
+E para encerrar com **graceful shutdown**, o padrão de [Sinais](signals) + `srv.Shutdown(ctx)` — a página de [Context](context) mostra o cancelamento por request.
+
+## Em código real
+
+- Rotas: o mux padrão serve para APIs pequenas; `http.ServeMux` moderno (Go 1.22+) aceita patterns com método (`"GET /hello"`) e wildcards. Para rotas complexas, frameworks (`chi`, `gin`, `echo`) — mas a base é esta.
+- **JSON**: `json.NewEncoder(w).Encode(meuValor)` responde JSON (página [JSON](json)).
+- **Arquivos**: `http.FileServer(http.Dir("static"))` serve estáticos; `http.FS` com [embed](embed-directive) serve do binário.
+- **Middlewares** (log, auth) são handlers que envolvem handlers — a composição de funções de [Funções](functions) em ação.
+
+## Armadilhas comuns
+
+- **Escrever depois do status**: uma vez que você escreve o body, o status 200 já foi enviado. Defina `WriteHeader` **antes** de escrever (ou use `http.Error`).
+- **Ler o body e não fechar**: `req.Body` precisa ser fechado (ou o `net/http` fecha ao final — mas feche explicitamente em handlers longos).
+- **Achar que um request trava os outros**: não — cada handler roda em goroutine. Mas **estado compartilhado** entre handlers precisa de mutex (página [Mutexes](mutexes)).
+- **Handler que bloqueia sem timeout**: uma chamada externa sem `ctx`/timeout segura a goroutine do request. Use [Context](context).
+- **`ListenAndServe` erro ignorado**: porta ocupada devolve erro e o programa "morre" sem explicação. `log.Fatal(srv.ListenAndServe())`.
+
+## Pratique
+
+1. **Reproduza**: suba o servidor, `curl /hello` e `curl /headers`, e derrube.
+2. **Modifique**: adicione `GET /soma?a=2&b=3` que lê `req.URL.Query()`, soma e responde o número (use `strconv`).
+3. **Aplique**: responda JSON (`json.NewEncoder`) num endpoint e crie um middleware de log que envolve um handler e imprime `método path` antes de chamar o próximo.
+
+## Próximo passo
+
+HTTP é só um protocolo sobre **TCP** — e às vezes você precisa do TCP cru. Em [Servidor TCP](tcp-server), `net.Listen` + `Accept` + uma goroutine por conexão: o esqueleto de qualquer servidor de rede.

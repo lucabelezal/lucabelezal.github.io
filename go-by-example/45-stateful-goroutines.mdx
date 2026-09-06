@@ -4,8 +4,10 @@ title: Goroutines com Estado
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Se o mutex protege o estado com uma trava, o jeito *idiomático* de Go é diferente: **não compartilhar o estado** — entregá-lo a uma única goroutine dona, e todas as outras pedem leitura/escrita por mensagens (channels). É a filosofia de Rob Pike: "não se comunique compartilhando memória; **compartilhe memória se comunicando**". Nenhuma trava, porque ninguém além do dono toca o dado.
+
 <CodeExplanation
-  title={"Goroutines com Estado"}
+  title={"stateful-goroutines.go"}
   code={`package main
 
 import (
@@ -76,18 +78,45 @@ func main() {
     fmt.Println("writeOps:", writeOpsFinal)
 }`}
   sections={[
-    {text: "Neste exemplo o estado pertence a uma única goroutine. Isso garante que nunca seja corrompido por acesso concorrente. Para ler ou escrever, outras goroutines enviam mensagens à goroutine dona e recebem respostas. Os structs `readOp` e `writeOp` encapsulam as requisições e a forma de responder."},
-    {text: "Como antes, vamos contar quantas operações fazemos."},
-    {text: "Os channels `reads` e `writes` serão usados por outras goroutines para emitir requisições de leitura e escrita."},
-    {text: "Aqui está a goroutine dona do `state`, um map como no exemplo anterior mas privado à goroutine com estado. Ela faz `select` repetidamente em `reads` e `writes`, respondendo conforme chegam. A resposta executa a operação e envia valor em `resp` para indicar sucesso (e o valor desejado no caso de `reads`)."},
-    {text: "Isso inicia 100 goroutines para emitir leituras via `reads`. Cada leitura exige construir um `readOp`, enviar em `reads` e receber o resultado em `resp`."},
-    {text: "Também iniciamos 10 escritas com abordagem similar."},
-    {text: "Deixe as goroutines trabalharem por um segundo."},
-    {text: "Por fim, capture e reporte as contagens."},
-    {text: "Saída:\n# Running our program shows that the goroutine-based\n# state management example completes about 80,000\n# total operations.\n$ go run stateful-goroutines.go\nreadOps: 71708\nwriteOps: 7177\n\n# For this particular case the goroutine-based approach\n# was a bit more involved than the mutex-based one. It\n# might be useful in certain cases though, for example\n# where you have other channels involved or when managing\n# multiple such mutexes would be error-prone. You should\n# use whichever approach feels most natural, especially\n# with respect to understanding the correctness of your\n# program."}
+    {text: "`readOp` e `writeOp` são **mensagens**: carregam o que fazer (chave/valor) e um channel `resp` para a resposta. Quem pede espera no `resp`."},
+    {text: "Contadores de operações — os mesmos atômicos da página [Contadores Atômicos](atomic-counters). Eles não protegem o estado; só medem."},
+    {text: "`reads` e `writes` são os canais de entrada do estado: outras goroutines enviam requisições por eles."},
+    {text: "A **goroutine dona**: o `state` (map) vive aqui, privado a esta goroutine. Ela faz `select` infinito — recebe uma leitura e responde com o valor, ou uma escrita e responde com `true`. Como só ela toca o map, não há corrida: sem mutex."},
+    {text: "100 goroutines de leitura: cada uma monta um `readOp`, envia em `reads` e **bloqueia esperando** a resposta em `resp`."},
+    {text: "10 goroutines de escrita, mesmo padrão."},
+    {text: "`time.Sleep(time.Second)` deixa as goroutines trabalharem (didático — aqui não há nada para \"esperar com WaitGroup\"; é um experimento de throughput)."},
+    {text: "Saída (uma execução):\n$ go run stateful-goroutines.go\nreadOps: 86500\nwriteOps: 8651\n\n# Os números variam a cada execução (~80-90 mil leituras,\n# ~8-9 mil escritas em 1s)."}
   ]}
 />
 
-<a href="https://go.dev/play/p/uwnybdsnOSa" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Por que "comunique, não compartilhe" funciona
+
+No exemplo, o map nunca é compartilhado — **pertence** à goroutine dona. As outras não leem nem escrevem nele: pedem e recebem a resposta. Isso elimina a classe inteira de bugs de sincronização, porque a exclusão é estrutural: o dono processa uma requisição por vez, no `select`.
+
+É o mesmo princípio de um caixa de banco: os clientes não mexem no cofre; passam o pedido pelo guichê e recebem o resultado.
+
+## Quando usar esse padrão × quando usar mutex
+
+A página [Mutexes](mutexes) já comparou as ferramentas. A decisão prática:
+
+- **Mutex** é mais direto quando o estado é um detalhe local e poucos métodos acessam: menos código, mais fácil de ler.
+- **Goroutine dona + channels** brilha quando você **já tem channels no fluxo** (o estado conversa com o resto do sistema), quando gerenciar **vários mutexes** seria propenso a erro, ou quando a "mensagem" carrega semântica além do dado (cancelamento, prioridade).
+
+Aqui o padrão ficou mais verboso que o mutex — e é honesto admitir. A orientação de Go: **use a abordagem mais natural, priorizando a facilidade de provar que o código está correto**. Se mutex é mais simples no seu caso, use mutex; se o estado já vive num mundo de channels, o dono por mensagem é o caminho.
+
+## Armadilhas comuns
+
+- **Esquecer a resposta**: cada requisição carrega um `resp` e quem pede bloqueia nele. Se o dono processar a escrita sem responder, a goroutine fica presa para sempre. Todo `case` de requisição precisa responder.
+- **Dono que trava**: se a goroutine dona fizer uma operação bloqueante (fora do `select`), o estado inteiro para — todas as requisições esperam. Mantenha o dono enxuto.
+- **Confundir com "estado global escondido"**: o estado pertence à goroutine, mas quem cria o dono precisa garantir que ele termina (cancelamento) — as quatro perguntas de [Ciclo de Vida](goroutine-lifecycle) continuam valendo.
+- **Usar atômico para o estado em si**: `atomic` aqui conta operações (métrica); o map continua sob posse do dono. Não misture os papéis.
+
+## Pratique
+
+1. **Reproduza**: rode `stateful-goroutines.go` e observe os contadores variarem entre execuções, sempre com leituras ≫ escritas.
+2. **Modifique**: adicione uma operação "soma" (`sumOp`) que o dono responde com a soma de todos os valores do map — novo tipo de mensagem, mesmo dono.
+3. **Aplique**: reimplemente o mesmo map com **mutex** (como na página [Mutexes](mutexes)) e compare: qual ficou mais fácil de provar correto? Quando cada um é a melhor escolha?
+
+## Próximo passo
+
+Com isso o bloco de concorrência fecha: goroutines, ciclo de vida, channels, workers, waits, atômicos, mutex e o dono por mensagem. A seguir, a ordem de grandeza muda de assunto — [Ordenação](sorting) abre os recursos da linguagem para processamento de coleções.

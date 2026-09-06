@@ -4,8 +4,10 @@ title: Diretiva Embed
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Templates, CSS, SQL, certificados de teste — arquivos que o programa precisa mas que **não deveriam depender do disco** na hora de rodar. A diretiva **`//go:embed`** resolve isso no tempo de **build**: o conteúdo vira parte do binário. Distribua um único executável; os arquivos vão junto — sem caminho relativo, sem `missing file` em produção.
+
 <CodeExplanation
-  title={"Diretiva Embed"}
+  title={"embed.go"}
   code={`package main
 
 import (
@@ -31,16 +33,55 @@ func main() {
     print(string(content2))
 }`}
   sections={[
-    {text: "`//go:embed` is a [compiler directive](https://pkg.go.dev/cmd/compile#hdr-Compiler_Directives) that allows programs to include arbitrary files and folders in the Go binary at build time. Read more about the embed directive [here](https://pkg.go.dev/embed)."},
-    {text: "Import the `embed` package; if you don't use any exported identifiers from this package, you can do a blank import with `_ \"embed\"`."},
-    {text: "`//go:embed` aceita paths relativos ao diretório do arquivo Go. A diretiva embute o conteúdo na variável `string` imediatamente seguinte."},
-    {text: "Ou faça embed do conteúdo em um `[]byte`."},
-    {text: "Também pode embutir múltiplos arquivos ou pastas com wildcards. Usa variável do tipo [embed.FS](https://pkg.go.dev/embed#FS), um filesystem virtual."},
-    {text: "Imprima o conteúdo de `single_file.txt`."},
-    {text: "Recupere arquivos da pasta embutida."}
+    {text: "`//go:embed folder/single_file.txt` — a [diretiva de compilador](https://pkg.go.dev/cmd/compile#hdr-Compiler_Directives) antes da declaração de uma variável `string` embute o arquivo **naquela variável**, em tempo de build."},
+    {text: "Um mesmo arquivo pode ir para uma variável `[]byte` — bytes crus, útil para binários."},
+    {text: "Para **vários** arquivos (ou uma pasta inteira), o destino é um `embed.FS` — um filesystem virtual só de leitura, com `ReadFile`/`ReadDir`."},
+    {text: "O `embed` precisa ser importado quando você usa `embed.FS`; se embute só em `string`/`[]byte`, o import em branco `_ \"embed\"` basta (você não chama nada do pacote)."},
+    {text: "Patterns com wildcard: `folder/*.hash` embute os arquivos `.hash` da pasta. Vários `//go:embed` acumulam no mesmo `embed.FS`."},
+    {text: "Saída (com `folder/single_file.txt` = \"single file content\", `file1.hash`/`file2.hash` presentes):\n$ go run embed.go\nsingle file content\nsingle file content\nhash one\nhash two\n\n# Para rodar, crie os arquivos de folder/ neste diretório."}
   ]}
 />
 
-<a href="https://go.dev/play/p/6m2ll-D52BB" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O que a diretiva faz (e o que ela não faz)
+
+`//go:embed` é processada pelo **compilador**: no `go build`, o conteúdo dos arquivos vira parte do binário. No `go run`, funciona igual (compila para um executável temporário). Consequências importantes:
+
+- O **binário é autocontido**: copie para um servidor sem os arquivos — os embutidos estão lá.
+- O `embed.FS` é **somente leitura**: não dá para escrever nele. Para gerar conteúdo, leia e escreva em outro lugar (arquivo/`bytes.Buffer`).
+- Os paths da diretiva são **relativos ao arquivo `.go`** que a declara — não ao diretório de trabalho. Não use `..` (a diretiva proíbe subir).
+- O tamanho do binário cresce com o que você embute: embuta o necessário.
+
+## `embed.FS` é um filesystem
+
+O `embed.FS` implementa `fs.FS` — o mesmo contrato de `os.DirFS` e de filesystems zipados. Isso significa que você pode passá-lo para código que espera `fs.FS` (como `http.FileServer` ou `template.ParseFS`) e servir/processar os arquivos embutidos como se fossem do disco:
+
+```go
+templates := template.Must(template.ParseFS(arquivos, "templates/*.html"))
+// http.FileServer(http.FS(arquivos))  → servir estáticos embutidos
+```
+
+(Página de [Servidor HTTP](http-server) mostra servir arquivos; `ParseFS` combina com [Templates](text-templates).)
+
+## Em código real
+
+- **Templates e estáticos** embutidos: um binário só para o deploy de uma aplicação web.
+- **Config padrão + SQL de migração**: defaults que sempre existem, mesmo sem arquivos no servidor.
+- **Testes**: fixtures sem depender do diretório de trabalho (que muda sob `go test ./...` de outra pasta).
+
+## Armadilhas comuns
+
+- **Esquecer o import**: `//go:embed` com `embed.FS` exige `import \"embed\"`; para `string`/`[]byte`, o import em branco `_ \"embed\"` é obrigatório se você não usa o pacote.
+- **Path relativo ao `.go`**: o pattern `folder/single_file.txt` resolve a partir do arquivo-fonte, não do `cwd`. Rodar de outra pasta não quebra — justamente o objetivo.
+- **Arquivo não encontrado**: `//go:embed` com path inexistente é **erro de compilação** (o build falha). Bom: pega cedo. Pattern com wildcard que não casa também falha.
+- **`..` e absolutos**: a diretiva proíbe `..` e `/` no início. Se você quer "a pasta acima", reorganize.
+- **Tentar escrever no `embed.FS`**: é read-only; não há `WriteFile`. Leia e copie.
+
+## Pratique
+
+1. **Reproduza**: crie `folder/single_file.txt`, `folder/file1.hash`, `folder/file2.hash` e rode `embed.go` — depois apague a pasta e rode de novo (funciona: está no binário).
+2. **Modifique**: embuta um template `templates/ola.html` num `embed.FS` e execute com `template.ParseFS`.
+3. **Aplique**: escreva uma função que serve um arquivo embutido (`dados.json`) como `[]byte` para o código processar, sem tocar o disco.
+
+## Próximo passo
+
+Arquivos vencidos — agora a qualidade. Em [Testes e Benchmarks](testing-and-benchmarking), o `testing` nativo: testes, tabelas e a medição de performance que separa código "que roda" de código "que aguenta".

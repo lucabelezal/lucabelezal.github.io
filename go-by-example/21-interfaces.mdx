@@ -4,8 +4,10 @@ title: Interfaces
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Em linguagens com herança (Java, C++, C#), você organiza o código por hierarquia de classes. Go não tem herança — organiza por **comportamento**, através de **interfaces**. Uma interface diz *o que* um tipo faz (quais métodos tem), sem dizer *como* nem *quem*. E como funções aceitam interfaces, você escreve uma função que serve para **qualquer tipo com o comportamento certo** — exatamente o elo entre funções e tipos que faz Go "usar funções em tudo".
+
 <CodeExplanation
-  title={"Interfaces"}
+  title={"interfaces.go"}
   code={`package main
 
 import (
@@ -55,17 +57,167 @@ func main() {
     detectCircle(c)
 }`}
   sections={[
-    {text: "Uma interface básica para formas geométricas."},
-    {text: "Vamos implementar esta interface nos tipos `rect` e `circle`."},
-    {text: "Para implementar uma interface em Go, basta implementar todos os métodos. Aqui implementamos `geometry` em `rect`s."},
-    {text: "A implementação para `circle`s."},
-    {text: "Se uma variável tem tipo de interface, podemos chamar métodos da interface. Aqui uma função genérica `measure` que funciona com qualquer `geometry`."},
-    {text: "Às vezes é útil saber o tipo em runtime de um valor de interface. Uma opção é _type assertion_ como aqui; outra é [type `switch`](switch)."},
-    {text: "Os tipos `circle` e `rect` implementam `geometry`, então podem ser passados para `measure`."},
-    {text: "Saída:\n$ go run interfaces.go\n{3 4}\n12\n14\n{5}\n78.53981633974483\n31.41592653589793\ncircle with radius 5\n\n# To understand how Go's interfaces work under the hood,\n# check out this [blog post](https://research.swtch.com/interfaces)."}
+    {text: "`type geometry interface { ... }` declara o contrato: quem tiver `area()` e `perim()` com essas assinaturas é uma `geometry`. Só isso — sem `implements`, sem declaração."},
+    {text: "`rect` e `circle` são tipos independentes (nenhum extends o outro). Cada um define os dois métodos do seu jeito."},
+    {text: "Para implementar uma interface, basta **ter** os métodos. `rect` satisfaz `geometry` porque tem `area()` e `perim()` — não porque declarou nada."},
+    {text: "`circle` idem. Nota: `math.Pi * c.radius * c.radius` dispensa `math.Pow` — multiplicação direta."},
+    {text: "`measure(g geometry)` é uma **função que recebe uma interface**: ela não sabe se o valor é um rect ou circle, só que responde a `area()` e `perim()`."},
+    {text: "`detectCircle` mostra *type assertion*: `g.(circle)` tenta descobrir o tipo concreto em runtime e devolve `(valor, ok)`. A forma segura com `ok` nunca pânica."},
+    {text: "`measure(r)` e `measure(c)` funcionam com os dois — esse é o polimorfismo de Go: não por hierarquia, mas por contrato de métodos."},
+    {text: "Saída:\n$ go run interfaces.go\n{3 4}\n12\n14\n{5}\n78.53981633974483\n31.41592653589793\ncircle with radius 5\n\n# Sobre o funcionamento interno das interfaces, consulte este\n# [post](https://research.swtch.com/interfaces)."}
   ]}
 />
 
 <a href="https://go.dev/play/p/xAAbgd7GOKD" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Do concreto para a interface: por que elas existem
+
+O melhor jeito de entender interface é ver a dor que ela resolve. Imagine que `Article` e `Book` sabem se descrever (método `String`), e você quer imprimir qualquer um deles:
+
+```go
+func Print(a Article) { // acoplado ao tipo concreto
+    fmt.Println(a.String())
+}
+```
+
+A função só usa `String`. Se `Book` também tem `String`, `Print(book)` **não compila** — você teria que duplicar a função para cada tipo. A correção é pedir apenas o comportamento:
+
+<CodeExplanation
+  title={"stringer.go"}
+  code={`package main
+
+import "fmt"
+
+type Article struct {
+    Title  string
+    Author string
+}
+
+func (a Article) String() string {
+    return fmt.Sprintf("The %q article was written by %s.", a.Title, a.Author)
+}
+
+type Book struct {
+    Title  string
+    Author string
+    Pages  int
+}
+
+func (b Book) String() string {
+    return fmt.Sprintf("The %q book was written by %s (%d pages).", b.Title, b.Author, b.Pages)
+}
+
+func Print(s fmt.Stringer) {
+    fmt.Println(s.String())
+}
+
+func main() {
+    Print(Article{Title: "Understanding Interfaces in Go", Author: "Sammy Shark"})
+    Print(Book{Title: "All About Go", Author: "Jenny Dolphin", Pages: 25})
+}`}
+  sections={[
+    {text: "`Article` tem o método `String()` — sem declarar nada, já atende a interface `fmt.Stringer`, definida na biblioteca padrão."},
+    {text: "`Book` também define `String()`. Dois tipos independentes, mesmo contrato."},
+    {text: "`func Print(s fmt.Stringer)` **não usa um tipo nosso**: usa `fmt.Stringer`, a interface real do pacote `fmt`. Este é o ponto-chave: implementar um contrato definido em outro package."},
+    {text: "`Print` aceita Article e Book — qualquer valor que tenha `String() string`. Uma função serve para todos os tipos com o comportamento certo."},
+    {text: "Saída:\n$ go run stringer.go\nThe \"Understanding Interfaces in Go\" article was written by Sammy Shark.\nThe \"All About Go\" book was written by Jenny Dolphin (25 pages).\n\n# Curiosidade: fmt.Println já usa Stringer sozinho.\n# fmt.Println(article) chamaria o método String automaticamente."}
+  ]}
+/>
+
+## Implementação implícita — e sem escopo
+
+Não existe a palavra `implements`. Um tipo **satisfaz** a interface quando tem exatamente os métodos exigidos — com a mesma assinatura (nome + parâmetros + retornos). Bônus: a interface não "pertence" a ninguém. `Article` satisfaz `fmt.Stringer` sem importar interface alguma; qualquer tipo em qualquer package pode satisfazer `io.Reader` só implementando `Read([]byte) (int, error)`. Por isso a convenção de nome com sufixo `-er`: `fmt.Stringer`, `io.Reader`, `io.Writer` — a interface descreve *quem faz algo*.
+
+## Interfaces pequenas e composição
+
+A sabedoria Go: **aceite a menor interface que a função precisa**. Quanto maior a interface, mais fraco o contrato e mais acoplamento você cria. Interfaces de 1-3 métodos são o padrão — e quando você precisa de um comportamento maior, **compõe** interfaces pequenas:
+
+```go
+type Sizer interface {
+    Area() float64
+}
+
+type Shaper interface {
+    Sizer
+    fmt.Stringer
+}
+```
+
+`Shaper` embute `Sizer` e `fmt.Stringer` — mesma sintaxe de composição de structs (você verá em [Composição de Structs](struct-embedding)). Na prática:
+
+```go
+func Menor(s1, s2 Sizer) Sizer { // só precisa de Area()
+    if s1.Area() < s2.Area() {
+        return s1
+    }
+    return s2
+}
+```
+
+`Menor` recebe `Sizer`, não `Shaper`: ela só chama `Area()`. Quem lê a assinatura sabe imediatamente o que a função usa — e qualquer tipo novo com `Area()` funciona sem mudar nada.
+
+## Funções e interfaces: as duas caras
+
+O tema se completa com as duas direções da relação:
+
+- **Função recebe interface**: `measure(g geometry)`, `Print(s fmt.Stringer)`, e na stdlib `io.Copy(dst io.Writer, src io.Reader)`. A função fica desacoplada de qualquer implementação concreta.
+- **Função vira implementação**: para usar uma interface com uma única função, Go tem o padrão de *adaptador* — um tipo cujo método chama a função guardada. O exemplo mais famoso é `http.HandlerFunc`, que você vai encontrar em [Servidor HTTP](http-server). Uma função pode "implementar" uma interface.
+
+## A armadilha do nil em interfaces
+
+Uma interface guarda um par `(tipo, valor)` — e ela só é `nil` quando **os dois** são `nil`. Devolver um ponteiro tipado `nil` dentro de uma interface produz uma interface que *parece* não-nil:
+
+```go
+type Identificavel interface {
+    ID() string
+}
+
+type Usuario struct{}
+
+func (u *Usuario) ID() string { return "u-1" }
+
+var u *Usuario = nil
+var id Identificavel = u // compila: *Usuario tem ID()
+fmt.Println(id == nil)   // false — o tipo está presente, só o valor é nil
+```
+
+Esse é o *typed nil*: a comparação `id == nil` mente — o código entra no `if err != nil` mesmo sem erro real. A defesa é nunca guardar ponteiro `nil` dentro de interface; se não há valor, retorne `nil` de verdade:
+
+```go
+func Novo(s *Usuario) Identificavel {
+    if s == nil {
+        return nil
+    }
+    return s
+}
+```
+
+Detalhe que volta em [Erros](errors) com a interface `error`.
+
+## Menos é mais: quando **não** usar interface
+
+Interface resolve acoplamento, mas abstração cedo demais é *overengineering*. Regras práticas:
+
+- **Não extraia interface antes da hora**: comece com o tipo concreto; extraia quando houver uma segunda implementação, um mock de teste ou uma fronteira clara pedindo. Uma interface com uma única implementação é suspeita.
+- **Defina no lado que consome**: a função/cliente que precisa do comportamento declara a interface; o tipo que implementa nem fica sabendo. É o oposto de "interface junto da classe".
+- **`any` (interface vazia) é último recurso**: sem nenhum método, aceita qualquer coisa — e você perde checagem de tipo. Para recuperar o tipo, use *type assertion* segura (`v, ok := x.(T)`) ou *type switch* (já visto em [Switch](switch)). Só use `any` quando o tipo realmente não importa (ex.: `fmt.Println`).
+
+## Armadilhas comuns
+
+- **Receiver por ponteiro não satisfaz a interface com valor**: se o método usa `*T`, apenas `*T` implementa a interface. `var g geometry = rect{}` compila se os métodos têm receiver `rect`; com receiver `*rect`, precisa de `&rect{}`. A mensagem do compilador é clara — leia o final dela.
+- **Redefinir `Stringer`**: não precisa — `fmt.Stringer` já existe. Interface duplicada só confunde.
+- **Interface grande demais**: obriga toda implementação a carregar métodos que não usa. Prefira várias pequenas e componha.
+- **`x := y` com ponteiros não é herança**: `apple := other` só aliaseia o mesmo dado; tipos são estáticos e não se convertem. Go não tem *extends* nem *override*.
+- **`any` como muleta**: `map[string]any` em tudo esconde o tipo e empurra o erro para runtime. Contrato explícito sempre vence.
+
+## Pratique
+
+1. **Reproduza**: rode `interfaces.go` e `stringer.go`; identifique em cada um onde a função recebe interface e onde o tipo a satisfaz sem declarar.
+2. **Modifique**: crie `type Podcast struct { Titulo, Host string }` com `String()` e passe para `Print` — nenhuma mudança na função. Depois troque o receiver de `String` para `*Book` e veja o erro do compilador.
+3. **Aplique**: defina sua própria interface pequena `type Descritor interface { Descrever() string }` com dois tipos e uma função `Exibir(Descritor)` — e reflita: para que serviu a interface em vez de uma função por tipo?
+
+## Próximo passo
+
+Interfaces e structs se combinam num padrão que parece herança, mas não é: a **composição por embedding**. Em [Composição de Structs](struct-embedding) você vai ver campos e métodos promovidos — e por que isso não é `extends`.

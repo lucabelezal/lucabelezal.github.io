@@ -4,8 +4,10 @@ title: Funções de Strings
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+O pacote `strings` é o kit de ferramentas para manipular texto: procurar, contar, dividir, juntar, transformar. Uma observação de design antes do código: são **funções do pacote**, não métodos da string — você passa a string como argumento (`strings.Contains(s, "es")`), não `s.Contains(...)`. A razão é simples: `string` é um tipo nativo imutável de bytes; em vez de engordá-lo com métodos, Go coloca as operações num pacote.
+
 <CodeExplanation
-  title={"Funções de Strings"}
+  title={"string-functions.go"}
   code={`package main
 
 import (
@@ -30,12 +32,49 @@ func main() {
     p("ToUpper:   ", s.ToUpper("test"))
 }`}
   sections={[
-    {text: "Apelidamos `fmt.Println` para um nome mais curto, pois usaremos bastante abaixo."},
-    {text: "Aqui uma amostra das funções em `strings`. Como são funções do pacote, não métodos da string, passamos a string como primeiro argumento. Veja mais em [`strings`](https://pkg.go.dev/strings)age docs."},
-    {text: "Saída:\n$ go run string-functions.go\nContains:   true\nCount:      2\nHasPrefix:  true\nHasSuffix:  true\nIndex:      1\nJoin:       a-b\nRepeat:     aaaaa\nReplace:    f00\nReplace:    f0o\nSplit:      [a b c d e]\nToLower:    test\nToUpper:    TEST"}
+    {text: "`s \"strings\"` cria um apelido curto para o pacote — comum em exemplos para caber mais na tela. Em código real, use o nome completo; legibilidade primeiro."},
+    {text: "`var p = fmt.Println` — outra abreviação de exemplo. Repare: `Contains` responde \"a string contém a substring?\", `Index` dá a posição, `HasPrefix`/`HasSuffix` checam bordas."},
+    {text: "`Count` conta ocorrências **não sobrepostas**; `Join` junta um slice com um separador (o inverso de `Split`); `Repeat` replica a string."},
+    {text: "`Replace(s, old, new, n)` troca até `n` ocorrências — `-1` troca todas. Veja a diferença entre as duas linhas: `f00` (todas) × `f0o` (só a primeira)."},
+    {text: "`Split` devolve um slice; `ToLower`/`ToUpper` mudam a caixa."},
+    {text: "Saída:\n$ go run string-functions.go\nContains:   true\nCount:      2\nHasPrefix:  true\nHasSuffix:  true\nIndex:      1\nJoin:       a-b\nRepeat:     aaaaa\nReplace:    f00\nReplace:    f0o\nSplit:      [a b c d e]\nToLower:    test\nToUpper:    TEST\n\n# Veja mais na [documentação de strings](https://pkg.go.dev/strings)."}
   ]}
 />
 
-<a href="https://go.dev/play/p/wKSAzxfs96O" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Operações retornam valores novos — strings são imutáveis
+
+Toda função de `strings` devolve uma **string nova** (ou um slice/índice): nada modifica a original. `ToUpper("test")` não toca em nada; cria outra. Isso é seguro e simples — e tem uma consequência de performance: concatenar com `+` em laço recria a string a cada passo. Para montar texto aos poucos, o padrão é `strings.Builder` (que você já viu mencionado em [Strings e Runes](strings-and-runes)):
+
+```go
+var b strings.Builder
+for _, palavra := range lista {
+    b.WriteString(palavra)
+}
+resultado := b.String() // sem recriar a string inteira a cada iteração
+```
+
+## Índices: `-1` não é erro
+
+`strings.Index("test", "x")` devolve `-1` quando não acha — **não** um erro, nem `nil`. Se você precisa saber se contém, `Contains` é mais claro; se precisa da posição para fatiar (`s[Index:]`), cheque `>= 0`.
+
+## Em código real
+
+Sanitizar entrada (`TrimSpace`, `ToLower`), validar formato (`HasPrefix`, `Contains`), montar/parsear listas (`Join`/`Split`), limpar nomes de arquivo. Combinando: normalizar um e-mail `strings.ToLower(strings.TrimSpace(email))`, ou partir uma linha CSV com `Split`. Para parsing mais estruturado (regex, JSON), as páginas seguintes mostram ferramentas mais fortes.
+
+## Armadilhas comuns
+
+- **Esperar mutação**: `s.ToUpper()` sem atribuir não faz nada — strings são imutáveis. Sempre capture o retorno.
+- **`Contains` de substring, não de "palavra"**: `Contains("catálogo", "gato")` é falso, mas `Contains("categoria", "gato")`... cuidado: substrings não respeitam limites de palavra. Para palavras, use regex (`\b`) ou divida.
+- **`Count` não sobreposto**: `Count("aaaa", "aa")` é 2, não 3.
+- **Comparar caixa com `==`**: `"Test" == "test"` é falso. Normalize com `ToLower`/`EqualFold` se a caixa não importa.
+- **Ignorar o erro de `Index`**: usar o retorno `-1` como índice fatiaria errado. Cheque antes.
+
+## Pratique
+
+1. **Reproduza**: rode `string-functions.go` e explique a diferença entre as duas linhas de `Replace`.
+2. **Modifique**: dado `"  Olá, Mundo!  "`, use `TrimSpace`, `ToLower`, `Replace` (remover `!` e vírgula) para chegar a `"olá mundo"`. Depois `Split` por espaço.
+3. **Aplique**: escreva uma função que normaliza um nome de arquivo (minúsculas, espaços → `-`, sem acento aproximado) usando só `strings`.
+
+## Próximo passo
+
+Transformar texto é metade da história; **formatar valores** de forma precisa é a outra. Em [Formatação de Strings](string-formatting) você vai ver os *verbs* (`%v`, `%d`, `%s`...) que controlam como números, structs e strings viram texto.

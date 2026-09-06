@@ -4,8 +4,10 @@ title: Erros Customizados
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Um sentinela diz *qual* condição falhou; às vezes você precisa que o erro **carregue dados** — o argumento que causou a falha, um código, um valor para retry. Aí você define um **tipo de erro próprio**: uma struct que implementa `error` (o método `Error() string`) e carrega os campos que o tratamento precisa.
+
 <CodeExplanation
-  title={"Erros Customizados"}
+  title={"custom-errors.go"}
   code={`package main
 
 import (
@@ -37,14 +39,56 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Um tipo de erro customizado geralmente tem sufixo \"Error\"."},
-    {text: "Adicionar o método `Error` faz `argError` implementar a interface `error`."},
-    {text: "Retorna nosso erro customizado."},
-    {text: "`errors.As` é uma versão mais avançada de `errors.Is`. Verifica se um erro na cadeia corresponde a um tipo e converte, retornando `true`. Sem match, retorna `false`."},
+    {text: "`type argError struct { arg int; message string }` — o erro carrega dados: qual argumento e por quê. O sufixo `Error` no nome é convenção."},
+    {text: "`func (e *argError) Error() string` — implementar `Error()` faz `*argError` satisfazer a interface `error`. Sem isso, não é um erro."},
+    {text: "`return -1, &argError{...}` — devolvemos **ponteiro** para o tipo (receiver também é ponteiro — método set, de [Interfaces](interfaces))."},
+    {text: "`errors.AsType[*argError](err)` — a forma moderna de descobrir o tipo: percorre a cadeia de erros, acha o primeiro que é `*argError` e devolve `(valor, true)`. Sem match: `(zero, false)`."},
     {text: "Saída:\n$ go run custom-errors.go\n42\ncan't work with it"}
   ]}
 />
 
-<a href="https://go.dev/play/p/0WHh8JFOjQq" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Quando criar um tipo de erro próprio?
+
+A decisão tem três níveis, do mais simples ao mais poderoso:
+
+| Necessidade | Ferramenta |
+|---|---|
+| Só a mensagem | `errors.New` ([Erros](errors)) |
+| Identificar uma condição conhecida | erro **sentinela** + `errors.Is` |
+| Carregar dados e decidir **por tipo** | tipo de erro próprio + `errors.AsType` |
+
+Crie um tipo quando o tratamento precisa **ler campos** do erro (ex.: `ae.arg` para logging, `ae.retryAfter` para backoff) ou quando quer `switch`-ar por tipo. Se a falha é só "aconteceu X", um sentinela basta — tipo próprio é mais código.
+
+## `AsType` e o `As` clássico
+
+`errors.AsType[*argError](err)` é a forma moderna (a documentação da stdlib recomenda preferi-la). O `As` clássico, que você ainda vai ver em muito código, usa um alvo ponteiro:
+
+```go
+var ae *argError
+if errors.As(err, &ae) { // preenche ae se encontrar *argError na cadeia
+    fmt.Println(ae.arg)
+}
+```
+
+As duas percorrem a cadeia de `%w` igual ao `errors.Is` — mas em vez de comparar **valores**, comparam **tipos**. `Is` responde "é o sentinela X?"; `AsType` responde "é (ou envolve) um erro do tipo T?".
+
+## Em código real
+
+O padrão aparece em bibliotecas e camadas de I/O: um `*net.DNSError`, um `*json.SyntaxError` (com a posição do erro), um erro de validação com o campo ofensor. O consumidor faz `AsType` para extrair o que precisa sem depender do texto da mensagem — mensagens mudam, tipos são contrato.
+
+## Armadilhas comuns
+
+- **Receiver de valor × ponteiro**: se o método `Error()` tem receiver `*argError`, só `*argError` é um `error` (o valor `argError{}` **não** satisfaz). Devolva sempre o ponteiro — ou use receiver de valor e devolva o valor, mas não misture.
+- **Tipo sem dados**: um tipo de erro que só tem `Error()` e nenhum campo é um sentinela com passos extras. Use `errors.New`.
+- **Convenção**: ponteiro para tipo de erro costuma ser imutável — não exponha setters; crie com o construtor e leia os campos.
+- **Mensagem vazia ou sem o dado-chave**: `Error()` deve ser legível por si só — quem vê `"42 - can't work with it"` no log entende sem abrir o código.
+
+## Pratique
+
+1. **Reproduza**: rode `custom-errors.go` e explique por que `ae.arg` é `42`.
+2. **Modifique**: faça `f` envolver o erro com `fmt.Errorf(\"f(%d): %w\", arg, &argError{...})` e confirme que o `AsType` continua achando `*argError` na cadeia.
+3. **Aplique**: crie `type validacaoError struct { campo string }`, retorne-o numa função de validação e trate com `AsType` no `main`, imprimindo `campo`.
+
+## Próximo passo
+
+Erro é valor, e valor é tratado. Mas há falhas que **não devolvem erro** — elas derrubam o programa: o [Panic](panic). Você vai ver quando ele é a resposta certa (raro) e quando é abuso.

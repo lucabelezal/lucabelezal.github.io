@@ -4,8 +4,10 @@ title: Exec
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Na página anterior, o programa criou um **filho** e continuou vivo. `syscall.Exec` é o oposto: ele **substitui o processo atual** pelo programa dado — mesma PID, mesma identidade, mas o código Go some e o novo programa assume. É o mecanismo de `exec` do Unix, e o motivo de existir: programas wrapper que querem "virar" o alvo (um `ssh` que vira o shell, um init que vira o serviço).
+
 <CodeExplanation
-  title={"Exec"}
+  title={"execing-processes.go"}
   code={`package main
 
 import (
@@ -27,14 +29,50 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Neste exemplo faremos exec de `ls`. Go exige path absoluto, então usamos `exec.LookPath` (provavelmente `/bin/ls`)."},
-    {text: "`Exec` exige args em slice (não uma string única). Passamos alguns args comuns. Note que o primeiro deve ser o nome do programa."},
-    {text: "`Exec` também precisa de [variáveis de ambiente](environment-variables). Aqui fornecemos o ambiente atual."},
-    {text: "Aqui a chamada `syscall.Exec`. Se bem-sucedida, a execução do processo termina e é substituída por `/bin/ls -a -l -h`. Se houver erro, recebemos retorno."},
-    {text: "Saída:\n# When we run our program it is replaced by `ls`.\n$ go run execing-processes.go\ntotal 16\ndrwxr-xr-x  4 mark 136B Oct 3 16:29 .\ndrwxr-xr-x 91 mark 3.0K Oct 3 12:50 ..\n-rw-r--r--  1 mark 1.3K Oct 3 16:28 execing-processes.go\n\n# Note that Go does not offer a classic Unix `fork`\n# function. Usually this isn't an issue though, since\n# starting goroutines, spawning processes, and exec'ing\n# processes covers most use cases for `fork`."}
+    {text: "`exec.LookPath(\"ls\")` acha o caminho absoluto do binário no PATH (provavelmente `/bin/ls`) — o `syscall.Exec` exige o caminho, não um nome."},
+    {text: "Os argumentos são uma lista; **o primeiro é o nome do programa** (`ls`), o resto são os args dele. Igual à regra de [Argumentos de Linha de Comando](command-line-arguments)."},
+    {text: "`env` — o ambiente do processo atual é repassado (`os.Environ()`), como na página [Variáveis de Ambiente](environment-variables)."},
+    {text: "`syscall.Exec(binary, args, env)` troca a imagem do processo. Se der certo, **não retorna** — o `ls` roda no lugar do Go. Se der erro, aí sim recebemos o retorno (e panica)."},
+    {text: "Saída (real):\n$ go run execing-processes.go\ntotal 16\ndrwxr-xr-x@  ...  .\ndrwxr-xr-x@  ...  ..\n-rw-r--r--@  ...  go.mod\n-rw-r--r--@  ...  main.go\n\n# O programa virou o `ls -a -l -h` no diretório atual."}
   ]}
 />
 
-<a href="https://go.dev/play/p/s9qg7olf1dM" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## `exec.Command` × `syscall.Exec`
+
+| | `os/exec.Command` (página anterior) | `syscall.Exec` |
+|---|---|---|
+| Resultado | Cria um **filho**; o Go continua | **Substitui** o processo; o Go acaba |
+| PID | Novo PID | Mesmo PID |
+| Retorno | Volta com output/código | Só retorna em erro |
+| Uso | Rodar ferramentas e continuar | Wrappers que viram o alvo |
+
+Regra: 99% dos casos querem `exec.Command` (você quer continuar e ver o resultado). `syscall.Exec` é para quando o programa **não deve voltar** — o sucessor assume o processo e herda stdin/stdout/stderr e o exit code naturalmente.
+
+## Quando usar Exec de verdade
+
+- **Wrappers de comando**: um `meu-git` que valida e então vira o `git` real — sinais e exit code do git passam direto.
+- **`init`/supervisores** que executam o serviço final como o próprio processo.
+- **Login shells**: o shell substitui a si mesmo pelo comando do usuário.
+- Sinais: como o processo é o mesmo, `kill` chega direto no programa executado — diferente do filho, onde você gerencia a propagação (página [Sinais](signals)).
+
+## Sobre `fork`
+
+Go não expõe o `fork` clássico do Unix (criar uma cópia do processo). Na prática isso raramente falta: você tem **goroutines** (leves, dentro do processo) para concorrência, `exec.Command` para filhos e `syscall.Exec` para substituição — os três casos que o `fork`+`exec` cobria juntos.
+
+## Armadilhas comuns
+
+- **Passar o caminho errado**: `syscall.Exec` não busca no PATH. Use `exec.LookPath` antes.
+- **Esquecer o nome na frente dos args**: `args[0]` deve ser o nome do programa (é o que o alvo vê como `argv[0]`).
+- **Achar que o código continua depois**: se o `Exec` funciona, não há "depois". O código após a chamada só roda em caso de erro.
+- **Usar `Exec` onde `Command` bastaria**: se você quer o resultado e seguir, `syscall.Exec` mata seu programa — escolha a ferramenta certa.
+- **Semáforo de build**: `syscall.Exec` é Unix-only; para portabilidade, mantenha em arquivo com `//go:build unix`.
+
+## Pratique
+
+1. **Reproduza**: rode `execing-processes.go` e note que o `ls` roda com o mesmo PID (confira com `echo $$` não — compare o PID antes/depois num wrapper).
+2. **Modifique**: troque o alvo para `env` (lista o ambiente) e depois `sh -c` não — use `echo` com um argumento.
+3. **Aplique**: escreva um wrapper `meu-ls` que loga "rodando ls" e então `syscall.Exec` o `ls` real, passando `os.Args[1:]` como argumentos.
+
+## Próximo passo
+
+Processos substituídos e filhos criados — e quando um deles precisa **parar com elegância**? Em [Sinais](signals), o `SIGINT`/`SIGTERM` que o SO envia, capturado com `signal.NotifyContext` para o shutdown gracioso.

@@ -4,8 +4,10 @@ title: Generics
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Achar o índice de um elemento: uma função para `[]string`, outra para `[]int`, outra para `[]float64`? Sem **generics**, você duplicaria ou cairia em `any` + type assertion. Com generics, uma função serve para qualquer tipo que satisfaça a **restrição** — e o compilador verifica os tipos em tempo de compilação.
+
 <CodeExplanation
-  title={"Generics"}
+  title={"generics.go"}
   code={`package main
 
 import "fmt"
@@ -54,16 +56,59 @@ func main() {
     fmt.Println("list:", lst.AllElements())
 }`}
   sections={[
-    {text: "Como exemplo de função genérica, `SlicesIndex` recebe um slice de qualquer tipo `comparable` e um elemento, retornando o índice da primeira ocorrência ou -1. A restrição `comparable` permite comparar com `==` e `!=`. Veja [este post](https://go.dev/blog/deconstructing-type-parameters). Note que ela existe na stdlib como [slices.Index](https://pkg.go.dev/slices#Index)."},
-    {text: "Como exemplo de tipo genérico, `List` é uma lista encadeada com valores de qualquer tipo."},
-    {text: "Podemos definir métodos em tipos genéricos como em tipos normais, mas mantendo os parâmetros de tipo. O tipo é `List[T]`, não `List`."},
-    {text: "`AllElements` retorna todos os elementos como slice. No próximo exemplo veremos uma forma mais idiomática de iterar sobre tipos customizados."},
-    {text: "Ao chamar funções genéricas, podemos confiar em _inferência de tipo_. Não precisamos especificar `S` e `E` em `SlicesIndex` — o compilador infere."},
-    {text: "... embora também pudéssemos especificar explicitamente."},
+    {text: "`func SlicesIndex[S ~[]E, E comparable](s S, v E) int` — dois parâmetros de tipo entre `[...]`: `E` (o elemento) e `S` (o slice). A restrição `comparable` permite `==`/`!=` no corpo."},
+    {text: "`~[]E` significa \"qualquer tipo cujo tipo subjacente é `[]E`\" — não só o slice literal, mas também um tipo definido por você que se baseia em slice. `E comparable` exige que o elemento seja comparável (não pode ser slice/map/função)."},
+    {text: "`type List[T any] struct { ... }` — tipos genéricos: a lista encadeada guarda valores de `T`. `any` = \"qualquer tipo\" (sem restrição)."},
+    {text: "Métodos em tipos genéricos mantêm o parâmetro: o receiver é `*List[T]`, nunca `*List` (List sozinho não é um tipo)."},
+    {text: "`AllElements` devolve um slice de `T` — repare no `var elems []T`: o `T` aparece no corpo como um tipo normal."},
+    {text: "**Inferência**: `SlicesIndex(s, \"zoo\")` — o compilador descobre `E=string` sozinho. A linha seguinte mostra a forma **explícita** `SlicesIndex[[]string, string](...)`, que raramente é necessária."},
     {text: "Saída:\n$ go run generics.go\nindex of zoo: 2\nlist: [10 13 23]"}
   ]}
 />
 
-<a href="https://go.dev/play/p/7v7vElzhAeO" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Restrições: o "contrato" do tipo
+
+`comparable` e `any` são as restrições embutidas; para ordenação existe `cmp.Ordered` (tipos com `<`). Restrições dizem **quais operações o corpo pode usar**: com `comparable`, você compara com `==`; com `cmp.Ordered`, compara com `<`. Se sua função precisa de um método específico, defina uma restrição com interface:
+
+```go
+type Stringer interface {
+    String() string
+}
+
+func Descreve[T Stringer](v T) string {
+    return v.String() // restrição garante o método
+}
+```
+
+## Generics × interfaces: quando cada um
+
+A distinção (que você já viu no guia de [Interfaces](interfaces)):
+
+- **Interface** abstrai *comportamento* (métodos) de tipos **diferentes** — desacoplar, polimorfismo. `fmt.Stringer`, `io.Reader`.
+- **Generics** abstrai *estrutura* (dados) mantendo o **tipo exato** — uma lista de `int` continua `[]int`, sem conversão.
+
+Regra: se o código só chama métodos, interface basta; se ele precisa preservar/derivar o tipo (`List[int]`, `[]T`), generics. E um conselho de sênior: **generics também têm hora** — escreva a versão concreta primeiro e generalize quando a segunda duplicação aparecer (o mesmo "não extraia antes da hora" das interfaces).
+
+## Em código real
+
+- A stdlib já é genérica: `slices` (a função deste exemplo existe como `slices.Index`), `maps`, `cmp` — tudo que você usou nas páginas de [Slices](slices) e [Maps](maps).
+- Containers tipados: filas, pilhas, caches `List[T]` — sem `any` + assertion.
+- Helpers de coleção: filtrar/mapear mantendo o tipo.
+
+## Armadilhas comuns
+
+- **Restrição frouxa demais**: `[T any]` + `==` no corpo não compila (o `any` não garante `==`). Use `comparable` quando comparar.
+- **`any` + type assertion por todo lado**: se você está convertendo dentro da função genérica, provavelmente a restrição está errada.
+- **Receiver `*List` sem `[T]`**: erro — o parâmetro de tipo precisa estar no receiver.
+- **`~[]E` esquecido**: sem o `~`, seu tipo `type MeuSlice []int` não satisfaz `S []E`. O `~` aceita "tipos baseados em".
+- **Generalizar cedo demais**: generics custam legibilidade. Duas implementações concretas primeiro.
+
+## Pratique
+
+1. **Reproduza**: rode `generics.go`; depois chame `SlicesIndex` num `[]int` e num `[]float64` — sem mudar a função.
+2. **Modifique**: escreva `func Mapa[T, U any](s []T, f func(T) U) []U` (o `map` funcional) e use com `func(n int) string`.
+3. **Aplique**: crie `type Pilha[T any] struct{ ... }` com `Push`/`Pop` usando `[]T` — e reflita onde generics pouparam duplicação.
+
+## Próximo passo
+
+Generics mantêm o tipo; **iteradores** fazem o `range` alcançar tipos customizados. Em [Range sobre Iteradores](range-over-iterators), funções que você pode percorrer com `for range` — do finito ao infinito.

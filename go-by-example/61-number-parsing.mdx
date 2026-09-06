@@ -4,8 +4,10 @@ title: Parsing de Números
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+"123" vindo de um form, de um CSV ou de um JSON não é um número — é uma string. O pacote `strconv` converte texto em números com controle fino de **base** (decimal, hex, octal) e **largura** (32 ou 64 bits), e devolve **erro** — não panic — quando a entrada não é numérica. É a ponte entre o que o usuário digita e o que o programa calcula.
+
 <CodeExplanation
-  title={"Parsing de Números"}
+  title={"number-parsing.go"}
   code={`package main
 
 import (
@@ -28,17 +30,53 @@ func main() {
     fmt.Println(e)
 }`}
   sections={[
-    {text: "O pacote `strconv` faz parsing de números."},
-    {text: "Em `ParseFloat`, o `64` indica bits de precisão."},
-    {text: "Em `ParseInt`, `0` infere a base da string. `64` exige resultado em 64 bits."},
-    {text: "`ParseInt` reconhece números em hex."},
-    {text: "`ParseUint` também está disponível."},
-    {text: "`Atoi` é conveniência para parsing base 10 de `int`."},
-    {text: "Funções de parsing retornam erro em input inválido."},
-    {text: "Saída:\n$ go run number-parsing.go \n1.234\n123\n456\n789\n135\nstrconv.ParseInt: parsing \"wat\": invalid syntax\n\n# Next we'll look at another common parsing task: URLs."}
+    {text: "`strconv.ParseFloat(\"1.234\", 64)` — o `64` é a precisão em bits (32 ou 64). Usado para ler o que `fmt` escreveu com `%v`/`%e`."},
+    {text: "`ParseInt(s, base, bitSize)`: `0` na base = **inferir pelo prefixo**; `64` = cabe em `int64`. Devolve `(valor, error)`."},
+    {text: "Com base `0`, `0x1c8` é reconhecido como hex e vira `456`. `0` no início indicaria octal; `0b` binário."},
+    {text: "`ParseUint` é a versão sem sinal (não aceita `-`)."},
+    {text: "`strconv.Atoi` é a conveniência: `ParseInt(s, 10, 0)` — base 10, largura do `int` da plataforma."},
+    {text: "Entrada inválida devolve **erro descritivo** (não panic): aqui, `parsing \"wat\": invalid syntax`. Sempre trate em código real."},
+    {text: "Saída:\n$ go run number-parsing.go\n1.234\n123\n456\n789\n135\nstrconv.ParseInt: parsing \"wat\": invalid syntax"}
   ]}
 />
 
-<a href="https://go.dev/play/p/ZAMEid6Fpmu" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## A assinatura e seus três parâmetros
+
+```go
+strconv.ParseInt(s string, base int, bitSize int) (int64, error)
+```
+
+- **base**: `10` para decimal comum; `0` para **inferir** (`0x` → 16, `0` → 8, `0b` → 2, senão 10); `16` para forçar hex.
+- **bitSize**: `32`/`64` — o resultado é checado contra a faixa do tipo. Um número que estoura devolve erro de *range*, não truncamento silencioso.
+- **Retorno**: sempre `(valor, error)`. Nada de zero mágico: erro explícito para "não era número".
+
+O par inverso também existe: `strconv.FormatInt`, `FormatFloat`, `FormatUint` e `strconv.Itoa` convertem número → string. Juntos cobrem o ciclo "texto do usuário ↔ número".
+
+## ParseInt × Atoi × ParseFloat
+
+| Função | Para quê |
+|---|---|
+| `Atoi(s)` | Inteiro decimal simples (idade, contagem) |
+| `ParseInt(s, base, bits)` | Controle de base (hex de config, `0x`) e largura |
+| `ParseUint` | Sem sinal (IDs grandes, uint64) |
+| `ParseFloat(s, bits)` | Decimal — inclusive notação `1e3` |
+
+Para JSON não use `strconv` na mão — o `encoding/json` já converte (página [JSON](json)). `strconv` brilha para entrada textual crua (flags de CLI, CSV, query params). E há `fmt.Sscanf` para padrões mais complexos misturando texto e número numa string só.
+
+## Armadilhas comuns
+
+- **Ignorar o erro**: `Atoi` em "wat" devolve erro — descartá-lo deixa o valor zero silencioso. Em input de usuário, sempre trate (retorne erro de validação).
+- **`Atoi` não entende hex**: `Atoi("0x10")` dá erro. Para hex use `ParseInt(s, 0, 64)` (ou base 16).
+- **Esperar float de `Atoi`**: `Atoi("1.5")` falha; use `ParseFloat`.
+- **Overflow silencioso**: com bitSize errado (ou `Atoi` num int de 32 bits), o valor estoura ou dá erro de range. `ParseInt` com `64` é o padrão seguro.
+- **Espaços**: `ParseInt(" 123 ")` falha. Faça `strings.TrimSpace` antes (página [Funções de Strings](string-functions)).
+
+## Pratique
+
+1. **Reproduza**: rode `number-parsing.go` e explique por que `0x1c8` vira `456`.
+2. **Modifique**: parseie `"0b1010"`, `"0o17"` e `"017"` com base 0 — e descubra qual é octal e qual decimal. Depois teste um número que estoura `int32`.
+3. **Aplique**: escreva `func lerInteiro(s string) (int, error)` que faz `TrimSpace` + `Atoi` e trata o erro — use numa leitura de idade vinda de um form.
+
+## Próximo passo
+
+Números lidos; agora endereços. Em [Parsing de URLs](url-parsing), você desmonta uma URL nas suas partes — scheme, usuário, host, porta, path, query e fragmento — sem regex na mão.

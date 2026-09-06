@@ -4,8 +4,10 @@ title: Composição de Structs
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Quem vem de Java ou C# procura `extends` e não encontra. **Go não tem herança.** Em vez de "Cachorro **é um** Animal", Go compõe: "Cachorro **tem um** Animal" — e quando você quer o acesso curto aos campos e métodos do componente, usa o **embedding** (campo sem nome). O embedding *parece* herança, mas não é: não existe *override* nem polimorfismo de hierarquia. Vamos ver o que ele faz de verdade.
+
 <CodeExplanation
-  title={"Composição de Structs"}
+  title={"struct-embedding.go"}
   code={`package main
 
 import "fmt"
@@ -40,12 +42,12 @@ func main() {
     fmt.Println("describer:", d.describe())
 }`}
   sections={[
-    {text: "`container` faz _embed_ de `base`. Parece um campo sem nome."},
-    {text: "Ao criar structs com literais, precisamos inicializar o embedding explicitamente; o tipo embutido serve como nome do campo."},
-    {text: "Podemos acessar campos de `base` diretamente em `co`, ex. `co.num`."},
-    {text: "Alternativamente, pode usar o caminho completo com o nome do tipo embutido."},
-    {text: "Como `container` embute `base`, os métodos de `base` viram métodos de `container`. Aqui invocamos um método embutido diretamente em `co`."},
-    {text: "Embedding com métodos pode dar implementações de interface a outros structs. Aqui `container` implementa `describer` porque embute `base`."},
+    {text: "`container` faz *embed* de `base`: um campo sem nome cujo tipo é `base`. Sintaticamente é só `base` na lista de campos."},
+    {text: "No literal, o tipo embutido vira o nome do campo: `base: base{num: 1}`. Embedding encurta o acesso, não a construção."},
+    {text: "`co.num` — campo **promovido**: `num` de `base` é acessível direto em `co`, como se fosse de `container`."},
+    {text: "O caminho completo continua disponível: `co.base.num`."},
+    {text: "`co.describe()` — método promovido: `describe` de `base` vira método de `container`."},
+    {text: "E o pulo do gato: como `container` embute `base`, ele **herda o method set** — `container` satisfaz `describer` porque `base` tem `describe()`. Embedding pode implementar interface."},
     {text: "Saída:\n$ go run struct-embedding.go\nco={num: 1, str: some name}\nalso num: 1\ndescribe: base with num=1\ndescriber: base with num=1"}
   ]}
 />
@@ -53,3 +55,88 @@ func main() {
 <a href="https://go.dev/play/p/-LOu1L0i2tR" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Embedding não é herança: não existe *override*
+
+O método do tipo externo **esconde** o do embutido, mas os dois continuam acessíveis — e a escolha é estática, não dinâmica:
+
+<CodeExplanation
+  title={"shadowing.go"}
+  code={`package main
+
+import "fmt"
+
+type Base struct{}
+
+func (b Base) Hello() string { return "base" }
+
+type Child struct {
+    Base
+}
+
+func (c Child) Hello() string { return "child" }
+
+type Greeter interface {
+    Hello() string
+}
+
+func Greet(g Greeter) {
+    fmt.Println(g.Hello())
+}
+
+func main() {
+    c := Child{}
+    fmt.Println("c.Hello():", c.Hello())
+    fmt.Println("c.Base.Hello():", c.Base.Hello())
+    Greet(Base{})
+    Greet(Child{})
+}`}
+  sections={[
+    {text: "`Child` embute `Base` **e** define seu próprio `Hello()`. O método de `Child` tem prioridade — chamar `c.Hello()` devolve `\"child\"`."},
+    {text: "O método embutido não foi sobrescrito: `c.Base.Hello()` ainda devolve `\"base\"`. Ambos coexistem."},
+    {text: "Sem *override*: a escolha é pelo **tipo estático**, não por despacho dinâmico de hierarquia. `c.Hello()` é `child` porque `Child` declara `Hello`, ponto."},
+    {text: "O polimorfismo de Go vive nas interfaces: `Base` e `Child` são tipos independentes que satisfazem `Greeter`, e `Greet` chama o método de cada um conforme o valor concreto guardado na interface."},
+    {text: "Saída:\n$ go run shadowing.go\nc.Hello(): child\nc.Base.Hello(): base\nbase\nchild"}
+  ]}
+/>
+
+Se isso fosse herança, `Hello` de `Base` seria chamado polimorficamente dentro de métodos da própria `Base` mesmo quando executados por um `Child`. Em Go isso **não** acontece — embedding é composição com atalho de sintaxe, não uma relação "é um".
+
+## Campo promovido × campo nomeado
+
+Quando a subestrutura é um detalhe interno, o embedding encurta o código (`co.num` em vez de `co.base.num`). Mas quando ela precisa ficar **visível e explícita**, um campo nomeado é mais claro:
+
+```go
+type Carro struct {
+    Motor // campo promovido: carro.Potencia()
+}
+
+type CarroNomeado struct {
+    motor Motor // campo comum: carroNomeado.motor.Potencia()
+}
+```
+
+Regra de design: use embedding para **promover campos/métodos** (e para ganhar method set de interface); use campo nomeado quando a relação "tem um" precisa ser explícita na API — por exemplo, `Pedido` tem `Cliente`, e ninguém quer `pedido.Nome` ambiguamente promovido.
+
+## Em código real
+
+- **Composição de interfaces**: `Shaper` embutindo `Sizer` e `fmt.Stringer` (página de [Interfaces](interfaces)) usa exatamente o mesmo mecanismo, só que entre interfaces.
+- **Struct embutindo `sync.Mutex`**: um tipo que embute um mutex "ganha" `Lock`/`Unlock` — prática comum, mas que exige cuidado (o mutex não pode ser copiado). Detalhe em [Mutexes](mutexes).
+- **Tipos da stdlib**: `bufio.Reader` dentro de `bufio.ReadWriter`, `http.ResponseWriter` em handlers — o padrão aparece em toda parte.
+
+## Armadilhas comuns
+
+- **Achar que embedding é herança**: não há *override*, nem chamada de "super", nem polimorfismo automático por hierarquia. O método embutido é promovido, não herdado com despacho dinâmico.
+- **Colisão de nomes**: se dois tipos embutidos expõem o mesmo campo/método, `co.nome` vira **ambíguo** e não compila — você precisa do caminho completo.
+- **Camadas profundas de embedding**: três níveis de promoção escondem de onde o campo veio. Prefira poucos níveis e campos nomeados quando a origem importa.
+- **Embedding de ponteiro para tipo externo**: embutir `*base` em package diferente funciona, mas o ciclo de vida do ponteiro precisa ser garantido por quem constrói — cuidado com `nil`.
+
+## Pratique
+
+1. **Reproduza**: rode `struct-embedding.go` e `shadowing.go`; explique por que `co.describe()` funciona sem `container` declarar nada.
+2. **Modifique**: adicione um método `describe()` a `container` que usa `fmt.Sprintf("container with %v", co.num)` e observe o que muda na saída — inclusive qual versão uma interface chama.
+3. **Aplique**: modele `Animal{Vida}` embutido em `Cachorro{Raca}` (campos promovidos) e depois refaça com campo nomeado `animal Animal` — compare a legibilidade dos dois acessos.
+
+## Próximo passo
+
+Structs, métodos e interfaces já te dão modelagem de tipos. O próximo degrau é escrever código que funciona para **vários tipos** sem duplicar: em [Generics](generics).

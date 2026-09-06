@@ -4,8 +4,10 @@ title: Maps
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Listas indexam por número; o mundo indexa por **chave** — "saldo do cliente 42", "status do pedido #7". O **map** é o dicionário de Go: associa chaves a valores, cresce sozinho e responde à pergunta mais importante de uma busca: *a chave existe?* A resposta a essa pergunta — e não apenas "que valor tem?" — é o que separa quem entende map de quem só copia.
+
 <CodeExplanation
-  title={"Maps"}
+  title={"maps.go"}
   code={`package main
 
 import (
@@ -37,20 +39,71 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Defina pares chave/valor com a sintaxe `name[key] = val`."},
-    {text: "Imprimir um map com `fmt.Println` mostra todos os pares chave/valor."},
-    {text: "Obtenha o valor de uma chave com `name[key]`."},
-    {text: "Se a chave não existe, retorna o [zero value](https://go.dev/ref/spec#The_zero_value) do tipo do valor."},
-    {text: "O builtin `len` retorna o número de pares chave/valor quando chamado em um map."},
-    {text: "O builtin `delete` remove pares chave/valor de um map."},
-    {text: "Para remover *todos* os pares chave/valor de um map, use o builtin `clear`."},
-    {text: "O segundo retorno opcional ao buscar um valor no map indica se a chave existia. Isso permite distinguir entre chaves ausentes e chaves com zero values como `0` ou `\"\"`. Aqui não precisamos do valor, então ignoramos com o _blank identifier_ `_`."},
-    {text: "Você também pode declarar e inicializar um novo map na mesma linha com esta sintaxe."},
-    {text: "O pacote `maps` contém várias funções utilitárias para maps."},
-    {text: "Saída:\n# Note that maps appear in the form `map[k:v k:v]` when\n# printed with `fmt.Println`.\n$ go run maps.go \nmap: map[k1:7 k2:13]\nv1: 7\nv3: 0\nlen: 2\nmap: map[k1:7]\nmap: map[]\nprs: false\nmap: map[bar:2 foo:1]\nn == n2"}
+    {text: "`make(map[string]int)` cria um map de `string` → `int`. Escrever usa `m[chave] = valor`."},
+    {text: "`fmt.Println` mostra todos os pares. A ordem de impressão **não é garantida**."},
+    {text: "Ler com `m[\"k1\"]` devolve `7`."},
+    {text: "`m[\"k3\"]` — a chave **não existe**, e Go devolve o *zero value* do valor (`0`). Aqui mora a ambiguidade: `0` é ausência ou é um valor real?"},
+    {text: "`len(m)` conta os pares."},
+    {text: "`delete(m, \"k2\")` remove um par."},
+    {text: "`clear(m)` remove **todos** os pares de uma vez."},
+    {text: "O segundo retorno, `prs` (*present*), diz se a chave existia. É ele que desfaz a ambiguidade do zero value. Aqui descartamos o valor com `_`."},
+    {text: "Literal de map numa linha: `map[string]int{\"foo\": 1, ...}`."},
+    {text: "O pacote `maps` traz utilitários: `Equal`, `Clone`, `Keys`, `Values`, `Copy` (Go 1.21+)."},
+    {text: "Saída:\n$ go run maps.go\nmap: map[k1:7 k2:13]\nv1: 7\nv3: 0\nlen: 2\nmap: map[k1:7]\nmap: map[]\nprs: false\nmap: map[bar:2 foo:1]\nn == n2"}
   ]}
 />
 
 <a href="https://go.dev/play/p/5jpkxJ2T0Lv" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## A pergunta certa: a chave existe?
+
+`m["k3"]` devolve `0` tanto para "chave ausente" quanto para "chave presente com valor 0". Para distinguir, use o **comma-ok**:
+
+```go
+if v, ok := m["k3"]; ok {
+    // chave existe, v é o valor
+} else {
+    // chave não existe
+}
+```
+
+É o mesmo padrão `if x, ok := ...; ok` do [type assertion](interfaces). Regra: quando o valor pode ser `0`/`""`/`false` legítimo, o `ok` é obrigatório — contar ocorrências ou checar presença sem ele é bug silencioso.
+
+## Map é referência — mas cuidado com o `nil`
+
+Assim como slices, um map carrega uma referência interna: passá-lo para uma função **muta o original**, sem ponteiro. Duas regras que pegam todo mundo:
+
+- **Ler de um map `nil` é seguro** (devolve zero value): `var m map[string]int` + `m["a"]` → `0`.
+- **Escrever num map `nil` é *panic***: `m["a"] = 1` com `m == nil` derruba o programa. Por isso `make` (ou literal) antes de escrever — o *zero value* de map **não** é utilizável, diferente de slice.
+
+## Ordem de iteração é aleatória (de propósito)
+
+`range` sobre um map percorre as chaves em ordem **arbitrária**, que muda a cada iteração. O Go faz isso de propósito para ninguém depender de ordem. Se você precisa de ordem: extraia as chaves com `maps.Keys`, ordene com `slices.Sort`, e itere nessa ordem.
+
+## Chaves comparáveis, valores qualquer coisa
+
+Chaves podem ser qualquer tipo **comparável** com `==`: `string`, `int`, `bool`, **structs** (úteis como chave composta), ponteiros. Não podem: slices, maps, funções. Valores podem ser qualquer tipo — inclusive outro map ou slice.
+
+## Maps não se comparam com `==`
+
+`m1 == m2` só compila se comparar com `nil`. Para comparar conteúdo, `maps.Equal(n, n2)` (e `maps.EqualFunc` para valores com critério próprio).
+
+## Armadilhas comuns
+
+- **Escrever em map `nil`**: `var m map[string]int; m["x"] = 1` → *panic: assignment to entry in nil map*. Sempre `make` antes de escrever.
+- **Confiar no zero value para "não existe"**: `if m["k3"] > 0` falha quando o valor legítimo é 0. Use comma-ok.
+- **Depender da ordem do `range`**: iteração de map é arbitrária. Ordene as chaves quando precisar de sequência.
+- **Copiar map com `=`**: `n2 := n` não copia nada — os dois apontam para o mesmo map; mutar um muda o outro. Use `maps.Clone`.
+- **Usar slice como chave**: não compila (slice não é comparável). Para "chave composta", use struct ou serialize.
+
+## Pratique
+
+1. **Reproduza**: rode `maps.go` e explique por que `v3` é `0` e `prs` é `false`.
+2. **Modifique**: adicione `m["k3"] = 0` e busque `k3` com comma-ok — perceba a diferença entre `v3` e `prs`. Depois itere com `range` e rode 3 vezes: a ordem muda.
+3. **Aplique**: escreva um contador de palavras (`map[string]int`) que usa comma-ok para decidir se incrementa ou inicializa — depois reescreva com a leitura direta `m[w]++` (funciona porque ausente = 0). Compare.
+
+## Próximo passo
+
+Com slices e maps você tem as coleções de Go. O próximo passo é organizar comportamento com **funções** — múltiplos retornos, variádicas e closures, que você já visitou em [Funções](functions).

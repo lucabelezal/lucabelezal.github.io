@@ -1,11 +1,12 @@
 ---
 title: Timers
 ---
-
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Agendar algo para **daqui a X** é um timer. O `time.NewTimer(d)` cria um timer que entrega um valor no channel `C` quando o prazo chega — e, ao contrário do `time.Sleep`, ele pode ser **cancelado antes** de disparar.
+
 <CodeExplanation
-  title={"Timers"}
+  title={"timers.go"}
   code={`package main
 
 import (
@@ -29,14 +30,45 @@ func main() {
     time.Sleep(2 * time.Second)
 }`}
   sections={[
-    {text: "Timers representam um único evento futuro. Você diz quanto esperar e ele fornece um channel notificado naquele momento. Este timer espera 2 segundos."},
-    {text: "`<-timer1.C` bloqueia no channel `C` até o timer disparar."},
-    {text: "Se quisesse só esperar, poderia usar `time.Sleep`. Um motivo para usar timer é poder cancelá-lo antes de disparar. Aqui um exemplo."},
-    {text: "Dê tempo suficiente para `timer2` disparar, se fosse disparar, para mostrar que foi parado."},
-    {text: "Saída:\n# The first timer will fire ~2s after we start the\n# program, but the second should be stopped before it has\n# a chance to fire.\n$ go run timers.go\nTimer 1 fired\nTimer 2 stopped"}
+    {text: "`time.NewTimer(2s)` cria um evento futuro; `timer1.C` é o channel que recebe quando disparar."},
+    {text: "`<-timer1.C` bloqueia até os 2s — o timer disparou e o valor chegou."},
+    {text: "O segundo timer roda numa goroutine, mas **`timer2.Stop()` o cancela antes**: o `Stop` devolve `true` se cancelou a tempo."},
+    {text: "O `Sleep` final dá tempo para o timer2 disparar — se não tivesse sido parado — e confirmar que não disparou."},
+    {text: "Saída:\n$ go run timers.go\nTimer 1 fired\nTimer 2 stopped"}
   ]}
 />
 
-<a href="https://go.dev/play/p/gF7VLRz3URM" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Timer × Sleep
+
+| | `time.Sleep` | `time.NewTimer` |
+|---|---|---|
+| Espera | Simples, sem controle | Dá um channel `C` |
+| Cancelar antes | Não dá | `timer.Stop()` |
+| Usar em `select` | Não | `case <-timer.C:` (timeouts!) |
+
+O timer é a versão *agendável* da espera: você pode esperar num `select`, cancelar, ou reutilizar. Para "dormir e pronto", o `Sleep` basta.
+
+## Em código real
+
+- **Timeout num select**: `time.After(d)` é açúcar para `NewTimer(d).C` — a página [Timeouts](timeouts) mostrou. Em laços, prefira `NewTimer` + `Stop` para não acumular.
+- **Cancelar uma operação agendada**: `Stop()` antes do disparo evita que o trabalho aconteça.
+- **`Reset`**: reiniciar um timer para um novo prazo (útil em retries com backoff).
+
+Detalhe fino: depois que o timer dispara, se você não ler `C` e chamar `Stop()`, o `Stop` devolve `false` (já disparou). E o channel `C` entrega um valor — se você só quer o timer como timeout num select único, o valor não importa.
+
+## Armadilhas comuns
+
+- **Timer disparado e ninguém lê `C`**: não é leak grave, mas o valor fica lá; num loop, drene ou use `Stop`.
+- **`Stop` devolve `false` e você assume que disparou**: `false` também acontece se o valor já foi entregue. Interprete com cuidado.
+- **`time.After` em laço**: cria um timer por iteração — use `NewTimer` + `Reset` quando o laço é longo (relembre a página [Timeouts](timeouts)).
+- **Usar timer onde `context.WithTimeout` é melhor**: para operações que têm contexto, o timer manual e o `select` funcionam, mas o `ctx` propaga o prazo pelas camadas (página [Context](context)).
+
+## Pratique
+
+1. **Reproduza**: rode `timers.go` e confirme que \"Timer 2 fired\" nunca aparece.
+2. **Modifique**: remova o `Stop()` — agora \"Timer 2 fired\" aparece antes do fim (depois de 1s). Depois use `timer2.Reset(1 * time.Second)` e observe.
+3. **Aplique**: reimplemente o timeout da página [Timeouts](timeouts) com `NewTimer` + `Stop` explícito num laço de 3 tentativas.
+
+## Próximo passo
+
+Timers disparam **uma vez**; o que dispara **repetidamente** é o ticker. Em [Tickers](tickers), o evento periódico — de heartbeats a relógios de dashboard.

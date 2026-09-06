@@ -4,8 +4,10 @@ title: Laços For
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Repetir trabalho é o coração da programação. Diferente de muitas linguagens, Go tem **um único laço**: `for`. Em vez de `while`, `do-while` e `foreach` separados, o `for` se adapta — a mesma palavra-chave cobre iteração por condição, por contador, sobre intervalos e laços infinitos. Este exemplo mostra as formas principais.
+
 <CodeExplanation
-  title={"Laços For"}
+  title={"for.go"}
   code={`package main
 
 import "fmt"
@@ -38,15 +40,50 @@ func main() {
     }
 }`}
   sections={[
-    {text: "O tipo mais básico, com uma única condição."},
-    {text: "Um laço clássico com inicialização/condição/pós-ação."},
-    {text: "Outra forma de fazer a iteração básica \"faça N vezes\" é usar `range` sobre um inteiro."},
-    {text: "`for` sem condição repete indefinidamente até você usar `break` ou `return` da função."},
-    {text: "Você também pode usar `continue` para ir à próxima iteração."},
-    {text: "Saída:\n$ go run for.go\n1\n2\n3\n0\n1\n2\nrange 0\nrange 1\nrange 2\nloop\n1\n3\n5\n\n# We'll see some other `for` forms later when we look at\n# `range` statements, channels, and other data\n# structures."}
+    {text: "`for i <= 3` — só uma condição, sem inicialização nem pós-ação. É o equivalente ao `while` de outras linguagens: repete enquanto a condição for verdadeira. Quem atualiza `i` somos nós, dentro do corpo."},
+    {text: "`for j := 0; j < 3; j++` — o laço clássico com inicialização, condição e pós-ação na própria linha. O `j` declarado aqui existe apenas dentro do laço."},
+    {text: "`for i := range 3` — itera sobre um inteiro, com `i` valendo `0`, `1` e `2`. É a forma \"faça N vezes\" de Go, disponível desde a versão 1.22, e a mais declarativa das três."},
+    {text: "`for` sem condição nenhuma — repete **para sempre**, até encontrar `break` ou `return`. Aqui o `break` encerra na primeira iteração."},
+    {text: "`continue` pula para a próxima iteração. Aqui ele pula os pares: `n%2 == 0` cai no `continue`, então só os ímpares são impressos."},
+    {text: "Saída:\n$ go run for.go\n1\n2\n3\n0\n1\n2\nrange 0\nrange 1\nrange 2\nloop\n1\n3\n5\n\n# Veremos outras formas de `for` ao estudar `range` sobre\n# slices, maps e channels."}
   ]}
 />
 
 <a href="https://go.dev/play/p/_F2rYHNilKa" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Uma palavra-chave, cinco formas
+
+Não existe `while` nem `do-while` em Go. A tradução mental que vai te acompanhar:
+
+| Necessidade | Forma em Go |
+|---|---|
+| Enquanto condição for verdadeira | `for condicao { }` |
+| Laço com contador | `for i := 0; i < n; i++ { }` |
+| Repetir N vezes | `for i := range n { }` |
+| Laço infinito (servidor, worker) | `for { }` |
+| Percorrer coleção | `for i, v := range colecao { }` |
+
+A última — `range` sobre coleções — é a mais usada em código real, e será explorada a fundo em [Range sobre os tipos nativos](range-over-built-in-types).
+
+## Em código real
+
+O `for` infinito não é curiosidade: é a estrutura de **servidores, workers e listeners**, que precisam rodar até receber um sinal de parada. Você vai reconhecê-lo em [Servidor HTTP](http-server) e [Worker Pools](worker-pools). O `range N` com `break`/`continue` é o idioma para iteração controlada, e o `for` com condição pura aparece em esperas ativas e processamento de filas.
+
+## Armadilhas comuns
+
+- **Esquecer a atualização da condição**: `for i <= 3` sem `i = i + 1` dentro do corpo é um laço infinito silencioso. Confira sempre se a condição tem como ficar falsa.
+- **Usar `while` por reflexo**: o código não compila. Em Go, `while` virou `for`.
+- **Confundir `break` e `continue`**: `break` encerra o laço; `continue` encerra só a iteração atual. No exemplo, o `continue` não interrompe o laço — ele apenas pula os pares.
+- **Variável de iteração compartilhada**: em Go 1.21 ou anterior, as variáveis do `for` eram compartilhadas entre iterações (bug clássico com goroutines). Desde o Go 1.22 cada iteração tem a própria variável. Se precisar de suporte a versões antigas, copie a variável para dentro do corpo — detalhe que reaparece em [Goroutines](goroutines).
+
+## Pratique
+
+1. **Reproduza**: rode `for.go` e relacione cada bloco da saída com uma das cinco formas do laço.
+2. **Modifique**: troque `i = i + 1` por `i++` no primeiro laço (resultado idêntico) e mude o `range 6` para `range 10`, prevendo a nova saída.
+3. **Aplique**: escreva um `for {}` com `break` quando um contador chegar a 5, e depois a mesma lógica com `for i := range` — compare a legibilidade das duas versões.
+
+## Próximo passo
+
+Laços decidem **quando repetir**; condições decidem **qual caminho tomar**. Em [If/Else](if-else) você vai ver como Go ramifica o fluxo e por que não existe operador ternário.

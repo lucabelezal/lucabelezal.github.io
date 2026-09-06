@@ -4,8 +4,10 @@ title: Números Aleatórios
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Sorteio, ID de sessão, ruído num teste, amostragem — tudo precisa de **números aleatórios**. Desde o Go 1.22 o pacote é `math/rand/v2`: as funções globais são **auto-seeded** (sem a velha cerimônia de semear com o tempo) e há geradores com seed explícito para quando você quer **reproduzibilidade** (testes!). E uma linha vermelha: aleatório para **segurança** usa outro pacote, `crypto/rand`.
+
 <CodeExplanation
-  title={"Números Aleatórios"}
+  title={"random-numbers.go"}
   code={`package main
 
 import (
@@ -33,14 +35,47 @@ func main() {
     fmt.Println()
 }`}
   sections={[
-    {text: "Por exemplo, `rand.IntN` retorna um `int` n, `0 <= n < 100`."},
-    {text: "`rand.Float64` retorna `float64` `f`, `0.0 <= f < 1.0`."},
-    {text: "Isso pode gerar floats aleatórios em outros intervalos, ex. `5.0 <= f' < 10.0`."},
-    {text: "Para seed conhecido, crie um `rand.Source` e passe para `New`. `NewPCG` cria fonte [PCG](https://en.wikipedia.org/wiki/Permuted_congruential_generator) que exige dois `uint64`."},
-    {text: "Saída:\n# Some of the generated numbers may be\n# different when you run the sample.\n$ go run random-numbers.go\n68,56\n0.8090228139659177\n5.840125017402497,6.937056298890035\n94,49\n94,49\n\n# See the [`math/rand/v2`](https://pkg.go.dev/math/rand/v2)\n# package docs for references on other random quantities\n# that Go can provide."}
+    {text: "`rand.IntN(100)` devolve um inteiro em `0 <= n < 100`. As funções globais do v2 são seguras para uso concorrente e semeadas automaticamente."},
+    {text: "`rand.Float64()` devolve `0.0 <= f < 1.0`."},
+    {text: "Deslocar e escalar gera intervalos: `f*5 + 5` cai em `5.0 <= f' < 10.0`."},
+    {text: "**Seed explícito**: `rand.NewPCG(seed1, seed2)` cria uma fonte determinística; `rand.New` a embrulha num gerador. Duas fontes com o mesmo seed produzem a mesma sequência — perfeito para testes reproduzíveis."},
+    {text: "Saída (uma execução — as linhas globais variam):\n$ go run random-numbers.go\n81,74\n0.0876974047419784\n7.418506080724945,8.58458147732668\n94,49\n94,49\n\n# As duas últimas linhas são iguais: mesma seed, mesma\n# sequência. Consulte a [documentação do math/rand/v2](https://pkg.go.dev/math/rand/v2)."}
   ]}
 />
 
-<a href="https://go.dev/play/p/TkgmNAl8euK" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Global auto-seeded × gerador com seed
+
+- **Global** (`rand.IntN`, `rand.Float64`): para a maioria dos casos. No v2 não precisa semear — o runtime cuida. Seguro em goroutines.
+- **Gerador próprio** (`rand.New(rand.NewPCG(...))`): quando a sequência precisa ser **reproduzível** (testes, simulações, demos) ou isolada (duas partes do código sem interferir no estado uma da outra). Mesma seed → mesmos números, sempre.
+
+Regra: produção usa o global; **teste usa seed fixa** — aí o teste falha de forma determinística, não "de vez em quando".
+
+## A linha vermelha: segurança não é aqui
+
+`math/rand` é **previsível** — serve para estatística, jogos, amostragem. **Nunca** use para senha, token, chave, nonce. Para isso existe `crypto/rand`, que tira entropia do sistema:
+
+```go
+import "crypto/rand"
+
+b := make([]byte, 16)
+rand.Read(b) // imprevisível, para tokens/chaves
+```
+
+(página futura explora criptografia; a regra é: dado que protege algo → `crypto/rand`.)
+
+## Armadilhas comuns
+
+- **Semear o global à mão no v1**: no `math/rand` antigo era `rand.Seed(time.Now().UnixNano())`. No v2 isso **não existe mais** — o global já é auto-seeded. Se viu código com `rand.Seed`, está no v1.
+- **Usar `math/rand` para token/segurança**: previsível = quebrável. `crypto/rand`, sempre.
+- **Confiar que `IntN` inclui o limite**: `rand.IntN(100)` vai de 0 a 99, nunca 100.
+- **Gerador global alterado por teste**: se um teste semeia o global, afeta a sequência de todo o pacote. Use gerador próprio com seed local no teste.
+
+## Pratique
+
+1. **Reproduza**: rode `random-numbers.go` duas vezes — as duas primeiras linhas mudam, as duas últimas não.
+2. **Modifique**: gere um inteiro em `[10, 20)` e um float em `[0, 1)` formatado com 2 casas.
+3. **Aplique**: escreva um teste que usa `rand.New(rand.NewPCG(1,2))` para sortear uma ordem — rode várias vezes e veja a sequência se repetir.
+
+## Próximo passo
+
+Gerar número é fácil; **ler número de uma string** — do usuário, de um arquivo, de um form — tem pegadinhas. Em [Parsing de Números](number-parsing), o `strconv` e a diferença entre base 10, base 0 e hex.

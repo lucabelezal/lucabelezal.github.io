@@ -4,8 +4,10 @@ title: Erros
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Em Java ou Python, erro é **exceção**: um desvio de controle que "voa" até um `catch`. Em Go, erro é **valor** — um retorno comum que a função devolve e o chamador decide o que fazer. É a filosofia por trás de tudo que você já viu: múltiplos retornos, o `if err != nil`, o early return. Por isso Go não tem `try/catch`: falha faz parte do fluxo normal do código, não de um mecanismo escondido.
+
 <CodeExplanation
-  title={"Erros"}
+  title={"errors.go"}
   code={`package main
 
 import (
@@ -54,17 +56,60 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Por convenção, erros são o último retorno e têm tipo `error`, uma interface embutida."},
-    {text: "`errors.New` cria um `error` básico com a mensagem dada."},
-    {text: "Um `nil` na posição de erro indica ausência de erro."},
-    {text: "Um sentinel error é uma variável pré-declarada para sinalizar uma condição específica."},
-    {text: "Podemos envolver erros com erros de nível superior para dar contexto. A forma mais simples é com `%w` em `fmt.Errorf`. Erros envolvidos formam uma cadeia consultável com `errors.Is` e `errors.As`."},
-    {text: "É idiomático verificar o erro inline no `if`."},
-    {text: "`errors.Is` verifica se um erro (ou qualquer um na cadeia) corresponde a um valor específico. Útil com erros envolvidos para identificar sentinels."},
+    {text: "`func f(arg int) (int, error)` — por convenção, o erro é o **último** retorno e tem o tipo `error` (uma interface com um único método: `Error() string`)."},
+    {text: "`errors.New(...)` cria um erro simples com a mensagem dada."},
+    {text: "`nil` na posição de erro significa \"deu certo\" — a convenção: sucesso é `nil`, falha é um valor não-nil. Nunca retorne um ponteiro nil disfarçado (relembre o *typed nil* de [Interfaces](interfaces))."},
+    {text: "`ErrOutOfTea` é um **erro sentinela**: uma variável pré-declarada no nível de package que identifica uma condição específica (não \"qualquer\" falha)."},
+    {text: "`fmt.Errorf(\"...: %w\", ErrPower)` **envolve** o erro com contexto. O `%w` preserva a causa na cadeia, que `errors.Is` e `errors.As` conseguem percorrer."},
+    {text: "Verificar o erro inline no `if` é o idioma: `if err := makeTea(i); err != nil` — escopo do `err` limitado ao bloco."},
+    {text: "`errors.Is(err, ErrOutOfTea)` pergunta: \"este erro (ou algo na cadeia dele) é exatamente esse sentinela?\" — funciona mesmo com erros envolvidos por `%w`."},
     {text: "Saída:\n$ go run errors.go\nf worked: 10\nf failed: can't work with 42\nTea is ready!\nTea is ready!\nWe should buy new tea!\nTea is ready!\nNow it is dark."}
   ]}
 />
 
-<a href="https://go.dev/play/p/xWXAMmcrbTs" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Erro é valor: três formas de criar
+
+| Forma | Uso |
+|---|---|
+| `errors.New("mensagem")` | Falha simples, sem causa e sem tipo — a maioria dos casos |
+| `fmt.Errorf("ctx: %v", err)` | Contexto **sem** preservar a cadeia (`%v`) |
+| `fmt.Errorf("ctx: %w", err)` | Contexto **preservando** a causa (`%w`) — wrap |
+| Erro sentinela (`var ErrX = errors.New(...)`) | Condição conhecida que o chamador precisa identificar |
+
+A regra do `%w`: use quando o chamador pode precisar saber **qual** foi a causa (`errors.Is`/`errors.As`). Use `errors.New` (ou `%v`, sem `%w`) quando a falha é terminal e o contexto basta — envolver à toa cria cadeias que ninguém consulta.
+
+## Tratamento explícito, em vez de exceção
+
+Sem `throw`/`catch`, todo ponto de falha é visível no código: a função declara que pode falhar (retorna `error`) e o chamador **precisa** decidir o que fazer — ignorar, tratar, ou repassar com contexto. O padrão onipresente:
+
+```go
+f, err := os.Open(path)
+if err != nil {
+    return fmt.Errorf("open %s: %w", path, err) // repassa com contexto
+}
+defer f.Close()
+```
+
+Isso é o *early return* que você já conhece de [If/Else](if-else): o fluxo de sucesso segue reto, e cada falha sai pela porta de erro.
+
+## Em código real
+
+Toda operação de I/O, rede, parsing e banco retorna `error`. E a stdlib define sentinelas famosas que você vai reconhecer: `io.EOF` ("acabou a leitura"), `sql.ErrNoRows` ("nenhuma linha"), `context.Canceled`. O `if errors.Is(err, io.EOF)` é o jeito de tratar esses casos especiais com segurança — comparar com `==` funciona só quando o erro não foi envolvido.
+
+## Armadilhas comuns
+
+- **Engolir erro com `_`**: `_, _ = f()` descarta a falha em silêncio. Quando for legítimo ignorar, comente o porquê — erro ignorado é dívida futura.
+- **`fmt.Errorf` sem `%w` e depois `errors.Is`**: o `%v` quebra a cadeia — o sentinela some e `errors.Is` falha. Se você vai consultar a causa, use `%w`.
+- **Comparar com `==` quando deveria `Is`**: `err == ErrOutOfTea` quebra se o erro foi envolvido no meio do caminho. `errors.Is` atravessa a cadeia.
+- **Retornar interface `error` com ponteiro nil**: `return nil, (*MeuErro)(nil)` produz um erro **não-nil** (typed nil) e `err != nil` mente. Devolva `nil` de verdade.
+- **Mensagem em maiúscula ou com pontuação**: por convenção, mensagens de erro começam minúscula e sem ponto final (elas costumam ser prefixadas por contexto).
+
+## Pratique
+
+1. **Reproduza**: rode `errors.go` e explique cada linha da saída em função dos `errors.Is`.
+2. **Modifique**: adicione uma condição que retorne `fmt.Errorf(\"temperatura: %w\", ErrPower)` no `makeTea` e confirme que o `errors.Is` continua achando `ErrPower` na cadeia.
+3. **Aplique**: escreva `func lerConfig(arquivo string) error` que abre um arquivo e envolve o erro com `%w` — depois trate no `main` com `errors.Is` contra um sentinela seu (`ErrArquivoAusente`).
+
+## Próximo passo
+
+Sentinelas identificam *qual* condição falhou. Quando a falha precisa carregar **dados** (campo do erro, tipo para decisão), o próximo passo é criar um **tipo de erro próprio** — em [Erros Customizados](custom-errors).

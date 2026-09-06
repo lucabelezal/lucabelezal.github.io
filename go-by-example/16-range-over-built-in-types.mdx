@@ -4,8 +4,10 @@ title: Range sobre Tipos Embutidos
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+`for` é o único laço de Go; **`range`** é a forma de iterar sobre as coleções — e a sintaxe se adapta ao tipo: slice devolve (índice, valor), map devolve (chave, valor), string devolve (byte offset, rune), um inteiro devolve (0..n-1). Aprender o que cada tipo devolve — e o que descartar com `_` — elimina metade dos erros de iteração.
+
 <CodeExplanation
-  title={"Range sobre Tipos Embutidos"}
+  title={"range.go"}
   code={`package main
 
 import "fmt"
@@ -22,6 +24,7 @@ func main() {
             fmt.Println("index:", i)
         }
     }
+    kvs := map[string]string{"a": "apple", "b": "banana"}
     for k := range kvs {
         fmt.Println("key:", k)
     }
@@ -30,13 +33,56 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Aqui usamos `range` para somar números de um slice. Arrays funcionam igual."},
-    {text: "`range` em arrays e slices fornece índice e valor. Acima não precisamos do índice, então ignoramos com `_`. Às vezes queremos os índices."},
-    {text: "`range` também itera apenas sobre as chaves de um map."},
-    {text: "`range` em strings itera sobre code points Unicode. O primeiro valor é o índice inicial do `rune` e o segundo é o próprio `rune`. Veja [Strings e Runes](strings-and-runes)."}
+    {text: "`range nums` sobre um slice devolve dois valores: índice e elemento. Não precisamos do índice, então `_` o descarta. (Arrays se comportam igual.)"},
+    {text: "Quando o índice importa, capturamos os dois: `i` e `num`. Aqui achamos o índice do elemento 3."},
+    {text: "`range` sobre um map devolve (chave, valor); iterar só com a chave é comum. **A ordem é arbitrária** e muda a cada execução."},
+    {text: "`range` sobre uma `string` decodifica UTF-8: devolve o **byte offset** (i) e o **rune** (c). Para \"go\" — 2 caracteres ASCII — cada rune ocupa 1 byte, então os índices são 0 e 1."},
+    {text: "Saída (uma execução):\n$ go run range.go\nsum: 9\nindex: 1\nkey: a\nkey: b\n0 103\n1 111\n\n# Em maps a ordem das chaves varia; aqui saiu a, b —\n# numa próxima execução pode ser b, a. Os valores 103 e 111\n# são os code points de 'g' e 'o'."}
   ]}
 />
 
 <a href="https://go.dev/play/p/S171w0PjgsD" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## O que cada tipo devolve
+
+| Tipo | `range` devolve | Detalhe |
+|---|---|---|
+| `[]T`, `[N]T` | `(índice int, valor T)` | índice em bytes de posição, não ponteiro |
+| `map[K]V` | `(chave K, valor V)` | ordem **arbitrária** |
+| `string` | `(byte offset int, rune)` | decodifica UTF-8, não byte a byte |
+| `int` (Go 1.22+) | `(0, 1, ..., n-1)` | o "repita N vezes" do `for` |
+| `chan T` | `(valor T)` até fechar | só uma variável; página de [Channels](channels) |
+
+Se você não quer um dos valores, descarte com `_`. E note a assimetria: sobre um **map**, `range` com uma variável devolve a **chave**; sobre um **slice**, devolve o **índice**.
+
+## Iterar é ler, não copiar o mundo
+
+`range` copia cada elemento para a variável. `for _, v := range slice` dá a **cópia** de `v` — mudar `v` não altera o slice. Para mutar os elementos, use o índice: `for i := range s { s[i] = ... }`. Em strings, isso significa bytes: a página [Strings e Runes](strings-and-runes) detalha por que `range` é o jeito certo de andar sobre texto Unicode.
+
+## A ordem do map é aleatória de propósito
+
+Não existe iteração ordenada de map — o Go embaralha de propósito para ninguém depender da ordem. Precisa de ordem? Extraia as chaves (`maps.Keys`), ordene (`slices.Sort`) e itere sobre elas.
+
+## Em código real
+
+`range` é onipresente: varrer linhas de um arquivo, eventos de um channel (`for v := range ch`), e — com o Go 1.23 — `range` sobre **funções iteradoras** (`func(yield func(...) bool)`), que permite percorrer sequências personalizadas com a mesma sintaxe. Isso é explorado em [Range sobre Iteradores](range-over-iterators) e nos utilitários do pacote `iter`.
+
+## Armadilhas comuns
+
+- **Esperar ordem no map**: cada execução pode variar. Nunca dependa da sequência.
+- **Achar que a variável do `range` é o elemento real**: é uma cópia. Mutar exige índice (ou ponteiros).
+- **Contar bytes em vez de caracteres**: `range` sobre string devolve runes — é o correto para Unicode. Indexar por posição bruta dá bytes.
+- **Iterar e modificar o que está sendo iterado**: remover chaves de um map durante `range` é permitido (a chave removida pode ou não aparecer), mas remover de um slice enquanto itera com `range` desloca os índices — faça a cópia dos índices antes.
+- **`range` sobre `nil`**: slice `nil` e map `nil` iteram **zero vezes**, sem erro — útil saber para não "proteger" demais.
+
+## Pratique
+
+1. **Reproduza**: rode `range.go` três vezes e observe a ordem do map variar.
+2. **Modifique**: some apenas os elementos pares de um slice com `range`; depois itere sobre um map coletando chaves e valores com `maps.Keys` ordenado.
+3. **Aplique**: escreva um `for range 5` que imprime `0..4`, e um `for i, r := range "olá"` — anote os offsets dos runes (o `á` ocupa 2 bytes).
+
+## Próximo passo
+
+Iterar strings com `range` devolve runes — mas o que é um rune, afinal? Em [Strings e Runes](strings-and-runes) você vai ver por que `len` de uma string tailandesa é 18 enquanto ela tem só 6 caracteres.

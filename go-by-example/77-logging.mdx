@@ -4,8 +4,10 @@ title: Logging
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Programa que roda em produção precisa **contar o que faz** — e logs são o único registro. A stdlib traz dois níveis: o **`log`** clássico (linhas de texto livre com data/hora) e o **`log/slog`** (logs *estruturados* em pares chave=valor, com níveis e saída em JSON — o padrão para serviços modernos que alimentam agregadores).
+
 <CodeExplanation
-  title={"Logging"}
+  title={"logging.go"}
   code={`package main
 
 import (
@@ -36,21 +38,58 @@ func main() {
     myslog.Info("hello again", "key", "val", "age", 25)
 }`}
   sections={[
-    {text: "A stdlib fornece ferramentas diretas para logs, com [log](https://pkg.go.dev/log) para saída livre e [log/slog](https://pkg.go.dev/log/slog) para estruturado."},
-    {text: "Chamar `Println` de `log` usa o logger _padrão_, já configurado para saída em `os.Stderr`. Métodos `Fatal*` ou `Panic*` encerram após logar."},
-    {text: "Loggers podem ser configurados com _flags_ para formato. Por padrão o logger standard tem `log.Ldate` e `log.Ltime` (agrupados em `log.LstdFlags`). Podemos mudar para emitir tempo com microssegundos, por exemplo."},
-    {text: "Também suporta emitir nome do arquivo e linha de onde `log` foi chamado."},
-    {text: "Pode ser útil criar um logger customizado e passá-lo adiante. Ao criar, pode definir _prefix_ para distinguir a saída."},
-    {text: "Podemos definir prefixo em loggers existentes (inclusive o padrão) com `SetPrefix`."},
-    {text: "Loggers podem ter destinos customizados; qualquer `io.Writer` serve."},
-    {text: "Esta chamada escreve o log em `buf`."},
-    {text: "Isso de fato mostra em saída padrão."},
-    {text: "O pacote `slog` fornece saída _estruturada_. Por exemplo, logar em JSON é direto."},
-    {text: "Além da mensagem, `slog` pode conter número arbitrário de pares chave=valor."},
-    {text: "Saída:\n# Sample output; the date and time\n# emitted will depend on when the example ran.\n$ go run logging.go\n2023/08/22 10:45:16 standard logger\n2023/08/22 10:45:16.904141 with micro\n2023/08/22 10:45:16 logging.go:40: with file/line\nmy:2023/08/22 10:45:16 from mylog\nohmy:2023/08/22 10:45:16 from mylog\nfrom buflog:buf:2023/08/22 10:45:16 hello\n\n# These are wrapped for clarity of presentation\n# on the website; in reality they are emitted\n# on a single line.\n{\"time\":\"2023-08-22T10:45:16.904166391-07:00\",\n \"level\":\"INFO\",\"msg\":\"hi there\"}\n{\"time\":\"2023-08-22T10:45:16.904178985-07:00\",\n\\t\"level\":\"INFO\",\"msg\":\"hello again\",\n\\t\"key\":\"val\",\"age\":25}"}
+    {text: "`log.Println` usa o **logger padrão**, já configurado para `os.Stderr` com data/hora. É o \"printf para diagnóstico\" do Go."},
+    {text: "`log.SetFlags` controla o formato: `Lmicroseconds` adiciona fração; `Lshortfile` o arquivo:linha de onde o log veio."},
+    {text: "`log.New(w, prefixo, flags)` cria um logger próprio — com prefixo (`my:`) e destino escolhidos. `SetPrefix` troca o prefixo depois."},
+    {text: "O destino é qualquer `io.Writer`: aqui um `bytes.Buffer` — útil para capturar logs em testes ou reencaminhar."},
+    {text: "`slog` é o **log estruturado**: um handler JSON grava cada entrada como um objeto com `time`, `level` e `msg`."},
+    {text: "Além da mensagem, `slog` aceita pares chave=valor — `\"key\", \"val\", \"age\", 25` — que viram campos no JSON, filtráveis por máquina."},
+    {text: "Saída (uma execução — datas/horas variam):\n$ go run logging.go\n2026/09/06 11:11:01 standard logger\n2026/09/06 11:11:01.340756 with micro\n2026/09/06 11:11:01 logging.go:16: with file/line\nmy:2026/09/06 11:11:01 from mylog\nohmy:2026/09/06 11:11:01 from mylog\nfrom buflog:buf:2026/09/06 11:11:01 hello\n\n# Os logs slog saem em JSON, cada um numa linha:\n{\"time\":\"2026-09-06T11:11:01.340819-03:00\",\"level\":\"INFO\",\"msg\":\"hi there\"}\n{\"time\":\"2026-09-06T11:11:01.340826-03:00\",\"level\":\"INFO\",\"msg\":\"hello again\",\"key\":\"val\",\"age\":25}"}
   ]}
 />
 
-<a href="https://go.dev/play/p/Qd0uCqBlYUn" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## `log` × `slog`: quando cada um
+
+| | `log` | `log/slog` |
+|---|---|---|
+| Formato | Texto livre com prefixo | Estruturado (`chave=valor` / JSON) |
+| Níveis | Não tem (só `Print`, `Fatal`, `Panic`) | `Debug`/`Info`/`Warn`/`Error` |
+| Destino típico | `stderr`, arquivo | `stderr`, agregadores (Datadog, Loki) |
+| Para quê | Scripts, ferramentas, protótipos | Serviços, produção, observabilidade |
+
+O `slog` brilha onde o **agregador** consome: log em JSON com `level` e campos permite filtrar ("erros de pagamento nas últimas 2h") sem regex em texto. O `log` clássico continua ótimo para CLIs e ferramentas — a saída legível para humano é o recurso.
+
+## Métodos que encerram: cuidado
+
+`log.Fatal` loga e chama `os.Exit(1)`; `log.Panic` loga e entra em panic. São atalhos, mas **não rodam `defer`s** (o `Fatal` exit) e não são apropriados dentro de funções que deveriam devolver erro. Em código de biblioteca/serviço, logue o problema e retorne o erro — quem decide "morrer" é o topo.
+
+## Em código real (serviços)
+
+O padrão moderno de um serviço Go:
+
+```go
+logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+slog.SetDefault(logger)          // slog.Info(...) passa a usar o seu
+logger.Info("servidor iniciou", "porta", 8080)
+logger.Error("falha ao salvar", "err", err)
+```
+
+Inclua `err` como campo (o `slog` tem wrapper `slog.Any`/`slog.String` para valores especiais), use os níveis com critério e deixe o `log` de bibliotecas de terceiros ser redirecionado para o `slog` quando possível. Logging e erros andam juntos — o wrap de [Erros](errors) (`%w`) preserva a causa; o log registra onde ela chegou.
+
+## Armadilhas comuns
+
+- **Logar segredo**: `logger.Info("conectando", "password", senha)` joga a credencial no agregador. Nunca logue segredos.
+- **`Fatal` no meio de uma função**: mata o processo sem `defer`. Em bibliotecas, retorne erro; deixe o `Fatal` para o `main`.
+- **Mensagem sem contexto**: `"erro"` num log não ajuda. Inclua o que falhou e os valores relevantes (`slog` campos, ou `%v` no `log`).
+- **Log de biblioteca no seu formato**: bibliotecas logam no logger padrão; redirecione (`log.SetOutput`/handler) para centralizar.
+- **Ignorar níveis**: logar tudo como `Info` enterra o erro. Use `Error` para o que precisa de alerta, `Debug` para o ruído.
+
+## Pratique
+
+1. **Reproduza**: rode `logging.go` e identifique as linhas do `log` clássico e os dois JSON do `slog`.
+2. **Modifique**: troque o handler do `slog` para texto (`slog.NewTextHandler`) e adicione `logger.Error("falha", "err", err)` com um erro de verdade.
+3. **Aplique**: configure um logger `slog` JSON como default num mini-serviço e logue `"request recebido"` com campos `metodo` e `path` — depois use `DEBUG` (variável de ambiente, página anterior) para ligar/desligar `Debug`.
+
+## Próximo passo
+
+Config, logging e CLI resolvidos — o próximo bloco leva o programa **para a rede**. Em [Cliente HTTP](http-client), `net/http` faz requests: GET, timeout e o tratamento de resposta que alimenta tudo que vem a seguir.

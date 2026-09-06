@@ -1,11 +1,12 @@
 ---
 title: Operações Não-Bloqueantes em Channels
 ---
-
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Enviar e receber bloqueiam até o outro lado aparecer — às vezes você só quer **tentar**: se não der na hora, segue o fluxo. É o papel do **`default`** num `select`: quando nenhum caso está pronto, o `default` roda imediatamente. Receive, send e combinações viram "tentativas" sem travar.
+
 <CodeExplanation
-  title={"Operações Não-Bloqueantes em Channels"}
+  title={"non-blocking-channel-operations.go"}
   code={`package main
 
 import "fmt"
@@ -36,13 +37,49 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Um receive não-bloqueante. Se houver valor em `messages`, o `select` pega o `case <-messages`. Caso contrário, cai no `default` imediatamente."},
-    {text: "Um send não-bloqueante funciona similar. Aqui `msg` não pode ser enviado pois o channel não tem buffer nem receiver, então cai no `default`."},
-    {text: "Podemos usar múltiplos `case`s acima do `default` para um select não-bloqueante multi-way. Aqui tentamos receives não-bloqueantes em `messages` e `signals`."},
-    {text: "Saída:\n$ go run non-blocking-channel-operations.go \nno message received\nno message sent\nno activity"}
+    {text: "Receive não-bloqueante: `messages` está vazio e sem remetente, então o `default` roda — sem esperar."},
+    {text: "Send não-bloqueante: `messages` não tem buffer nem receptor, então o envio falharia bloqueando; o `default` roda."},
+    {text: "Multi-way: vários cases (aqui, dois receives) + `default`. Nenhum pronto → \"no activity\"."},
+    {text: "Saída:\n$ go run non-blocking-channel-operations.go\nno message received\nno message sent\nno activity"}
   ]}
 />
 
-<a href="https://go.dev/play/p/TFv6-7OVNVq" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## A regra do default
+
+Um `select` **com** `default` nunca bloqueia: se nenhum case está pronto, o default roda na hora. Um `select` **sem** default bloqueia até alguém ficar pronto. Essa única diferença transforma operações bloqueantes em tentativas:
+
+```go
+select {
+case v := <-ch:
+    // chegou algo
+default:
+    // nada agora — segue em frente
+}
+```
+
+É o equivalente a um *try-receive*: útil para *polling* leve, checagem de sinal e "faça se der, senão segue".
+
+## Em código real
+
+- **Polling de sinal de parada**: no loop de um worker, checar `done` sem bloquear entre tarefas.
+- **Preencher buffer se houver espaço**: enviar para um semáforo `chan struct{}` bufferizado sem travar quando está cheio.
+- **Fallbacks**: tentar o canal rápido; se vazio, usar o valor default.
+
+Cuidado com o exagero: *polling* com `default` num laço quente queima CPU. Se a goroutine deve **esperar** por algo, prefira um receive bloqueante (ou `select` sem default) — o padrão de [Select](select).
+
+## Armadilhas comuns
+
+- **`default` em loop apertado**: roda milhões de vezes sem trabalho — CPU a 100%. Para esperar de verdade, bloqueie (sem default).
+- **Achar que é "assíncrono"**: é **síncrono não-bloqueante** — tenta agora e segue. Não há fila mágica.
+- **Esquecer que canal fechado está "pronto"**: um receive num canal fechado devolve zero value **na hora** (sem bloquear) — o case roda mesmo com o default presente, com valor lixo. Trate o `ok`.
+- **Multi-way com todos vazios**: cai no default — comportamento certo, mas confirme que era o que você queria (e não um receive bloqueante esquecido).
+
+## Pratique
+
+1. **Reproduza**: rode o exemplo e relacione cada saída ao `default` correspondente.
+2. **Modifique**: encha `messages` num buffer antes do select (envie \"oi\" com buffer 1) e veja o primeiro case vencer.
+3. **Aplique**: num laço de 10 iterações, tente um receive não-bloqueante de um canal de parada a cada iteração (com `Sleep` curto) e explique a diferença para um receive bloqueante.
+
+## Próximo passo
+
+Receber com o padrão "tem mais?" — e o sinal de "acabou". Em [Fechando Channels](closing-channels), o `close` que encerra um canal e o segundo valor do receive (`ok`) que diz se ainda há dados.

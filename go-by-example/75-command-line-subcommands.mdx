@@ -4,8 +4,10 @@ title: Subcomandos de Linha de Comando
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+`git commit`, `go test`, `docker run`: ferramentas grandes são **vários programas num só**, cada um com suas próprias flags. Em Go, cada subcomando ganha um **`flag.FlagSet`** próprio — um parser de flags independente — e o `main` despacha pelo primeiro argumento. O `flag` global da página anterior vira um caso especial de um FlagSet chamado `CommandLine`.
+
 <CodeExplanation
-  title={"Subcomandos de Linha de Comando"}
+  title={"command-line-subcommands.go"}
   code={`package main
 
 import (
@@ -42,15 +44,43 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Declaramos um subcomando com `NewFlagSet` e definimos flags específicas."},
-    {text: "Para outro subcomando podemos definir flags diferentes."},
-    {text: "O subcomando é esperado como primeiro argumento."},
-    {text: "Verifique qual subcomando foi invocado."},
-    {text: "Para cada subcomando, fazemos parse de suas flags e acessamos args posicionais restantes."},
-    {text: "Saída:\n$ go build command-line-subcommands.go \n\n# First invoke the foo subcommand.\n$ ./command-line-subcommands foo -enable -name=joe a1 a2\nsubcommand 'foo'\n  enable: true\n  name: joe\n  tail: [a1 a2]\n\n# Now try bar.\n$ ./command-line-subcommands bar -level 8 a1\nsubcommand 'bar'\n  level: 8\n  tail: [a1]\n\n# But bar won't accept foo's flags.\n$ ./command-line-subcommands bar -enable a1\nflag provided but not defined: -enable\nUsage of bar:\n  -level int\n    \\tlevel\n\n# Next we'll look at environment variables, another common\n# way to parameterize programs."}
+    {text: "`flag.NewFlagSet(\"foo\", flag.ExitOnError)` cria um parser isolado para o subcomando `foo`. O `ExitOnError` faz o FlagSet sair com erro de flag inválida (em vez de devolver)."},
+    {text: "`foo` tem suas flags (`enable`, `name`); `bar` tem as suas (`level`) — mundos separados, nomes podem até colidir sem problema."},
+    {text: "Sem argumentos, o programa mostra o uso e sai com código 1 — o `os.Exit(1)`."},
+    {text: "O despacho: `switch os.Args[1]` escolhe o subcomando."},
+    {text: "Cada caso faz `Parse(os.Args[2:])` — do segundo argumento em diante — e lê as flags/posicionais daquele FlagSet."},
+    {text: "Saída (real):\n$ ./command-line-subcommands foo -enable -name=joe a1 a2\nsubcommand 'foo'\n  enable: true\n  name: joe\n  tail: [a1 a2]\n\n$ ./command-line-subcommands bar -level 8 a1\nsubcommand 'bar'\n  level: 8\n  tail: [a1]\n\n# Flags de um subcomando não valem no outro:\n$ ./command-line-subcommands bar -enable a1\nflag provided but not defined: -enable\nUsage of bar:\n  -level int\n    \tlevel"}
   ]}
 />
 
-<a href="https://go.dev/play/p/DkvdHKK-XCv" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## A anatomia: FlagSet + despacho
+
+O esqueleto se repete para N subcomandos:
+
+1. Um `flag.NewFlagSet(nome, flag.ExitOnError)` por subcomando, com as flags daquela ação.
+2. Validar que veio subcomando (`len(os.Args) < 2` → uso + exit 1).
+3. `switch os.Args[1]` para despachar.
+4. `fs.Parse(os.Args[2:])` — o subcomando "consome" o primeiro arg, e o restante vai para as flags dele.
+
+Cada `Parse` pode usar `ExitOnError` (sai sozinho, como o `flag` global) ou `ContinueOnError` (devolve o erro para você tratar — necessário quando o parsing é só uma parte da lógica).
+
+## Em código real
+
+Subcomandos são a forma de CLIs com ações (`install`/`remove`, `serve`/`migrate`). O `flag` cobre bem até uns 2-4 subcomandos; além disso (aliases, help aninhado, completions), a comunidade usa `cobra` — a base de `kubectl`, `gh` e `hugo`. O padrão de cima (um FlagSet por ação) é o que essas bibliotecas automatizam.
+
+## Armadilhas comuns
+
+- **Parsear o `os.Args` inteiro no subcomando**: o `Parse` recebe `os.Args[2:]` — sem isso, o nome do subcomando vira uma flag desconhecida.
+- **Sem subcomando**: sem o guard `len(os.Args) < 2`, `os.Args[1]` panica. Sempre valide antes de indexar.
+- **`ExitOnError` num servidor/biblioteca**: sair do processo por flag errada pode ser rude onde há mais contexto. Considere `ContinueOnError` e trate você mesmo.
+- **Flags globais × de subcomando**: flags como `-v` (verbose) que valem para todo o programa precisam ser decididas antes do despacho — o modelo "global + por-subcomando" não vem pronto no `flag`.
+
+## Pratique
+
+1. **Reproduza**: rode os três casos da saída — `foo`, `bar` e `bar -enable` (erro).
+2. **Modifique**: adicione um subcomando `baz` com uma flag `-modo` e o despacho correspondente no `switch`.
+3. **Aplique**: crie uma mini-CLI `todo add "texto"` e `todo list` — `add` com flag `-prio`, `list` sem flags, compartilhando uma "store" simples (um arquivo JSON).
+
+## Próximo passo
+
+Subcomandos parametrizam a ação; o **ambiente** parametriza o contexto — sem tocar na linha de comando. Em [Variáveis de Ambiente](environment-variables), config via `os.Getenv`/`os.Setenv`, a fonte de verdade de todo 12-factor app.

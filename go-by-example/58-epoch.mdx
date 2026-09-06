@@ -4,8 +4,10 @@ title: Epoch
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Um `time.Time` é rico demais para guardar num banco: ele carrega fuso, localização, calendário. O formato universal e compacto é o **Unix epoch**: segundos desde 1º de janeiro de 1970 UTC. Bancos, logs, tokens (JWT) e quase toda API falam nessa língua — números inteiros. Go converte nos dois sentidos com um método e uma função.
+
 <CodeExplanation
-  title={"Epoch"}
+  title={"epoch.go"}
   code={`package main
 
 import (
@@ -23,12 +25,46 @@ func main() {
     fmt.Println(time.Unix(0, now.UnixNano()))
 }`}
   sections={[
-    {text: "Use `time.Now` com `Unix`, `UnixMilli` ou `UnixNano` para tempo desde o epoch em segundos, ms ou ns."},
-    {text: "Também pode converter segundos ou nanos desde o epoch para `time`."},
-    {text: "Saída:\n$ go run epoch.go \n2012-10-31 16:13:58.292387 +0000 UTC\n1351700038\n1351700038292\n1351700038292387000\n2012-10-31 16:13:58 +0000 UTC\n2012-10-31 16:13:58.292387 +0000 UTC\n\n# Next we'll look at another time-related task: time\n# parsing and formatting."}
+    {text: "`now` é o instante atual (com localização e leitura monotônica)."},
+    {text: "`now.Unix()` → **segundos** desde o epoch. `UnixMilli()` → milissegundos; `UnixNano()` → nanossegundos."},
+    {text: "O caminho inverso: `time.Unix(segundos, nanossegundos)` reconstrói o instante. Passar `now.Unix()` e `0` mantém os segundos; `0` e `UnixNano()` mantém os nanos."},
+    {text: "Saída (uma execução — valores mudam):\n$ go run epoch.go\n2026-09-06 11:02:46.83318 -0300 -03 m=+0.000083042\n1788703366\n1788703366833\n1788703366833180000\n2026-09-06 11:02:46 -0300 -03\n2026-09-06 11:02:46.83318 -0300 -03"}
   ]}
 />
 
-<a href="https://go.dev/play/p/lRmD1EWHHPz" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## Escolhendo a unidade
+
+| Unidade | Para quê | Faixa útil |
+|---|---|---|
+| Segundos (`Unix`) | Timestamps de banco/API — o padrão | até ~ano 2262 em int64 |
+| Milissegundos (`UnixMilli`) | JWT, JavaScript `Date.now()` | — |
+| Nanossegundos (`UnixNano`) | Medir intervalos precisos | até ~ano 2262 |
+
+Regra prática: **segundos para guardar** (int64 cabe folgado até 2262), **nanossegundos para medir** intervalos curtos. Não use `float64` para epoch — perde precisão; `int64` é o formato.
+
+## Time → inteiro perde informação
+
+Converter para epoch **descarta localização e leitura monotônica** — fica só o instante absoluto (em UTC). Isso é ótimo para armazenar: `time.Unix` reconstrói o mesmo instante em qualquer máquina/fuso. O detalhe: ao converter de volta, o Time nasce com `time.Local` (ou UTC conforme o ambiente), então exiba com o fuso que você quer — o instante está correto.
+
+## Em código real
+
+- Gravar `created_at` como `time.Now().Unix()` (ou melhor, em UTC RFC3339 — veja a próxima página) e ler de volta com `time.Unix`.
+- Comparar timestamps entre serviços: epoch int64 é imune a diferenças de formatação.
+- Expiração de token/cache: `now.Unix() < expiracao`.
+
+## Armadilhas comuns
+
+- **`int` de 32 bits**: epoch em `int` estoura em 2038 em plataformas 32 bits. Use `int64`.
+- **Float epoch**: `time.Now().UnixNano()` como `float64` perde precisão acima de 2^53. Guarde inteiros.
+- **Esquecer que epoch é UTC**: `Unix()` não tem fuso — é o mesmo número no mundo todo. Só vire Time com fuso na hora de exibir.
+- **Usar nanossegundos para "quando"**: nanos servem para medir, não para timestamps de banco — desperdício e menos legível. Segundos bastam.
+
+## Pratique
+
+1. **Reproduza**: rode `epoch.go` e confira que `time.Unix(now.Unix(), 0)` e `time.Unix(0, now.UnixNano())` devolvem o mesmo instante.
+2. **Modifique**: calcule o epoch do "momento zero" (`time.Unix(0,0)`), o nascimento do Go (2009-11-17) e o ano 2038 — em segundos.
+3. **Aplique**: escreva `func idadeSegundos(nascimento time.Time) int64` que usa `time.Since(nascimento).Seconds()` — e compare com a diferença de epochs.
+
+## Próximo passo
+
+Epoch é ótimo para máquinas; humanos leem datas formatadas. Em [Formatação e Parsing de Datas](time-formatting-parsing) você vai dominar o layout de referência do Go (`2006-01-02`) — que confunde todo mundo na primeira vez.

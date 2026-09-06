@@ -4,8 +4,10 @@ title: Ordenação
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Ordenar é uma das operações mais comuns — e uma das que você **não** deve implementar na mão. O pacote `slices` (Go 1.21+) traz o `slices.Sort`, **genérico** (página [Generics](generics)): funciona para qualquer tipo ordenável (`int`, `float64`, `string`...), ordena o slice no lugar e ainda dá o `IsSorted` para checar.
+
 <CodeExplanation
-  title={"Ordenação"}
+  title={"sorting.go"}
   code={`package main
 
 import (
@@ -24,13 +26,57 @@ func main() {
     fmt.Println("Sorted: ", s)
 }`}
   sections={[
-    {text: "Funções de ordenação são genéricas e funcionam para qualquer tipo _ordenado_. Veja [cmp.Ordered](https://pkg.go.dev/cmp#Ordered)."},
-    {text: "Um exemplo ordenando `int`s."},
-    {text: "Também podemos usar `slices` para checar se o slice já está ordenado."},
+    {text: "`slices.Sort(strs)` ordena strings **lexicograficamente** (ordem do dicionário), no lugar — o slice original é modificado."},
+    {text: "Para `int`s, a ordem natural crescente. Uma função só para os dois, graças aos generics — o `Sort` aceita qualquer `[]E` em que `E` é `cmp.Ordered`."},
+    {text: "`slices.IsSorted(ints)` devolve `true` se o slice já está em ordem — útil para validação e invariantes."},
     {text: "Saída:\n$ go run sorting.go\nStrings: [a b c]\nInts:    [2 4 7]\nSorted:  true"}
   ]}
 />
 
-<a href="https://go.dev/play/p/X7iJcIua02T" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O pacote slices: ordenação e além
+
+`slices.Sort` é só a ponta. O mesmo pacote traz o resto do kit:
+
+| Função | O que faz |
+|---|---|
+| `slices.Sort(s)` | Ordena no lugar |
+| `slices.SortFunc(s, cmp)` | Ordena com critério próprio (próxima página) |
+| `slices.SortStableFunc` | Ordenação **estável** (mantém ordem de iguais) |
+| `slices.IsSorted(s)` / `IsSortedFunc` | Já está ordenado? |
+| `slices.Reverse(s)` | Inverte (para ordem decrescente: `Sort` + `Reverse`) |
+| `slices.BinarySearch(s, v)` | Busca binária num slice ordenado |
+
+Antes do `slices`, a ordenação vivia em `sort` (`sort.Slice`, `sort.Strings`); o `slices` é o caminho moderno e genérico.
+
+## Notas de comportamento
+
+- **No lugar**: `slices.Sort` modifica o slice que você passa (não devolve um novo). Se precisa preservar o original, `slices.Clone` antes.
+- **String é lexicográfica por byte**: `"b"` vem antes de `"ba"`, e maiúsculas antes de minúsculas (`"B" < "a"`). Para ordem que ignora caixa ou acento, você precisa do critério próprio — próxima página.
+- **`slices.Sort` é estável**: elementos iguais mantêm a ordem relativa.
+
+## Em código real
+
+Ordenar para exibir (listas de nomes, rankings), para preparar busca binária (`BinarySearch` exige ordem), para testes determinísticos (iterar um map numa ordem fixa — relembre que a iteração de [Maps](maps) é aleatória):
+
+```go
+chaves := maps.Keys(meuMap)   // página [Maps](maps)
+slices.Sort(chaves)           // ordem determinística
+for _, k := range chaves { ... }
+```
+
+## Armadilhas comuns
+
+- **Esperar um slice novo**: `Sort` modifica o original. Não usar o retorno (não tem) — e clonar antes se a ordem importa.
+- **Achar que `Sort` aceita qualquer tipo**: só tipos `cmp.Ordered` (números e strings). Struct seu? É `SortFunc` (próxima página).
+- **String por "ordem natural"**: `"item10" < "item9"` lexicograficamente (o `"1"` < `"9"`). Ordenação natural de números em texto pede critério próprio.
+- **Busca binária num slice não ordenado**: `BinarySearch` só é correta em slice ordenado.
+
+## Pratique
+
+1. **Reproduza**: rode `sorting.go`; depois ordene um `[]float64` e um `[]byte` — uma função só.
+2. **Modifique**: produza ordem **decrescente** com `Sort` + `slices.Reverse`; depois verifique com `IsSorted` (false!) e `IsSortedFunc` se quiser.
+3. **Aplique**: ordene as chaves de um `map[string]int` (frequências de palavras) e imprima em ordem alfabética determinística.
+
+## Próximo passo
+
+`Sort` cobre tipos nativos; **structs** e critérios como "por tamanho" precisam de outra coisa. Em [Ordenação com Funções](sorting-by-functions), o `SortFunc` e o comparador `cmp.Compare`.

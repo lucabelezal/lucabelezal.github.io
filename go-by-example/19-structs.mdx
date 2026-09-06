@@ -4,8 +4,10 @@ title: Structs
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Modelar um paciente com `nome1, idade1, peso1, nome2, idade2, peso2`... funciona até o segundo paciente — depois vira um mar de variáveis soltas e passar os dados para uma função exige lembrar a ordem certa de cada argumento. O **struct** resolve isso: agrupa campos relacionados numa única entidade nomeada, como uma *pasta amarela* — em vez de papéis soltos, você grampeia Nome, Idade e Peso e entrega a pasta inteira. É o bloco de construção de quase todo tipo em Go.
+
 <CodeExplanation
-  title={"Structs"}
+  title={"structs.go"}
   code={`package main
 
 import "fmt"
@@ -42,18 +44,17 @@ func main() {
     fmt.Println(dog)
 }`}
   sections={[
-    {text: "O struct `person` tem campos `name` e `age`."},
-    {text: "`newPerson` constrói um novo struct person com o nome dado."},
-    {text: "Go tem garbage collector; você pode retornar ponteiro para variável local com segurança."},
-    {text: "Esta sintaxe cria um novo struct."},
-    {text: "Você pode nomear os campos ao inicializar um struct."},
-    {text: "Campos omitidos ficam com zero value."},
-    {text: "O prefixo `&` retorna um ponteiro para o struct."},
-    {text: "É idiomático encapsular criação de structs em funções construtoras"},
-    {text: "Acesse campos do struct com ponto."},
-    {text: "Também pode usar ponto com ponteiros para struct — eles são dereferenciados automaticamente."},
-    {text: "Structs são mutáveis."},
-    {text: "Se um struct é usado para um único valor, não precisa nomeá-lo. Pode usar tipo anônimo. Técnica comum em [table-driven tests](testing-and-benchmarking)."},
+    {text: "`type person struct { ... }` é a **planta**: descreve os campos (`name string`, `age int`). A definição em si não ocupa memória — é o molde que diz ao compilador o formato do dado."},
+    {text: "`newPerson` é a função construtora: cria um `person`, preenche o `name` recebido, fixa `age = 42` e devolve um **ponteiro** para ele. Por que uma função e não um literal direto? Veremos abaixo."},
+    {text: "Retornar `&p` de uma variável local é seguro: o compilador move `p` para o heap (escape analysis) e o coletor de lixo cuida dela. Sem *dangling pointer*."},
+    {text: "`person{\"Bob\", 20}` — literal **posicional**: valores na ordem dos campos. Funciona, mas é frágil (ver adiante)."},
+    {text: "`person{name: \"Alice\", age: 30}` — literal **nomeado**: cada campo com seu valor. É a forma preferida."},
+    {text: "`person{name: \"Fred\"}` omite `age`, que recebe o *zero value* (`0`). Imprime `{Fred 0}`."},
+    {text: "`&person{...}` cria o struct e já devolve o ponteiro numa linha só — o idiomático para \"struct + endereço\"."},
+    {text: "Acesso a campo usa ponto: `s.name`."},
+    {text: "Com ponteiro, `sp.age` funciona direto — Go desreferencia automaticamente (`(*sp).age`)."},
+    {text: "Structs são **mutáveis**: `sp.age = 51` muda o valor original através do ponteiro (relembre [Ponteiros](pointers))."},
+    {text: "Struct **anônimo**: quando o formato serve a um único valor (como casos de teste), não precisa de `type` nomeado. Técnica comum em [testes](testing-and-benchmarking)."},
     {text: "Saída:\n$ go run structs.go\n{Bob 20}\n{Alice 30}\n{Fred 0}\n&{Ann 40}\n&{Jon 42}\nSean\n50\n51\n{Rex true}"}
   ]}
 />
@@ -61,3 +62,80 @@ func main() {
 <a href="https://go.dev/play/p/56SPo-L2nMN" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
   Run on go.dev/play
 </a>
+
+## Struct é um tipo de primeira classe
+
+Depois de definido, `person` vale tanto quanto `int` ou `string`: você cria variáveis, passa para funções, guarda em slices e usa como campo de outro struct. Um struct com campo de outro struct vira uma *boneca russa*:
+
+```go
+type Endereco struct {
+    Rua    string
+    Cidade string
+}
+
+type Usuario struct {
+    Nome     string
+    Endereco Endereco
+}
+
+u := Usuario{Nome: "Ana", Endereco: Endereco{Rua: "Av. Paulista", Cidade: "SP"}}
+fmt.Println(u.Endereco.Cidade) // SP
+```
+
+Quando o endereço é mais complexo que uma string, modele-o como struct também — o acesso encadeia pontos (`u.Endereco.Cidade`).
+
+## Três formas de preencher
+
+| Forma | Exemplo | Quando |
+|---|---|---|
+| **Nomeada** | `person{name: "Alice", age: 30}` | A padrão. Resistente a reordenar campos e auto-documenta |
+| **Posicional** | `person{"Bob", 20}` | Só para structs de poucos campos, na ordem exata |
+| **Zero value** | `var p person` | Quando você vai preencher campo a campo depois |
+
+A posicional é a **perigosa**: se amanhã alguém inverter `name` e `age` na definição, o código continua compilando e passa a produzir dados errados em silêncio. Por isso a comunidade prefere a nomeada — e `go vet` chega a avisar sobre literais posicionais.
+
+## Campos exportados × internos
+
+Os campos seguem a regra de visibilidade de Go: **maiúscula** = acessível fora do package; **minúscula** = privado ao package. É comum manter campos sensíveis em minúscula e expor o acesso por métodos — e o padrão `New...` para construir valores com regras. Tudo isso já está detalhado em [Visibilidade e Packages](visibility-and-packages).
+
+## Por que `newPerson` existe? (construtor sem construtor)
+
+Go não tem palavra-chave de construtor. `person{...}` monta o valor direto, mas o literal não valida nada — e campos em minúscula não podem ser preenchidos de fora do package. A função construtora concentra as **regras de criação** num ponto único:
+
+```go
+func newPerson(name string) *person {
+    p := person{name: name}
+    p.age = 42 // regra: idade padrão
+    return &p
+}
+```
+
+Se amanhã a regra mudar (idade padrão vira 18, `name` precisa ser validado), você muda só a construtora. Você já viu a versão exportada desse padrão (`NewConta`) em [Funções](functions).
+
+## Ponteiro para struct: o atalho que o Go dá
+
+```go
+sp := &s
+sp.age = 51      // equivale a (*sp).age = 51
+```
+
+O compilador desreferencia sozinho. É por isso que funções que **modificam** um struct recebem `*T`: dentro delas, `campo.X = ...` já mexe no original (relembre a regra de [Ponteiros](pointers)).
+
+Mas não vire o *maníaco do ponteiro*: structs pequenos (poucos campos de tipos básicos) são mais rápidos **por valor** — cabem na CPU, sem heap nem GC. Use `*T` quando o struct for grande, quando precisar mutar, ou quando o valor precisa ser compartilhado. A decisão de receiver em métodos segue a mesma lógica, na próxima página.
+
+## Armadilhas comuns
+
+- **Literal posicional em struct com muitos campos**: um `{}` a mais ou a menos, e o compilador reclama — mas um valor na ordem errada passa em silêncio. Prefira sempre os nomes.
+- **Comparar struct com `==`**: funciona para structs de campos comparáveis, mas **não compila** se houver um campo de slice/map/função. Para esses, compare campo a campo.
+- **Copiar struct grande por valor sem pensar**: structs com fatias internas não copiam o conteúdo (só o header do slice) — entenda o que você está copiando antes de decidir entre valor e ponteiro.
+- **Achar que struct é classe**: struct só agrupa **dados**. Comportamento entra pelos métodos, na próxima página — e não existe herança (a composição vem em [Composição de Structs](struct-embedding)).
+
+## Pratique
+
+1. **Reproduza**: rode `structs.go` e relacione cada linha da saída com o literal que a produziu.
+2. **Modifique**: adicione um campo `email string` a `person` e instancie nas três formas. Depois troque a ordem dos campos na definição e observe qual forma continua compilando certo.
+3. **Aplique**: modele `Produto` (nome, preço) e `Pedido` (ID, cliente, `[]Produto`) com struct aninhado, e calcule o total do pedido num laço.
+
+## Próximo passo
+
+Dado agrupado é metade da história — falta o **comportamento**. Em [Métodos](methods), structs ganham funções associadas, e você vai decidir entre receiver por valor e por ponteiro.

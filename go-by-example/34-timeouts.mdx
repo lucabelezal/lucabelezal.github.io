@@ -1,11 +1,12 @@
 ---
 title: Timeouts
 ---
-
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Uma chamada externa que nunca responde trava seu programa. O padrão Go para "espero, mas não para sempre" é o `select` entre o resultado e um **`time.After`**: quem disparar primeiro vence. Timeout é só mais um caso no select.
+
 <CodeExplanation
-  title={"Timeouts"}
+  title={"timeouts.go"}
   code={`package main
 
 import (
@@ -38,13 +39,46 @@ func main() {
     }
 }`}
   sections={[
-    {text: "Suponha uma chamada externa que retorna o resultado em `c1` após 2s. O channel é bufferizado, então o send na goroutine não bloqueia. Padrão comum para evitar vazamento de goroutine caso o channel nunca seja lido."},
-    {text: "Aqui o `select` implementa timeout. `res := <-c1` aguarda o resultado e `<-time.After` aguarda após 1s. Como `select` segue o primeiro pronto, pegamos o caso de timeout se a operação demorar mais que 1s."},
-    {text: "Se permitirmos timeout maior de 3s, o receive de `c2` terá sucesso e imprimimos o resultado."},
-    {text: "Saída:\n# Running this program shows the first operation timing\n# out and the second succeeding.\n$ go run timeouts.go \ntimeout 1\nresult 2"}
+    {text: "O trabalho (aqui, um `Sleep` de 2s) entrega o resultado em `c1`. O buffer 1 permite o envio sem receptor — a goroutine não vaza se ninguém ler."},
+    {text: "`select` entre `res := <-c1` e `<-time.After(1s)`: o resultado leva 2s, o timer dispara em 1s — o **timeout vence** e imprime \"timeout 1\"."},
+    {text: "Com o timer em 3s, o resultado (2s) chega primeiro e é impresso."},
+    {text: "Saída:\n$ go run timeouts.go\ntimeout 1\nresult 2\n\n# A primeira operação estourou o prazo; a segunda coube\n# dentro dele."}
   ]}
 />
 
-<a href="https://go.dev/play/p/gyr0NbVKBVf" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O padrão
+
+```go
+select {
+case res := <-resultado:      // a operação respondeu
+    return res
+case <-time.After(prazo):      // estourou o prazo
+    return errTimeout
+}
+```
+
+Dois detalhes que valem ouro:
+
+- **O channel bufferizado** (`make(chan string, 1)`): se o timeout vencer e ninguém ler, a goroutine do trabalho ainda tenta enviar. Com buffer, o envio completa e a goroutine **termina sozinha** — sem vazar. Sem buffer, ela ficaria presa para sempre.
+- **`time.After` cria um timer por chamada**: ótimo num `select` único; num laço, use `time.NewTimer` e `Stop` para não acumular timers.
+
+## Em código real
+
+Timeout protege toda operação externa: chamada de API, query de banco, leitura de socket. A forma moderna e preferida quando há `context` envolvido é `context.WithTimeout` (página [Context e Cancelamento](context-cancellation)) — que carrega o prazo pelas camadas. O `select` + `time.After` brilha nos casos pontuais, sem contexto.
+
+## Armadilhas comuns
+
+- **Channel sem buffer + timeout**: se o timeout vence, a goroutine que tenta enviar fica **presa** (vazamento). Buffer de 1 (ou `ctx`) resolve.
+- **`time.After` num laço**: cada iteração cria um timer que só é liberado ao disparar — em laços longos, acumula. Use `NewTimer` + `Stop`.
+- **Achar que timeout "cancela" o trabalho**: não cancela — só para de **esperar**. O trabalho segue rodando (por isso o buffer/ctx). Para cancelar de verdade, use `context`.
+- **Prazo errado por unidade**: `time.After(1)` não compila? `1` é `int`; use `time.Second`/`time.Millisecond` (página [Time](time)).
+
+## Pratique
+
+1. **Reproduza**: rode `timeouts.go` e confirme que a primeira operação estoura e a segunda não.
+2. **Modifique**: baixe o sleep do primeiro trabalho para 500ms — agora o resultado vence o timeout de 1s e a saída muda.
+3. **Aplique**: reescreva o padrão com `time.NewTimer` num laço que tenta 3 vezes, cada uma com timeout de 200ms, até obter sucesso.
+
+## Próximo passo
+
+`select` espera; com `default` ele **não espera**. Em [Operações Não-Bloqueantes](non-blocking-channel-operations), enviar e receber sem travar — tentar e seguir em frente se não der.

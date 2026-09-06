@@ -4,8 +4,10 @@ title: Mutexes
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Atômicos resolvem um contador; o mundo real tem **estado composto** — um map de contadores, uma fila, um struct com campos que precisam mudar juntos. Duas goroutines atualizando o mesmo map concorrentemente corrompem dados. A ferramenta clássica é o **mutex** (*mutual exclusion*): só uma goroutine por vez entra na seção crítica. É o "paninho na grelha" — quem está com o pano usa; os outros esperam.
+
 <CodeExplanation
-  title={"Mutexes"}
+  title={"mutexes.go"}
   code={`package main
 
 import (
@@ -46,16 +48,57 @@ func main() {
     fmt.Println(c.counters)
 }`}
   sections={[
-    {text: "`Container` guarda um map de contadores; como atualizamos concorrentemente, adicionamos `Mutex` para sincronizar. Mutex não deve ser copiado, então passe o struct por ponteiro."},
-    {text: "Trave o mutex antes de acessar `counters`; destrave no fim com [defer](defer)."},
-    {text: "O zero value de um mutex já é utilizável, sem inicialização."},
-    {text: "Esta função incrementa um contador nomeado em loop."},
-    {text: "Rode várias goroutines concorrentemente; todas acessam o mesmo `Container`, e duas o mesmo contador."},
-    {text: "Espere as goroutines terminarem"},
-    {text: "Saída:\n# Running the program shows that the counters\n# updated as expected.\n$ go run mutexes.go\nmap[a:20000 b:10000]\n\n# Next we'll look at implementing this same state\n# management task using only goroutines and channels."}
+    {text: "`Container` guarda o estado: um map de contadores **e** um `sync.Mutex`. O mutex fica colado no dado que protege — é o contrato de quem lê o struct."},
+    {text: "`c.mu.Lock()` antes de tocar o map; `defer c.mu.Unlock()` garante a liberação mesmo com `panic`/`return` no meio. Travar e destravar no mesmo lugar evita esquecer."},
+    {text: "O *zero value* de `sync.Mutex` já é utilizável — não precisa de construtor. E o mutex **não pode ser copiado**: por isso `inc` tem receiver `*Container` (relembre [Métodos](methods))."},
+    {text: "`inc` é o único ponto que mexe no map — todo acesso passa pelo mutex. Proteger o **dado**, não espalhar `Lock` pelo código."},
+    {text: "3 goroutines disputam o mutex: duas no mesmo contador `a`, uma no `b`. No fim, cada contador vale exatamente o esperado — nada se perde."},
+    {text: "Saída:\n$ go run mutexes.go\nmap[a:20000 b:10000]\n\n# Sem o mutex, escrever num map de goroutines diferentes\n# pode até derrubar o programa (map concurrent write)."}
   ]}
 />
 
-<a href="https://go.dev/play/p/u0VAVSWRlU0" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O que o mutex protege
+
+O mutex protege um **recurso compartilhado**, não "um pedaço de código". A regra de ouro: **todo acesso ao estado compartilhado passa pelo mesmo mutex**. No exemplo, `counters` só é tocado dentro de `inc`, que trava/destrava — o dado nunca é lido ou escrito sem a trava. Se uma goroutine escrevesse direto em `c.counters` fora de `inc`, o mutex não protegeria nada: a proteção depende de *todos* respeitarem o contrato.
+
+Por isso o mutex mora **dentro** do struct que protege (`Container.mu`), e não numa variável solta: quem recebe `Container` sabe que ele tem estado concorrente.
+
+## Por que `Lock`/`Unlock` com `defer`
+
+O padrão:
+
+```go
+c.mu.Lock()
+defer c.mu.Unlock()
+// ... seção crítica ...
+```
+
+O `defer` garante o `Unlock` aconteça **sempre** — inclusive se a seção crítica der `panic` ou tiver múltiplos `return`. Travar sem `defer` é pedir deadlock no primeiro caminho de erro que esquece de destravar. (Sobre `defer`: página [Defer](defer).)
+
+## Quando mutex, quando channel, quando atômico?
+
+| Problema | Ferramenta |
+|---|---|
+| Um contador/flag | `sync/atomic` ([Contadores Atômicos](atomic-counters)) |
+| Estado composto (map, struct) acessado por muitas goroutines | `sync.Mutex` (esta página) |
+| Uma goroutine **dona** do estado, outras pedem via mensagem | goroutine + channels ([Goroutines com Estado](stateful-goroutines)) |
+
+O lema do Go — "não se comunique compartilhando memória; **compartilhe memória se comunicando**" — favorece channels. Mas mutex é simples, direto e, para muitos casos, a resposta mais natural. A própria stdlib usa os dois: use a abordagem que ficar **mais fácil de provar correta** no seu caso.
+
+## Armadilhas comuns
+
+- **Deadlock por ordem de locks**: se uma goroutine trava A e depois B, e outra trava B e depois A, elas podem esperar uma pela outra para sempre. **Trave sempre na mesma ordem** em todo o código.
+- **Copiar o mutex**: copiar um struct que contém `sync.Mutex` (passar por valor, retornar por valor) copia a trava *travada ou não* — comportamento indefinido. Receiver `*T`, sempre.
+- **Manter a seção crítica grande demais**: fazer I/O ou trabalho lento dentro do `Lock` segura todo mundo esperando. Trave o mínimo necessário (atualizar o dado), solte, e faça o resto fora.
+- **Proteger só a escrita**: leituras concorrentes de um map enquanto outra goroutine escreve também corrompem. Leituras precisam de trava (ou de `sync.RWMutex`).
+- **Fazer Lock/Unlock em funções diferentes**: trava numa função, destrava na outra — difícil de raciocinar e fácil de vazar. Prefira `defer` no mesmo escopo.
+
+## Pratique
+
+1. **Reproduza**: rode `mutexes.go` algumas vezes — o resultado é sempre `map[a:20000 b:10000]`.
+2. **Modifique**: remova o `Lock`/`Unlock` e rode com `-race`: além de perder atualizações, o Go pode acusar *concurrent map writes*. Depois troque por `sync.RWMutex` com `RLock` num método de leitura.
+3. **Aplique**: proteja um `map[string]string` compartilhado (cache) com mutex: leitura e escrita passando pelo mesmo lock, `defer Unlock` incluso.
+
+## Próximo passo
+
+O mutex protege o estado com uma trava. A alternativa *idiomática* de Go é não compartilhar o estado: deixar **uma goroutine ser dona** dele. Em [Goroutines com Estado](stateful-goroutines), o mesmo map é protegido por posse + mensagens, sem mutex.

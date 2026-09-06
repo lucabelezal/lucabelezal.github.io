@@ -4,8 +4,10 @@ title: Formatação e Parsing de Datas
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+Se você vem de outras linguagens, espera máscaras tipo `yyyy-MM-dd`. Go faz diferente: **os layouts são datas de exemplo** — você escreve um padrão usando o *horário de referência* `Mon Jan 2 15:04:05 MST 2006` (ou `01/02 03:04:05PM '06 -0700`). O mesmo layout serve para `Format` (Time → string) e `Parse` (string → Time). É estranho no começo e natural depois.
+
 <CodeExplanation
-  title={"Formatação e Parsing de Datas"}
+  title={"time-formatting-parsing.go"}
   code={`package main
 
 import (
@@ -32,15 +34,61 @@ func main() {
     p(err)
 }`}
   sections={[
-    {text: "Exemplo básico formatando tempo em RFC3339 com a constante de layout."},
-    {text: "Parsing de tempo usa os mesmos layouts de `Format`."},
-    {text: "`Format` e `Parse` usam layouts baseados em exemplo. Normalmente use constantes de `time`, mas pode fornecer layouts customizados. Eles devem usar o horário de referência `Mon Jan 2 15:04:05 MST 2006` para mostrar o padrão. O horário exemplo deve ser exatamente como mostrado: ano 2006, 15 para hora, Monday para dia da semana, etc."},
-    {text: "Para representações puramente numéricas, use formatação padrão com componentes extraídos."},
-    {text: "`Parse` retorna erro em input malformado explicando o problema."},
-    {text: "Saída:\n$ go run time-formatting-parsing.go \n2014-04-15T18:00:15-07:00\n2012-11-01 22:08:41 +0000 +0000\n6:00PM\nTue Apr 15 18:00:15 2014\n2014-04-15T18:00:15.161182-07:00\n0000-01-01 20:41:00 +0000 UTC\n2014-04-15T18:00:15-00:00\nparsing time \"8:41PM\" as \"Mon Jan _2 15:04:05 2006\": ..."}
+    {text: "`t.Format(time.RFC3339)` usa uma **constante pronta** de layout — o formato ISO 8601 das APIs: `2026-09-06T11:02:47-03:00`."},
+    {text: "`time.Parse(layout, string)` é o caminho inverso: lê uma string com o mesmo layout e devolve o Time. Strings sem fuso são assumidas como UTC."},
+    {text: "Layouts customizados usam o horário de referência: `3:04PM` = hora 12h sem zero à esquerda; `Mon Jan _2 15:04:05 2006` é o formato completo do Unix `date` (o `_2` alinha o dia com espaço)."},
+    {text: "`2006-01-02T15:04:05.999999-07:00` — a versão numérica do RFC3339 com frações de segundo (`.999999` omite zeros à direita) e fuso `-07:00`."},
+    {text: "`time.Parse(form, \"8 41 PM\")` — o ano/mês/dia ausentes no layout viram zero (ano 1, janeiro, dia 1): `0000-01-01 20:41:00`. Parse parcial preenche o resto com o mínimo."},
+    {text: "Para saída puramente numérica sem fuso dinâmico, monte com `Printf` e componentes — menos flexível, porém explícito."},
+    {text: "`Parse` devolve **erro descritivo** para input que não casa com o layout: mostra a string e onde a leitura parou."},
+    {text: "Saída (uma execução — as linhas com `t` variam):\n$ go run time-formatting-parsing.go\n2026-09-06T11:02:47-03:00\n2012-11-01 22:08:41 +0000 +0000\n11:02AM\nSun Sep  6 11:02:47 2026\n2026-09-06T11:02:47.350547-03:00\n0000-01-01 20:41:00 +0000 UTC\n2026-09-06T11:02:47-00:00\nparsing time \"8:41PM\" as \"Mon Jan _2 15:04:05 2006\": cannot parse \"8:41PM\" as \"Mon\""}
   ]}
 />
 
-<a href="https://go.dev/play/p/0dgIUsTgEYs" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## O horário de referência (decore este mnemônico)
+
+`01/02 03:04:05PM '06 -0700` — o dia 2 de janeiro de 2006, às 3:04 da tarde. Cada parte é um componente:
+
+| Token | Significa |
+|---|---|
+| `2006` / `06` | ano (completo / 2 dígitos) |
+| `01` / `1` / `Jan` / `January` | mês (zero, sem zero, abreviado, completo) |
+| `02` / `_2` / `2` | dia (zero, com espaço, sem zero) |
+| `15` / `03` / `3` | hora (24h / 12h com zero / 12h sem zero) |
+| `04` / `4` | minuto |
+| `05` | segundo |
+| `PM` | am/pm |
+| `-0700` / `-07:00` / `MST` | fuso (numérico, com dois-pontos, por nome) |
+| `.000` / `.999` | fração de segundo (zeros fixos / opcionais) |
+
+Não é uma máscara com letras mágicas — é um **exemplo** que o Go lê. Se você escrever `YYYY-MM-DD`, vira literal (imprime "YYYY-MM-DD") porque não é o formato de referência. É o erro nº 1 de quem migra.
+
+## Formatar × parsear
+
+A mesma string de layout vai nos dois sentidos: `t.Format(layout)` produz; `time.Parse(layout, s)` consome. Prefira as constantes prontas quando possível: `time.RFC3339`, `time.RFC1123`, `time.Kitchen` (`3:04PM`), `time.DateTime` (`2006-01-02 15:04:05`).
+
+Detalhe de parsing: se o layout **não tem fuso**, o resultado assume **UTC**. Se tem fuso nomeado (`MST`), precisa do nome conhecido. Para controlar, parseie e depois `.In(fuso)`.
+
+## Em código real
+
+- **APIs**: RFC3339 (`time.RFC3339`) é o formato do ISO 8601 usado na web. `MarshalJSON` de `time.Time` já serializa assim (página [JSON](json)).
+- **Guardar em banco**: prefira RFC3339 UTC ou epoch inteiro; guardar string formatada por fuso local é bug garantido.
+- **Logs**: timestamps consistentes (`time.DateTime` + fuso fixo) facilitam grep.
+
+## Armadilhas comuns
+
+- **`yyyy-MM-dd` não funciona**: layouts Go usam o horário de referência. Use `2006-01-02` (constante `time.DateTime` para incluir hora).
+- **Parse sem fuso vira UTC**: `"2012-11-01 22:08:41"` parseado vira UTC, não local. Se o dado é local, anexe o fuso ou use `.In()`.
+- **Parse parcial**: layout sem ano/mês/dia devolve ano 1/dia 1 (visto no exemplo) — raramente o que você quer para armazenar.
+- **`.999` vs `.000`**: `.999` omite fração zero (`...47`); `.000` fixa (`...47.000`). Escolha conforme o formato esperado.
+- **Ignorar o erro do Parse**: string que não casa devolve erro (e o Time resultante é o zero). Trate ou valide a entrada.
+
+## Pratique
+
+1. **Reproduza**: rode `time-formatting-parsing.go` e identifique cada token do layout na saída.
+2. **Modifique**: formate `t` como `02/01/2006 15:04` (dia/mês/ano brasileiro) e parseie `"17/11/2009 20:34"` de volta — confira que o layout casa nos dois sentidos.
+3. **Aplique**: escreva `func paraRFC3339(s string) (string, error)` que aceita `2006-01-02 15:04:05` e devolve RFC3339 — tratando o erro de parse.
+
+## Próximo passo
+
+Datas e números resolvidos; agora o acaso controlado. Em [Números Aleatórios](random-numbers) você vê o `math/rand` novo (v2) — aleatório de verdade, reprodutível para testes, e o aviso de segurança do `crypto/rand`.

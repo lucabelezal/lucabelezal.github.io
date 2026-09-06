@@ -4,8 +4,10 @@ title: XML
 
 import CodeExplanation from '@site/src/components/CodeExplanation';
 
+JSON domina as APIs modernas, mas o mundo legado ainda fala **XML**: SOAP, RSS/Atom, `pom.xml`, configs antigas. O pacote `encoding/xml` segue o mesmo modelo declarativo do JSON — struct + tags — com um vocabulário maior: além de elementos, você mapeia **atributos** (`id="27"`), nome de tag raiz e repetição de filhos.
+
 <CodeExplanation
-  title={"XML"}
+  title={"xml.go"}
   code={`package main
 
 import (
@@ -18,6 +20,10 @@ type Plant struct {
     Id      int      \`xml:"id,attr"\`
     Name    string   \`xml:"name"\`
     Origin  []string \`xml:"origin"\`
+}
+
+type Nesting struct {
+    Plants []*Plant \`xml:"plant"\`
 }
 
 func (p Plant) String() string {
@@ -43,13 +49,53 @@ func main() {
     fmt.Println(string(out))
 }`}
   sections={[
-    {text: "Plant será mapeado para XML. Como nos exemplos de JSON, tags contêm diretivas para encoder e decoder. Aqui usamos recursos especiais: `XMLName` dita o nome do elemento; `id,attr` significa que `Id` é _atributo_ XML em vez de elemento aninhado."},
-    {text: "Emita XML da nossa plant; use `MarshalIndent` para saída mais legível."},
-    {text: "Para adicionar header XML genérico, anexe explicitamente."},
-    {text: "Use `Unmarshal` para parsear XML em estrutura. Se malformado ou incompatível, retorna erro descritivo."}
+    {text: "`Plant` mapeia para XML via tags. Três direções: `xml:\"plant\"` em `XMLName` dita o **nome do elemento raiz**; `xml:\"id,attr\"` faz `Id` virar **atributo**; `xml:\"name\"`/`xml:\"origin\"` são elementos aninhados."},
+    {text: "`Nesting` mostra repetição: `[]*Plant` com `xml:\"plant\"` serializa vários `<plant>` filhos."},
+    {text: "`String()` (método de [Interfaces](interfaces)) dá a representação amigável usada pelo `fmt` — por isso `fmt.Println(p)` imprime bonito após o unmarshal."},
+    {text: "`xml.MarshalIndent(v, \" \", \"  \")` serializa com prefixo e indentação para saída legível."},
+    {text: "`xml.Header` é a declaração `<?xml version=...?>` — o Marshal **não** a inclui; anexe quando o documento precisar dela."},
+    {text: "`xml.Unmarshal` faz o caminho inverso: casa elementos/atributos com as tags e preenche o struct. Erro descreve onde o XML divergiu do esperado."},
+    {text: "Saída (uma execução):\n$ go run xml.go\n <plant id=\"27\">\n   <name>Coffee</name>\n   <origin>Ethiopia</origin>\n   <origin>Brazil</origin>\n </plant>\n<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n <plant id=\"27\">\n   <name>Coffee</name>\n   <origin>Ethiopia</origin>\n   <origin>Brazil</origin>\n </plant>\nPlant id=27, name=Coffee, origin=[Ethiopia Brazil]\n <Nesting>\n   <plant id=\"27\">\n     <name>Coffee</name>\n     <origin>Ethiopia</origin>\n     <origin>Brazil</origin>\n   </plant>\n   <plant id=\"81\">\n     <name>Tomato</name>\n     <origin>Mexico</origin>\n     <origin>California</origin>\n   </plant>\n </Nesting>"}
   ]}
 />
 
-<a href="https://go.dev/play/p/vsP5mIrNJOG" target="_blank" rel="noreferrer" style={{fontSize: 14, opacity: 0.7}}>
-  Run on go.dev/play
-</a>
+## As direções das tags XML
+
+| Tag | Efeito |
+|---|---|
+| `xml:"name"` | O campo vira um elemento filho ``<name>...</name>`` |
+| `xml:"id,attr"` | O campo vira um **atributo** ``<plant id="27">`` || `xml:"plant"` em `XMLName` | Controla o nome do elemento em que o struct é serializado |
+| `xml:",chardata"` | O campo recebe o **texto puro** do elemento |
+| `xml:",any"` | Caso genérico para filhos desconhecidos |
+
+Regra semelhante ao [JSON](json): só campos **exportados** participam; `time.Time` tem formato próprio; `MarshalIndent` só embeleza, não muda a estrutura.
+
+## Unmarshal: do XML de volta para structs
+
+O caminho inverso casa elementos e atributos com as tags — e aqui mora uma diferença do JSON: XML distingue ``<origin>`` repetido de ``<origins><origin>...</origin></origins>``. No exemplo, `Origin []string` com tag `xml:"origin"` lê **vários** ``<origin>`` irmãos; se o XML agrupasse, a tag seria outra. Quando o XML não casa com sua struct, o `Unmarshal` devolve erro — leia a mensagem e ajuste as tags.
+
+## XML × JSON: quando usar cada um
+
+- **JSON** para APIs novas, dados de aplicação — mais leve e legível (página [JSON](json)).
+- **XML** para integração com sistemas legados (SOAP), formatos de config consolidados (Maven, .NET), RSS e feeds.
+- Se o XML pode ser **enorme**, `xml.Decoder` com iteração por token processa em streaming (como o `Decoder` de JSON), sem carregar tudo na memória.
+
+O mesmo conselho de sempre: para **HTML** (que parece XML mas não é), use `html/template` ou um parser de HTML — não `encoding/xml`.
+
+## Armadilhas comuns
+
+- **Esquecer o `XMLName`**: sem ele, o nome do elemento raiz vira o nome do tipo Go (`Plant`) — quase sempre errado.
+- **Elemento × atributo**: `xml:"id"` gera ``<id>27</id>``; para ``<plant id="27">`` a tag é `xml:"id,attr"`. A diferença é um `,attr` — e o XML resultante muda completamente.
+- **Campos minúsculos**: ignorados em silêncio, como no JSON. Debug de XML "vazio" = campo não exportado.
+- **Repetição vs agrupamento**: `[]T` com `xml:"x"` lê ``<x>`` irmãos repetidos; não lê ``<xs><x/></xs>``. Confira a estrutura real do documento.
+- **Namespaces**: XML com `xmlns:` exige tags com namespace (`xml:"ns tag"`); ignorar quebra o unmarshal de documentos reais.
+
+## Pratique
+
+1. **Reproduza**: rode `xml.go` e compare o primeiro bloco (sem header) com o segundo (com `<?xml?>`).
+2. **Modifique**: adicione um campo `Preco float64 \`xml:\"preco\"\`` e um `EmEstoque bool \`xml:\"estoque,attr\"\`` a `Plant`; serialize e veja onde cada um aparece.
+3. **Aplique**: escreva uma struct para ler um feed RSS simples (``<rss><channel><item><title>...``), com `Unmarshal` — e imprima os títulos com `range`.
+
+## Próximo passo
+
+Texto estruturado vencido; agora o tempo. Em [Time](time), o pacote de data/hora de Go — instantes, durações e o formato de referência que substitui máscaras de data.
