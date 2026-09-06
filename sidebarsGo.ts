@@ -102,6 +102,13 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'link',
+          label: 'De Swift para Go',
+          href: '/swift-para-go',
+          description: 'Guia para quem domina Swift: o que migra, o que não existe e o que engana.',
+          customProps: {date: '06 set 2026'},
+        },
+        {
+          type: 'link',
           label: 'Style Guide Go',
           href: '/go/style-guide',
           description: 'Minhas decisões de estilo com a razão de cada uma.',

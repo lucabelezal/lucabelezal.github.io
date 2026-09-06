@@ -3,6 +3,12 @@ import styles from './styles.module.css';
 
 const contents = [
   {
+    title: 'De Swift para Go',
+    description: 'Para quem domina Swift: o que migra, o que não existe e o que engana ao aprender Go.',
+    href: '/swift-para-go',
+    date: '06 set 2026',
+  },
+  {
     title: 'Style Guide Go',
     description: 'Minhas decisões de estilo em português, com a razão de cada uma e quando quebro a regra.',
     href: '/go/style-guide',

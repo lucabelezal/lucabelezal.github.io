@@ -1,0 +1,636 @@
+---
+slug: swift-para-go
+title: "De Swift para Go: o guia para quem domina Swift"
+authors: [lucabelezal]
+tags: [go, ios, engenharia-de-software]
+date: 2026-09-06T13:09:00
+description: Se você domina Swift, não procure enum com associated values nem Optional no Go. Eles não faltam — foram recusados. Um mapa do que migra, do que não existe e do que engana.
+---
+
+Se você domina Swift e resolveu aprender Go, seu primeiro impulso vai ser abrir uma tabela de correspondência: *"enum com associated values é o quê em Go? Optional? `throws`?"*. Você vai procurar um tempo, não achar, concluir que Go é uma linguagem limitada e largar. Esse post existe para impedir isso.
+
+A verdade incômoda: Swift e Go parecem primos na superfície — mesma sintaxe de chaves, value types, closures, switch — e divergem no modelo mental. O que não existe no Go **não foi esquecido; foi recusado por decisão de design**. Cada recusa carrega uma filosofia. Quem vem de Swift só entende Go quando para de procurar equivalente e passa a perguntar *por que* o Go fez diferente.
+
+{/* truncate */}
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+import CodeCompare from '@site/src/components/blog/CodeCompare';
+
+<WhatYouWillLearn>
+
+- por que um de-para literal de Swift para Go te ensina Go errado
+- o que migra direto (e o que parece igual mas engana)
+- o que não existe no Go e o que existe no lugar — com a filosofia por trás de cada recusa
+- como `enum`+associated values, `Optional`, `throws`, `extension`, ARC e actor isolation viram código Go idiomático
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Swift avançado: enums com associated values, protocol extensions, generics, async/await, actor isolation, ARC
+- zero de Go — este post é a porta de entrada
+- um editor com Go instalado (`go version`), para rodar os exemplos
+
+</Prerequisites>
+
+## 1. Contexto
+
+Swift (2014) e Go (2009) nasceram com poucos anos de diferença — e objetivos opostos.
+
+O Swift é a resposta da Apple a linguagens inseguras: quer que o compilador prove o máximo possível antes de rodar. O sistema de tipos é rico de propósito — enums exaustivos, `Optional`, protocolos, ownership — para que estados inválidos sejam **irrepresentáveis**. Você paga complexidade de linguagem para ganhar segurança que não depende de disciplina.
+
+O Go nasceu da frustração do Google com compilações lentas e dependências bagunçadas em C++. A prioridade é o oposto: pouquíssimos conceitos ortogonais, aprendidos em um dia, código que qualquer engenheiro do time entende sem consultar a linguagem. Segurança vem de convenção e de ferramentas (`go vet`, `-race`), não de um typechecker que vigia cada expressão.
+
+Nenhuma está "certa". São duas respostas à mesma pergunta — *como escrever software confiável?* — e cada uma cede algo. O erro do migrante Swift é avaliar Go com a régua do Swift.
+
+O que migra sem atrito — você já sabe isto, não vamos repetir:
+
+| Swift | Go | Diferença? |
+| --- | --- | --- |
+| `let`/`var` | `:=`, `var` | não literal — ver armadilhas |
+| `if`/`else`, `for-in` | `if`/`else`, `for ... := range` | quase idêntico |
+| `switch` | `switch` | idêntico no básico |
+| `func`, `closures` | `func`, `closures` como valores | idêntico |
+| `struct` | `struct` | mesmo: value type |
+| `Array`, `Dictionary` | `slice`, `map` | cuidado — ver armadilhas |
+| `defer` | `defer` | Go roda no fim da função |
+| `String` | `string` | Go é UTF-8 nativo |
+
+## 2. O problema
+
+Suponha que você queira modelar um download em Swift. A ferramenta natural é um enum com associated values:
+
+```swift title="DownloadState.swift"
+enum DownloadState {
+    case idle
+    case downloading(progress: Double)
+    case done(url: URL)
+    case failed(Error)
+}
+
+switch state {
+case .done(let url):
+    open(url)
+case .failed(let error):
+    show(error)
+case .downloading(let p):
+    progress(p)
+case .idle:
+    break
+}
+```
+
+O compilador obriga você a tratar **todos** os casos. Adicionar um case novo quebra todos os switches até você decidir o que fazer com ele. Isso é o Swift no auge: estados ilegais são irrepresentáveis porque o typechecker não deixa.
+
+Você pesquisa "enum em Go", descobre que Go **não tem enums**, e conclui que Go é uma linguagem inferior para modelar domínio. Não é. A pergunta certa é outra: Go recusou `enum` com associated values porque prefere resolver o mesmo problema com ferramentas que já tem — tipos, interfaces e erro como valor. O resultado é menos exaustividade garantida pelo compilador, mas mais extensibilidade sem editar um switch central. Vamos ver como nas próximas seções, uma recusa por vez.
+
+## 3. Modelo mental
+
+Antes de mergulhar no de-para de código (seção 4) e no tour das recusas (seção 5), a inversão que vale para tudo:
+
+> O Swift pergunta: *como o compilador me impede de errar?*
+> O Go pergunta: *como a linguagem fica simples o bastante para eu errar pouco e achar o erro rápido?*
+
+Concretamente, quatro trocas que você vai repetir ao longo do post:
+
+| Você pensa em Swift | Go responde |
+| --- | --- |
+| ausência é `Optional`, exige tratamento | ausência é o **zero value**, um valor normal |
+| erro é exceção que desenrola a pilha | erro é **um valor de retorno** que você vê e decide |
+| comportamento extra em qualquer tipo via `extension` | comportamento pertence a **quem é dono do tipo** — senão, função livre |
+| concorrência segura garantida pelo compilador (actor) | concorrência é **ferramenta** (`go test -race`), não typechecker |
+
+Cada gap da seção 5 segue o mesmo roteiro: o que o Swift te dá, por que o Go recusou, o que existe no lugar, e a filosofia revelada.
+
+## 4. De-para de código: a mesma ideia nas duas linguagens
+
+Antes do tour pelas filosofias, a referência crua: você já escreve isso em Swift, e escreve assim em Go. Cada par é a mesma intenção — guarde esta seção para consultar enquanto lê os posts de Go do blog. Onde a linha do Go diz "não tem", o tour dos gaps (seção 5) explica o que existe no lugar e por quê.
+
+### Variáveis e constantes
+
+<CodeCompare
+  swift={`var nome = "Ada"            // inferência de tipo
+var idade: Int = 42       // anotação explícita
+let maximo = 100          // constante
+let user = User()         // binding imutável (runtime)
+var n: Int                // declarar sem valor`}
+  go={`nome := "Ada"                 // inferência de tipo
+var idade int = 42         // anotação explícita
+const maximo = 100         // só literal de compile time
+// não existe let de runtime: user := &User{}
+var n int                  // declarar sem valor → zero value`}
+/>
+
+Em Swift, `let` congela o binding de qualquer valor. Em Go, `const` só aceita literal — valor de runtime é sempre `var`/`:=`. É o primeiro "parece igual" que engana.
+
+### Strings
+
+<CodeCompare
+  swift={`let a = "a" + "b"                  // concatenação
+let msg = "oi \\(nome)"             // interpolação
+let up = s.uppercased()             // maiúsculas
+let n = s.count                     // nº de caracteres
+let sub = s[start..<end]            // fatiar`}
+  go={`a := "a" + "b"                       // concatenação
+msg := fmt.Sprintf("oi %s", nome)   // não tem interpolação
+up := strings.ToUpper(s)            // maiúsculas
+n := len(s)                         // conta bytes, não runas
+sub := s[start:end]                 // fatiar`}
+/>
+
+A ausência de interpolação surpreende todo mundo. Go prefere funções explícitas (`fmt`, `strings`) a açúcar sintático na linguagem — mesmo padrão dos subscripts na seção 5.
+
+### Coleções
+
+<CodeCompare
+  swift={`var arr = [1, 2, 3]                // array literal
+arr.append(4)                     // append (muta o array)
+let d = ["a": 1]                  // dicionário
+if let v = d["a"] { ... }         // ler checando presença
+for x in arr { ... }              // iterar`}
+  go={`arr := []int{1, 2, 3}                 // slice literal
+arr = append(arr, 4)              // append retorna o slice!
+d := map[string]int{"a": 1}       // map
+if v, ok := d["a"]; ok { ... }    // ler checando presença
+for _, x := range arr { ... }     // iterar (_, descarta índice)`}
+/>
+
+`append` que retorna é o detalhe que mais gera bug: em Swift você esquece o retorno e o array muda; em Go, esquecer a atribuição (`arr =`) descarta a mudança em silêncio.
+
+### Fluxo
+
+<CodeCompare
+  swift={`for i in 0..<10 { ... }         // for com índice
+for x in arr { ... }              // for sobre coleção
+while condicao { ... }            // while
+while true { ... }                // loop infinito
+guard let x else { return }       // early return
+switch x { case 1: ... default: ... }`}
+  go={`for i := 0; i < 10; i++ { ... }  // Go só tem um for
+for _, x := range arr { ... }     // range (_, x)
+for condicao { ... }              // while vira for condicao
+for { ... }                       // loop infinito
+x, ok := ...; if !ok { return }   // guard vira if invertido
+switch x { case 1: ... default: ... } // break implícito`}
+/>
+
+O `switch` é quase idêntico, com uma diferença silenciosa: no Go o `break` é implícito — um `case` não cai no próximo sem `fallthrough` explícito. Em Swift você escreve `break` para sair; no Go, escrevê-lo é redundância (mas compila).
+
+### Funções e closures
+
+<CodeCompare
+  swift={`func soma(_ a: Int, _ b: Int) -> Int   // função
+saudar(nome: "Ada")                    // rótulo de argumento
+func div() -> (Int, Int)               // retorno múltiplo (tupla)
+func f(_ ns: Int...)                   // variádico
+func f(x: Int = 5)                     // argumento padrão
+let dobrar = { (x: Int) in x * 2 }     // closure como valor`}
+  go={`func soma(a, b int) int                // função (sem labels)
+saudar("Ada")                           // sem rótulo de argumento
+func div() (int, int)                   // retorno múltiplo nativo
+func f(ns ...int)                       // variádico
+// não tem argumento padrão — outra função ou variadic
+dobrar := func(x int) int { return x * 2 } // closure como valor`}
+/>
+
+Em Go, retorno múltiplo é o recurso central — é ele que viabiliza o erro como valor. E não existe argumento padrão: o Go recusou de propósito (defaults escondem falha de API atrás de mais parâmetros). Você cria outra função ou usa variadic.
+
+### Tipos customizados
+
+<CodeCompare
+  swift={`struct Ponto { var x: Int; var y: Int }  // struct
+let p = Ponto(x: 1, y: 2)               // memberwise init
+init(x: Int) { self.x = x }             // init customizado
+func area() -> Double { ... }           // método
+mutating func mover() { ... }           // mutação do próprio valor
+enum Dia { case seg, ter }              // enum simples
+class Conta { ... }                     // referência (ARC)`}
+  go={`type Ponto struct { X, Y int }            // struct
+p := Ponto{X: 1, Y: 2}                  // literal
+func novoPonto(x int) Ponto { ... }     // construtor = função
+func (p Ponto) Area() float64 { ... }   // método (receiver)
+func (p *Ponto) Mover() { ... }         // mutação via *receiver
+type Dia int  // + iota → enum simples
+Ponto + ponteiro  // referência (GC)`}
+/>
+
+Dois detalhes que saltam: campos exportados começam com **maiúscula** (no Go, a visibilidade mora no nome), e não existe `init` — o construtor é uma função normal que retorna o struct.
+
+### Protocolos / interfaces
+
+<CodeCompare
+  swift={`protocol Gravavel { func salvar() }   // declara protocolo
+struct User: Gravavel { ... }          // conforma explicitamente
+extension Gravavel { func log() }      // implementação padrão`}
+  go={`type Gravavel interface { Salvar() error }  // declara interface
+func (u User) Salvar() error { ... }   // satisfaz implicitamente
+// "default impl" de extension → embedding (seção 5)`}
+/>
+
+O Go não tem `implements`: se o tipo tem os métodos, ele satisfaz a interface — ponto, sem declaração. É a maior diferença de OO entre as duas, detalhada na seção 5.
+
+## 5. Implementação — o tour dos gaps
+
+Go 1.22+, só stdlib. Os blocos são excertos que isolam o ponto — para rodar um, envolva com `package main`, imports e `func main` quando precisar, e use `go run arquivo.go`.
+
+### `enum` + associated values → erro como dado, tipos por comportamento
+
+O Go não tem enums por um motivo fino: ele não quer que você **centralize** o comportamento de todos os estados num switch. A extensibilidade que Go valoriza é adicionar um caso novo **sem tocar nos existentes**.
+
+No lugar do enum, cada estado vira um tipo, e o comportamento comum vira um método numa interface. Quem consome a interface ganha o caso novo de graça:
+
+```go title="download.go"
+type State interface {
+    String() string
+}
+
+type Idle struct{}
+
+func (Idle) String() string { return "idle" }
+
+type Downloading struct {
+    Progress float64
+}
+
+func (d Downloading) String() string {
+    return fmt.Sprintf("baixando %.0f%%", d.Progress*100)
+}
+
+type Done struct{ URL string }
+
+func (d Done) String() string { return "ok: " + d.URL }
+```
+
+Quando você **de fato** precisa discriminar os casos — serializar, por exemplo — o Go oferece o type switch:
+
+```go title="download.go"
+func report(s State) string {
+    switch s := s.(type) {
+    case Done:
+        return "concluído: " + s.URL
+    case Downloading:
+        return "em andamento"
+    default:
+        return "outro"
+    }
+}
+```
+
+O que o Swift ganha e o Go perde: exaustividade. Em Go, um type switch com `default` silencioso deixa caso novo passar despercebido. O que o Go ganha: adicionar `Cancelled` não obriga ninguém a mudar — quem não liga, não muda. No Swift, todo switch do projeto grita até você decidir.
+
+**A filosofia por trás:** Go prefere que estados novos nasçam como tipos independentes e se espalhem por comportamento, a que cresçam num switch central que todo mundo edita. Extensibilidade de código aberto > exaustividade local.
+
+### `Optional` → zero value
+
+Em Swift, `Int?` é um tipo diferente de `Int`. Ausência é especial: você não pode usar um valor sem desembrulhar, e isso força decisão em cada ponto de uso.
+
+Em Go, todo tipo tem um **zero value** — `0`, `""`, `nil` — e ele é um valor perfeitamente usável. Ausência não é um estado especial; é o estado padrão da variável recém-declarada:
+
+```go title="timeout.go"
+// timeout zero = 0. A função decide o default.
+func connect(timeout time.Duration) {
+    if timeout == 0 {
+        timeout = 5 * time.Second
+    }
+    fmt.Println("conectando com timeout", timeout)
+}
+
+func main() {
+    var t time.Duration // zero: 0
+    connect(t)          // sem configurar nada, já funciona
+}
+```
+
+Compare com o equivalente Swift, onde ausência exige cerimônia a cada leitura:
+
+```swift title="timeout.swift"
+func connect(timeout: TimeInterval?) {
+    if let t = timeout {
+        // ...
+    } else {
+        // default manual
+    }
+}
+```
+
+A consequência prática é profunda: em Go, um `struct` recém-criado **já é utilizável** se você desenhar os zeros como defaults sensatos. É por isso que a inicialização em Go é trivial — `Config{}` funciona, não existe o equivalente a um init obrigatório checando campos opcionais.
+
+**A filosofia por trás:** Swift trata ausência como perigo que o compilador vigia. Go trata ausência como um valor comum, porque na maioria dos códigos reais "não configurado" deveria significar "usa o default" — e forçar handling em todo lugar só gera cerimônia. O custo: quando você *precisa* distinguir "não veio nada" de "veio zero" (um campo de JSON ausente, por exemplo), o zero value não basta — aí o idioma é `*T` (`nil` = ausente) ou sentinelas. Mas essa é a exceção, não a regra.
+
+### `throws` / `Result` → erro como valor
+
+Swift separa fluxo normal do fluxo de erro com `throws`/`do-catch`. A pilha desenrola até o `catch`. Em Go não existe exceção: **erro é um valor de retorno**, e todo chamador vê e decide em cada passo.
+
+```go title="usuario.go"
+var ErrInvalidID = errors.New("id inválido")
+
+func fetchUser(id int) (User, error) {
+    if id <= 0 {
+        return User{}, fmt.Errorf("buscar usuário %d: %w", id, ErrInvalidID)
+    }
+    return User{ID: id, Name: "Ada"}, nil
+}
+
+func main() {
+    u, err := fetchUser(1)
+    if err != nil { // explícito, na sua cara
+        log.Fatal(err)
+    }
+    fmt.Println(u.Name)
+}
+```
+
+```swift title="usuario.swift"
+func fetchUser(id: Int) async throws -> User {
+    guard id > 0 else { throw UserError.invalidID }
+    return User(id: id, name: "Ada")
+}
+
+do {
+    let u = try await fetchUser(id: 1)
+    print(u.name)
+} catch {
+    print(error)
+}
+```
+
+Diferenças que importam para o design, não só para a sintaxe:
+
+- **Fluxo visível.** Em Go, cada ponto que pode falhar é um `if err != nil` no meio do código. Verboso? Sim. Mas não existe caminho de erro escondido desenrolando a pilha — o leitor vê exatamente onde e como cada falha é tratada.
+- **Decisão local.** Em Swift o erro sobe até um `catch` distante. Em Go, quem chama decide ali: retorna `err` pra cima, loga, ou ignora com `_`.
+- **Erros são dados.** Em Swift, `Error` é um protocolo com um tipo por trás. Em Go, erro é um valor comum: você compara com sentinelas (`errors.Is`), desempacota tipos customizados (`errors.As`) e pode carregar contexto com `fmt.Errorf("%w")` — o mesmo padrão de wrapping que vimos no [guia dos guias de estilo do Go](/go-style-guides).
+
+**A filosofia por trás:** erro como valor torna o tratamento de erro **parte do fluxo normal de leitura**, não um desvio invisível. O custo é verbosidade e a tentação de engolir erro com `_`. O ganho é que nenhuma chamada falha silenciosamente sem que o autor do código tenha decidido explicitamente que tudo bem ignorar.
+
+### `extension` / protocol extension → funções livres, embedding, interfaces implícitas
+
+Em Swift, você abre qualquer tipo e adiciona método — até tipos que você não possui:
+
+```swift title="String+Slug.swift"
+extension String {
+    func slugified() -> String {
+        lowercased().replacingOccurrences(of: " ", with: "-")
+    }
+}
+
+print("Hello World".slugified()) // "hello-world"
+```
+
+Go **proíbe** adicionar métodos a tipos de outros pacotes — incluindo `string`. A regra é dura: *métodos só pertencem a tipos que você define no seu pacote*. O que você faz quando quer estender um tipo alheio? Escreve uma **função livre** que o recebe:
+
+```go title="slug.go"
+func slugify(s string) string {
+    return strings.ReplaceAll(strings.ToLower(s), " ", "-")
+}
+
+func main() {
+    fmt.Println(slugify("Hello World")) // hello-world
+}
+```
+
+Não é uma limitação arbitrária: é o que mantém o comportamento **rastreável**. Em Swift, `slugified()` pode vir de qualquer extension em qualquer arquivo do módulo — você procura a origem. Em Go, funções livres vivem no seu pacote, e métodos vivos vivem no pacote do tipo. Menos mágica distribuída, mais código que se acha.
+
+O parente próximo de `extension` que **existe** em Go é o embedding — composição estrutural no lugar de herança:
+
+```go title="logado.go"
+type Logger struct{}
+
+func (Logger) Log(msg string) {
+    fmt.Println(msg)
+}
+
+type Server struct {
+    Logger        // embedding: Server "ganha" Log
+    Address string
+}
+
+func main() {
+    s := Server{Address: ":8080"}
+    s.Log("subindo") // método promovido do campo embutido
+}
+```
+
+E um detalhe que desorienta muito dev Swift: **conformidade a protocolo em Swift é nominal e declarada** (`: Protocolo` na declaração). Em Go, interface é **implícita** — se o tipo tem os métodos, ele satisfaz a interface, sem declarar nada:
+
+```go title="gravar.go"
+type Persistente interface {
+    Salvar() error
+}
+
+type Usuario struct{ Name string }
+
+func (u Usuario) Salvar() error { return nil } // já implementa Persistente
+
+func sync(p Persistente) error { return p.Salvar() }
+```
+
+**A filosofia por trás:** Swift empacota comportamento em qualquer lugar via extension; Go amarra comportamento à posse do tipo. E a conformidade implícita inverte a direção da dependência — quem **define** a interface (o consumidor) decide o que precisa, e qualquer tipo existente satisfaz sem mudar. É composição por contrato de métodos, não herança por declaração.
+
+### ARC / ownership / `inout` → GC + ponteiro explícito
+
+O Swift gerencia memória por ARC: o compilador injeta retain/release, e você declara `weak`/`unowned` para quebrar ciclos. `inout` permite mutar uma variável do chamador.
+
+O Go usa **garbage collector**. Não existe `weak`, `unowned`, nem contagem manual — o runtime descobre sozinho quando um objeto não é mais alcançável. Você escreve menos código de lifecycle, em troca de pausas curtas do GC (irrelevantes na maioria dos serviços).
+
+E `inout`? Vira ponteiro explícito — em Go, se você quer que uma função mude a variável do chamador, passa um `*T`:
+
+```go title="increment.go"
+func increment(x *int) {
+    *x++
+}
+
+func main() {
+    n := 1
+    increment(&n)
+    fmt.Println(n) // 2
+}
+```
+
+```swift title="increment.swift"
+func increment(_ x: inout Int) {
+    x += 1
+}
+
+var n = 1
+increment(&n)
+```
+
+O detalhe que mais importa na prática: **quem decide onde um valor mora**. Em Swift, `class` vive no heap com contagem; `struct` vive na pilha ou copiado. Em Go, você escreve `&x` quando quer referência e **não decide o heap** — o compilador faz escape analysis: se o endereço escapa da função, vai pro heap; se não, fica na pilha. Você raramente pensa sobre isso.
+
+**A filosofia por trás:** ARC te dá controle fino de ciclo de vida e previsibilidade — necessário para UI com lifetime de objetos que você conhece. O Go joga isso fora em nome da simplicidade: o GC cuida, e você só decide a única coisa que importa para o design — *valor ou referência*.
+
+### actor isolation / async-await → goroutines + `select` + race detector
+
+Aqui está o maior abismo entre as duas, e o mais fácil de subestimar.
+
+O Swift tornou concorrência segura **propriedade do compilador**. Um `actor` serializa acesso ao próprio estado e o typechecker impede você de tocar propriedades isoladas sem `await` — violar a isolamento de um actor é erro de compilação.
+
+O Go entrega goroutines baratas — você dispara concorrência com uma palavra (`go f()`) — mas **não protege nada por você**. Dois goroutines escrevendo na mesma variável é um data race silencioso, que só aparece quando você roda com a ferramenta certa:
+
+```go title="contador.go"
+type Counter struct {
+    mu    sync.Mutex
+    value int
+}
+
+func (c *Counter) Increment() int {
+    c.mu.Lock()
+    defer c.mu.Unlock()
+    c.value++
+    return c.value
+}
+```
+
+Compare o mesmo contrato em Swift com actor:
+
+```swift title="contador.swift"
+actor Counter {
+    private var value = 0
+
+    func increment() -> Int {
+        value += 1
+        return value
+    }
+}
+```
+
+Em Swift, `value` está protegido pela isolamento do actor — o código acima nem compila se outro contexto tocar `value` direto. Em Go, a proteção é **sua**, com mutex. Esqueceu o `Lock()`? Compila, roda, e corrompe em produção.
+
+O que salva o Go não é o compilador, é a cultura: `go test -race` é parte obrigatória de qualquer pipeline sério, e o idioma preferido para comunicação é canal + `select`, não memória compartilhada:
+
+```go title="worker.go"
+func worker(done <-chan struct{}, results chan<- int) {
+    for i := 1; i <= 5; i++ {
+        select {
+        case <-done:
+            return // cancelamento respeitado
+        case results <- i * 2:
+        }
+    }
+}
+```
+
+O modelo mental do Go para concorrência é o de **comunicação por canais** (a frase célebre: *"não comunique compartilhando memória; compartilhe memória comunicando"*), enquanto o Swift isola estado dentro de actors.
+
+**A filosofia por trás:** Swift quer que a segurança venha do typechecker, antes do código existir. Go quer que a linguagem seja simples e as ferramentas (`-race`, `go vet`) encontrem o erro quando ele acontecer — um detector em runtime no lugar de um provedor em compile time. Para um dev Swift, a consequência prática é dura: **data race é bug seu, não bug do compilador**. Rode `-race` sempre.
+
+### macros / subscripts → codegen + método nomeado
+
+Macros em Swift expandem código em tempo de compilação (o ecossistema `@Observable` etc. depende disso). Subscripts deixam você indexar seus tipos com `obj[i]`. Nenhum dos dois existe no Go — e não faz falta.
+
+Subscript:
+
+```swift title="Matrix.swift"
+struct Matrix {
+    private var data: [Double]
+    subscript(row: Int, col: Int) -> Double {
+        get { data[row * cols + col] }
+    }
+}
+
+let m = Matrix(...)
+let v = m[0, 1]
+```
+
+Go não permite sobrescrever o operador `[]` de um tipo. O método nomeado cumpre o papel com mais clareza:
+
+```go title="matriz.go"
+func (m Matrix) At(row, col int) float64 {
+    return m.data[row*m.cols+col]
+}
+```
+
+E macros: o Go prefere **geração de código a metaprogramação na linguagem**. O exemplo clássico é `stringer`, que gera o método `String()` de um tipo enum-like a partir de um comentário `//go:generate`:
+
+```go title="status.go"
+type Status int
+
+const (
+    Pending Status = iota
+    Running
+    Done
+)
+
+//go:generate stringer -type=Status
+```
+
+Rode `go generate` e ele cria `status_string.go` — código gerado, **versionado e legível**, não expansão invisível em compile time.
+
+**A filosofia por trás:** macro adiciona poder de expressão à linguagem e custo de legibilidade — quem lê o código não vê a expansão. Go prefere que o código que roda seja o código que você lê; quando precisa de boilerplate, gera arquivos de verdade. Subscript é açúcar; um método nomeado é mais óbvio.
+
+### Parece igual, mas engana
+
+Fechando o tour, as três armadilhas que parecem triviais e mordem no primeiro dia:
+
+**`let` não é `const`.** Em Swift, `let` congela o *binding* (pode guardar valor de runtime). Em Go, `const` só aceita **literais de compile time** — `const x = random()` não compila. Para tudo que não é literal, é `var`:
+
+```go title="const.go"
+const DefaultPort = 8080 // ok: literal
+
+// const p = os.Getenv("PORT") // erro de compilação
+var p = os.Getenv("PORT")     // certo
+```
+
+**Slices e maps têm cabeça de referência.** `struct` copia de verdade, mas copiar uma slice copia o *header* — o array subjacente é compartilhado. Mutar um elemento da cópia afeta o original:
+
+```go title="slice.go"
+a := []int{1, 2, 3}
+b := a
+b[0] = 99
+fmt.Println(a[0]) // 99 — não 1!
+```
+
+Isso não é bug: é o modelo. Quando a semântica de cópia importa, use `copy` ou `slices.Clone`.
+
+**`switch` não cai através e não é exaustivo.** Em Go o `break` é implícito (sem `fallthrough` não cai). E o case pode ser **qualquer expressão** — não só constante:
+
+```go title="switch.go"
+switch {
+case n < 0:
+    fmt.Println("negativo")
+case n == 0:
+    fmt.Println("zero")
+default:
+    fmt.Println("positivo")
+}
+```
+
+## 6. Falhas e trade-offs
+
+Cada recusa do Go tem um preço, e é honesto listar:
+
+- **Sem exaustividade de enum**, estados novos podem passar despercebidos em type switches com `default`. O Swift te obriga a decidir; o Go confia que você vai.
+- **Zero value apaga a distinção "ausente" vs "default"**. Quando essa distinção importa (parsing de JSON, campos opcionais de config), você recorre a `*T` e sentinelas — e perde a simplicidade que motivou o design.
+- **Erro como valor polui assinaturas** e tenta o dev a ignorar com `_`. Go aceita verbosidade como preço da visibilidade.
+- **Sem extension em tipos alheios**, você escreve funções livres no seu pacote — ou precisa copiar lógica. Não há como "abrir" `time.Time` e adicionar método.
+- **Sem proteção de actor em compile time**, data races são reais e silenciosos. A segurança depende de você rodar `-race` e de revisão.
+- **GC** troca controle de lifecycle por pausas ocasionais — irrelevante para serviços, relevante se você um dia vier de um contexto com requisito de latência extrema.
+
+Erros comuns do migrante Swift, em ordem de gravidade:
+
+1. Escrever código Swift traduzido palavra por palavra para Go (o "Go escrito em Swift").
+2. Ignorar erro com `_` "porque é só um helper" — é o equivalente a `try!` sem pensar.
+3. Compartilhar estado entre goroutines sem mutex e sem `-race`.
+4. Usar ponteiro para tudo por hábito de `class`, em vez de deixar value semantics trabalhar.
+
+A régua que uso: quando sentir falta de um recurso do Swift, pergunte *"como o Go resolve isso sem ele?"* — quase sempre há um desenho de tipo, uma função ou uma convenção esperando. Se não houver, aí sim é limitação real, e geralmente o Go tem um motivo.
+
+<Summary>
+
+- Swift e Go parecem iguais na sintaxe e divergem no modelo mental; de-para literal ensina Go errado.
+- O que não existe em Go não foi esquecido — foi recusado: enum vira tipos + interface, Optional vira zero value, throws vira erro como valor.
+- extension não existe: método pertence a quem é dono do tipo; o resto é função livre, embedding e interface implícita.
+- ARC vira GC; actor isolation vira goroutine + mutex + `select`, com proteção em runtime (`-race`), não em compile time.
+- O que engana: `let` ≠ `const`, slice/map copiam o header — não os dados — e switch não cai através.
+
+</Summary>
+
+<NextSteps href="/go/roadmap" title="Voltar ao Go Backend Roadmap">
+Você já tem o mapa mental. O roadmap ordena o que estudar em seguida — fundamentos, APIs, persistência, concorrência e produção.
+</NextSteps>
+
+<SkillsGained skills={["Go", "Swift", "Modelos mentais", "Erros como valor", "Zero value", "Composição sobre herança", "Concorrência"]} />

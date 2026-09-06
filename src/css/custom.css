@@ -202,6 +202,43 @@ code {
   }
 }
 
+/* Blog post — grid fluido de 3 colunas:
+   sidebar Recent posts à esquerda, TOC à direita,
+   centro (artigo) expande. Container ocupa a largura toda. */
+@media (min-width: 997px) {
+  html.blog-post-page .container {
+    max-width: none !important;
+  }
+
+  html.blog-post-page .container .row {
+    display: grid;
+    grid-template-columns: minmax(0, 280px) minmax(0, 1fr) minmax(0, 300px);
+    column-gap: 3rem;
+    align-items: start;
+  }
+
+  html.blog-post-page main.col,
+  html.blog-post-page aside.col,
+  html.blog-post-page .col--2 {
+    max-width: none;
+  }
+
+  html.blog-post-page aside.col,
+  html.blog-post-page .col--2 .table-of-contents {
+    position: sticky;
+    top: calc(var(--ifm-navbar-height) + 1rem);
+    max-height: calc(100vh - var(--ifm-navbar-height) - 2rem);
+    overflow-y: auto;
+  }
+}
+
+@media (min-width: 997px) and (max-width: 1400px) {
+  html.blog-post-page .container .row {
+    grid-template-columns: minmax(0, 240px) minmax(0, 1fr) minmax(0, 260px);
+    column-gap: 2rem;
+  }
+}
+
 /* Mobile reading defaults: preserve content width for code, not prose. */
 @media (max-width: 996px) {
   .theme-doc-markdown,
