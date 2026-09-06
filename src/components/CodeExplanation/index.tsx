@@ -53,12 +53,24 @@ export default function CodeExplanation({
   const fileName = title.endsWith('.go')
     ? title
     : `${title.toLowerCase().replace(/\s+/g, '-')}.go`;
+  const terminalSections = sections.filter((s) => isTerminalSection(s.text));
+  const contentSections = sections.filter((s) => !isTerminalSection(s.text));
   return (
     <div className={styles.container}>
       <div className={styles.left}>
         <h3>{title}</h3>
-        {sections.map((s, i) => {
-          if (isTerminalSection(s.text)) {
+        {contentSections.map((s, i) => (
+          <p key={i}>
+            <InlineText text={s.text} />
+          </p>
+        ))}
+      </div>
+      <div className={styles.right}>
+        <div className={styles.codeStack}>
+          <CodeBlock language={language} title={fileName} showLineNumbers>
+            {code}
+          </CodeBlock>
+          {terminalSections.map((s, i) => {
             const terminalContent = s.text.replace(/^(Saída:|Output:)\s*\n?/, '');
             return (
               <div key={i} className={styles.terminal}>
@@ -67,18 +79,8 @@ export default function CodeExplanation({
                 </CodeBlock>
               </div>
             );
-          }
-          return (
-            <p key={i}>
-              <InlineText text={s.text} />
-            </p>
-          );
-        })}
-      </div>
-      <div className={styles.right}>
-        <CodeBlock language={language} title={fileName} showLineNumbers>
-          {code}
-        </CodeBlock>
+          })}
+        </div>
       </div>
     </div>
   );
