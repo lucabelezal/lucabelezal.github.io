@@ -17,6 +17,7 @@ Carregue a skill certa antes de agir. Fonte canônica: `skills/` → sync para `
 |---|---|---|
 | Analisar screenshot/Figma/URL e transformar em spec implementável | `code-blog-ui` | `skills/code-blog-ui/SKILL.md` |
 | Criar/editar post técnico, aplicar esqueleto editorial, revisar estrutura | `code-blog-content` | `skills/code-blog-content/SKILL.md` |
+| Escrever conteúdo didático estilo professor/Elemar (formato aula, capítulo técnico, texto corrido → aula, qualquer tema) | `didactic-writing` | `skills/didactic-writing/SKILL.md` |
 | Implementar spec em Docusaurus/React/TS (tokens, layout, componente) | `code-blog-docusaurus` | `skills/code-blog-docusaurus/SKILL.md` |
 | Frontend genérico (design system, blueprint, audit) | `frontend-design`, `frontend-blueprint`, `web-design-guidelines`, `web-quality-audit`, `perf-web-optimization` | `.claude/skills/` |
 | SEO/docs | `seo`, `ai-seo`, `docs-writer` | `.claude/skills/` |
