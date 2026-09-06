@@ -1,0 +1,34 @@
+{
+  "blogSection.whatYouWillLearn": {
+    "message": "Lo que aprenderás",
+    "description": "Heading for the WhatYouWillLearn blog section"
+  },
+  "blogSection.prerequisites": {
+    "message": "Prerrequisitos",
+    "description": "Heading for the Prerequisites blog section"
+  },
+  "blogSection.summary": {
+    "message": "Resumen",
+    "description": "Heading for the Summary blog section"
+  },
+  "blogSection.nextSteps": {
+    "message": "Qué estudiar después",
+    "description": "Heading for the NextSteps blog section"
+  },
+  "blogSection.next": {
+    "message": "Siguiente",
+    "description": "Label of the Next link inside NextSteps"
+  },
+  "blogSection.skills": {
+    "message": "Habilidades desarrolladas",
+    "description": "Heading for the SkillsGained blog section"
+  },
+  "seriesNav.previous": {
+    "message": "Anterior",
+    "description": "Series navigation previous link"
+  },
+  "seriesNav.next": {
+    "message": "Siguiente",
+    "description": "Series navigation next link"
+  }
+}

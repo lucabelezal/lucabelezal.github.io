@@ -1,0 +1,421 @@
+---
+slug: go-error-handling
+title: "Error handling in Go: when if err != nil is a decision and when it becomes noise"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-06T15:30:00
+description: Not every if err != nil is the same phenomenon. Separating handling, propagating, translating, and accumulating is what turns error handling from boilerplate into a decision — and shows where Result[T] actually helps.
+---
+
+The most common complaint about Go is also the most revealing: *"`if err != nil` fills your code with boilerplate"*. It looks like a syntax argument, but it hides a model error. Not every `if err != nil` represents the same thing — one propagates the error, another makes a decision, another translates the abstraction. Treating them as a single phenomenon is what creates the urge to abstract everything with `Result[T]`, and that is exactly where the problem starts.
+
+This post separates what each error check actually does, shows why explicit code still has bugs, and ends with the honest question: when is abstracting worth it — and when does `Result[T]` just trade your problem for a different one.
+
+{/* truncate */}
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+<WhatYouWillLearn>
+
+- why `if err != nil` is not a single phenomenon — and treating it as one leads to the wrong abstraction
+- the four architectural functions of an error check: handle, propagate, translate, and accumulate
+- how `fmt.Errorf` with `%w`, `errors.Is`, and `errors.As` build a chain of causality
+- why explicit code still produces repetition and scope bugs
+- the criterion for knowing when an abstraction (including `Result[T]`) truly reduces complexity
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- basic Go: functions, multiple returns, `error`, `errors.New`
+- a passing familiarity with `fmt.Errorf`, `errors.Is`, and `errors.As`
+- if you come from another language, reading the map in [From Swift to Go](/en/swift-para-go) helps
+
+</Prerequisites>
+
+## 1. Context
+
+The discussion about error handling in Go almost always starts in the same place: the repetition of
+
+```go
+if err != nil {
+    return err
+}
+```
+
+Anyone coming from exceptions reads this as noise — "the try/catch I would have written became three lines". That reading is the original mistake. In Go, an error **is a value**: an ordinary return that the caller sees and decides what to do with at each step. There is no hidden error path unwinding the stack toward some distant `catch`.
+
+Rob Pike formalized this in [Errors are values](https://go.dev/blog/errors-are-values) (2015): *errors are values, and values can be programmed*. The `Scanner` in `bufio` is the classic example — the API moves the error check out of the main flow, and the caller consults `scanner.Err()` once at the end instead of checking on every iteration.
+
+The practical consequence: **the `if` is where the decision about the error becomes visible**. Verbose? Sometimes. But no failure happens without the author having walked past it explicitly.
+
+The problem starts when this visibility becomes dogma in reverse: if *everything* turns into a mechanical `if err != nil`, the code becomes genuinely noisy — and that is when the temptation to abstract everything is born.
+
+## 2. The problem
+
+Compare three snippets. Syntactically they are identical:
+
+```go
+// A: the function does not know what to do — it just passes it on.
+data, err := repository.Get(ctx, id)
+if err != nil {
+    return nil, err
+}
+
+// B: there is a decision — fallback to another source.
+data, err := cache.Get(ctx, key)
+if err != nil {
+    data, err = remote.Fetch(ctx, key)
+    if err != nil {
+        return nil, fmt.Errorf("fetch %q from remote: %w", key, err)
+    }
+}
+
+// C: the layer translates the error abstraction.
+user, err := repository.Get(ctx, id)
+if err != nil {
+    if errors.Is(err, sql.ErrNoRows) {
+        return nil, ErrUserNotFound
+    }
+    return nil, fmt.Errorf("get user %q: %w", id, err)
+}
+```
+
+Three `if err != nil`, three **different architectural functions**:
+
+- **A propagates** — the layer has no information to decide.
+- **B handles** — the error changes the behavior (uses another source).
+- **C translates** — changes the error from infrastructure (`sql.ErrNoRows`) to domain (`ErrUserNotFound`).
+
+The moment you look at the three and think *"this can be abstracted into a `Result[T]`"* is the moment you erase the difference between them. And then a single abstraction has to accommodate three different behaviors — or it hides two of them.
+
+## 3. Mental model
+
+Before deciding on any abstraction, classify the check. There are four categories:
+
+| Category | Does the layer know what to do? | Example |
+| --- | --- | --- |
+| **Handle** | Yes — the error changes the behavior | fallback, retry, ignore |
+| **Propagate** | No — passes it up | `return err` |
+| **Translate** | Changes the error abstraction | infra → domain, domain → HTTP |
+| **Accumulate** | Defers the check to the end | `errWriter`, `Scanner` |
+
+The golden rule: **handle the error at the layer that has enough information to decide**. The repository knows the database; the service knows domain rules; the handler knows HTTP. Each layer translates the error when it gains a new responsibility over it.
+
+### Translate with identity: `%w`, `errors.Is`, `errors.As`
+
+Translation must not destroy the chain. This is where `fmt.Errorf` with `%w` comes in:
+
+```go
+return fmt.Errorf("create order: %w", err)
+```
+
+each layer adds context without erasing the cause. Then:
+
+```go
+return fmt.Errorf("checkout: %w", err)
+```
+
+and at the top `errors.Is` walks the entire chain:
+
+```go
+if errors.Is(err, ErrUserNotFound) {
+    // 404
+}
+```
+
+Hard rule: **a string is not an error contract**. Never compare `err.Error() == "user not found"` — text is information for humans, not structure. Use sentinels with `errors.Is` or types with `errors.As`:
+
+```go
+type ValidationError struct {
+    Field string
+    Msg   string
+}
+
+func (e *ValidationError) Error() string {
+    return e.Field + ": " + e.Msg
+}
+```
+
+```go
+var valErr *ValidationError
+if errors.As(err, &valErr) {
+    // error carries structured data: which field failed
+}
+```
+
+Three levels of contract: `string` (text), `errors.Is` (semantics), `errors.As` (type + structured data).
+
+### Accumulate: the pattern that hides the check without hiding the error
+
+Not every repetition calls for `Result[T]`. The `errWriter` from Pike's post shows a simpler alternative — an API that **adds** the error check at the right point:
+
+```go
+type errWriter struct {
+    w   io.Writer
+    err error
+}
+
+func (ew *errWriter) write(buf []byte) {
+    if ew.err != nil {
+        return
+    }
+    _, ew.err = ew.w.Write(buf)
+}
+```
+
+Usage:
+
+```go
+ew := &errWriter{w: fd}
+ew.write(p0[a:b])
+ew.write(p1[c:d])
+ew.write(p2[e:f])
+if ew.err != nil {
+    return ew.err
+}
+```
+
+The first error freezes the writer (subsequent calls become no-ops) and it is consulted at the end. Notice: **the number of checks went down, but the error handling did not disappear** — it moved into an API whose contract allows deferring it. That is the central distinction: reducing repetition is not reducing handling.
+
+## 4. Implementation
+
+Let's build the per-layer translation in a runnable example. Create a file and run it with `go run`:
+
+```go title="errors.go"
+package main
+
+import (
+	"errors"
+	"fmt"
+	"net/http"
+)
+
+var ErrNotFound = errors.New("user not found")
+var ErrConflict = errors.New("user already exists")
+
+type Repo struct{}
+
+func (Repo) Find(id string) (*User, error) {
+	if id == "0" {
+		return nil, fmt.Errorf("find user %s: %w", id, ErrNotFound)
+	}
+	if id == "dup" {
+		return nil, fmt.Errorf("find user %s: %w", id, ErrConflict)
+	}
+	return &User{ID: id, Name: "Ada"}, nil
+}
+
+type User struct{ ID, Name string }
+
+type Service struct{ repo Repo }
+
+func (s Service) Get(id string) (*User, error) {
+	u, err := s.repo.Find(id)
+	if err != nil {
+		return nil, fmt.Errorf("load user %q: %w", id, err)
+	}
+	return u, nil
+}
+
+func main() {
+	s := Service{}
+	for _, id := range []string{"1", "0", "dup"} {
+		u, err := s.Get(id)
+		if err != nil {
+			switch {
+			case errors.Is(err, ErrNotFound):
+				fmt.Println(id, "->", http.StatusNotFound)
+			case errors.Is(err, ErrConflict):
+				fmt.Println(id, "->", http.StatusConflict)
+			default:
+				fmt.Println(id, "-> 500:", err)
+			}
+			continue
+		}
+		fmt.Println(id, "->", u.Name)
+	}
+}
+```
+
+Expected output:
+
+```text
+1 -> Ada
+0 -> 404
+dup -> 409
+```
+
+What the example shows:
+
+- **Repo** knows the database and returns infrastructure errors (`fmt.Errorf("find user...")`).
+- **Service** adds operational context (`"load user %q"`) without destroying the chain.
+- **Handler/main** does not know SQL — it decides **only by semantics**, with `errors.Is`, which crosses both wrappings.
+
+If tomorrow the Repo swaps PostgreSQL for another storage, `main` does not even notice. This is how domain errors and infrastructure errors stay decoupled: each layer translates when it gains responsibility, and identity survives through `%w`.
+
+A useful context chain has this shape:
+
+```text
+original error (sql.ErrNoRows)
+      ↓  repository translates
+ErrUserNotFound
+      ↓  service adds context
+"load user 42: user not found"
+```
+
+And a *useless* chain is one that only piles on the function name:
+
+```go
+return fmt.Errorf("A: %w", err) // then
+return fmt.Errorf("B: %w", err) // then
+return fmt.Errorf("C: %w", err) // no new information, it is noise
+```
+
+Review question: *does this wrapping add information the consumer did not have?* If not, it is decoration.
+
+## 5. Failure modes and trade-offs
+
+### Explicit code does not mean correct code
+
+Here is the twist. The argument for the explicit `if err != nil` is visibility — but visibility is not the same as correctness. Repeated patterns invite **mechanical repetition errors**, and they happen even in large, mature projects.
+
+The most instructive case: checking the **wrong** error on the second check.
+
+```go
+val, err := jsonutil.EncodeJSON(ks)
+if err != nil {
+    return err
+}
+
+// BUG: err is still the one from EncodeJSON (already checked, it is nil).
+// The error from Put is never checked.
+if c.barrier.Put(...); err != nil {
+    return err
+}
+```
+
+The correct form scopes a fresh `err`:
+
+```go
+if err := c.barrier.Put(...); err != nil {
+    return err
+}
+```
+
+Another similar bug pattern, swapping one error for another:
+
+```go
+err = p.Save(pidPath)
+if err != nil {
+    err2 := p.Stop()
+
+    // BUG: should check err2. err was already checked and did not change.
+    if err != nil {
+        return fmt.Errorf("...: %s: %s", err, err2)
+    }
+}
+```
+
+These examples (inspired by real open-source cases, like the ones [Jon Calhoun analyzes about scope in Go](https://www.calhoun.io/one-liner-if-statements-with-errors/)) prove a point that inverts the discussion: `if err != nil` **is not a magical safety mechanism**. It is a simple construct that keeps the decision visible — and a visible decision still needs review, testing, and static tooling (`go vet`, `errcheck`, static analysis). Simplicity does not eliminate human error; it only guarantees that when the error happens, it is in the code you read.
+
+Calhoun's article is especially useful here because it shows that even the **syntax** of the `if` has a trap: variables declared in the init of the `if` (`if err := f(); err != nil`) live only in that scope, and `:=` reusing `err` from an outer scope can re-declare instead of assign — producing exactly the kind of "wrong variable" bug above.
+
+### So: when to abstract?
+
+The right question is not *"how do I remove `if err != nil`?"*, but *"does each check represent a decision that belongs to this function?"*. Three cases:
+
+**Case A — a different decision at each step.** Keep it explicit.
+
+```go
+if err != nil {
+    return fmt.Errorf("load user: %w", err)
+}
+```
+
+**Case B — trivial propagation along a short chain.** Acceptable as is.
+
+```go
+x, err := stepA()
+if err != nil {
+    return err
+}
+y, err := stepB(x)
+if err != nil {
+    return err
+}
+```
+
+**Case C — homogeneous sequence, same semantics.** Now the abstraction makes sense — and Go already has the pattern: `Scanner`, `errWriter`, or wrapping the repetitive operation.
+
+Notice: only case C (and maybe B on long chains) is a candidate for abstraction. A and B mixed with C are the scenario where `Result[T]` becomes dogma.
+
+### `Result[T]` as the ending — what it solves, what it costs
+
+If we repeat a pattern so much that we make mechanical mistakes, should we create an abstraction? Maybe — but only for the problem it attacks. A minimal implementation:
+
+```go
+type Result[T any] struct {
+    Value T
+    Err   error
+}
+
+func Map[T, U any](r Result[T], f func(T) U) Result[U] {
+    if r.Err != nil {
+        return Result[U]{Err: r.Err}
+    }
+    return Result[U]{Value: f(r.Value)}
+}
+
+func AndThen[T, U any](r Result[T], f func(T) Result[U]) Result[U] {
+    if r.Err != nil {
+        return Result[U]{Err: r.Err}
+    }
+    return f(r.Value)
+}
+```
+
+This lets you compose computations that can fail:
+
+```go
+result :=
+    GetUser(ctx, id).
+        AndThen(ValidateUser).
+        AndThen(CalculatePermissions).
+        AndThen(CreateSession)
+```
+
+The real case for `Result[T]` **is not less code** — it is the explicit composition of a sequence of operations that share the semantics *"success continues, error stops"*. For a long, homogeneous pipeline (parse → validate → transform → persist), this is legitimate and elegant.
+
+But weigh the costs first:
+
+- **Total complexity did not go down.** Less local syntax is not less complexity. The reader needs to know `Result`, `Map`, `AndThen`, the propagation rules, and the library's errors.
+- **Debugging and stack traces.** The error path becomes a chain of generic calls; finding where the failure happened requires unpacking. `T, error` shows the exact point.
+- **`Result[T]` does not decide for you.** `result.IsErr()` still forces you to answer: is it a 404? a timeout? a retry? a database error? The abstraction models the *result*; the handling architecture is still yours.
+- **The API boundary.** In a large codebase, mixing `package A → T, error`, `package B → Result[T]`, `package C → panic` fragments the mental model. Onboarding, review, and cross-team migration pay the bill.
+
+The yardstick I would use: **idiomatic boundaries (`T, error`); specialized internal pipelines may use `Result[T]`** — as long as the whole package adopts it and nobody has to convert at the edge. And never `Result[T]` just to replace `func X() (*User, error)` in a CRUD with no composition gain.
+
+### What if the repetition comes from too much responsibility?
+
+One last warning. Twelve `if err != nil` in a function may indicate not too many errors, but **too much responsibility** — parse, fetch, transform, persist, publish all in the same place. In that case the solution is not `Result[T]`; it is **decomposing the function**. The number of error checks is a signal to investigate, not an automatic quality metric.
+
+<Summary>
+
+- `if err != nil` is not a single phenomenon: it can handle, propagate, translate, or accumulate — and each one calls for a different solution.
+- Handle the error at the layer that has the information to decide; the others translate with `%w`, `errors.Is`, and `errors.As`, never by string.
+- Reducing checks is not reducing handling: `Scanner` and `errWriter` move the check to a better API.
+- Explicit code still has repetition and scope bugs — wrong check, `err` vs `err2`, re-declaration with `:=`. Review and static tooling remain mandatory.
+- `Result[T]` solves composition for homogeneous pipelines, not the "if err != nil problem" — and it costs onboarding, debugging, and consistency in return.
+
+</Summary>
+
+<NextSteps href="/go/errors" title="Errors in practice — Go by Example">
+Now that you separate handling from propagating and translating, review the fundamentals of error syntax in Go by Example — sentinels, custom errors, and wrapping ready to copy.
+</NextSteps>
+
+<SkillsGained skills={["Go", "Error handling", "errors.Is/As", "Wrapping with %w", "API design", "Observability"]} />

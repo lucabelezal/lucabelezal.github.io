@@ -102,6 +102,13 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'link',
+          label: 'Error handling em Go',
+          href: '/go-error-handling',
+          description: 'Quando o if err != nil é decisão e quando vira ruído.',
+          customProps: {date: '06 set 2026'},
+        },
+        {
+          type: 'link',
           label: 'De Swift para Go',
           href: '/swift-para-go',
           description: 'Guia para quem domina Swift: o que migra, o que não existe e o que engana.',

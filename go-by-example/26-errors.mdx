@@ -110,6 +110,8 @@ Toda operação de I/O, rede, parsing e banco retorna `error`. E a stdlib define
 2. **Modifique**: adicione uma condição que retorne `fmt.Errorf(\"temperatura: %w\", ErrPower)` no `makeTea` e confirme que o `errors.Is` continua achando `ErrPower` na cadeia.
 3. **Aplique**: escreva `func lerConfig(arquivo string) error` que abre um arquivo e envolve o erro com `%w` — depois trate no `main` com `errors.Is` contra um sentinela seu (`ErrArquivoAusente`).
 
+Já domina a sintaxe? O passo seguinte é o modelo: quando cada `if err != nil` é uma **decisão** (tratar, propagar, traduzir, acumular) e quando vira ruído que uma abstração deveria resolver — veja [Error handling em Go](/go-error-handling).
+
 ## Próximo passo
 
 Sentinelas identificam *qual* condição falhou. Quando a falha precisa carregar **dados** (campo do erro, tipo para decisão), o próximo passo é criar um **tipo de erro próprio** — em [Erros Customizados](custom-errors).

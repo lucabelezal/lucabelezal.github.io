@@ -3,6 +3,12 @@ import styles from './styles.module.css';
 
 const contents = [
   {
+    title: 'Error handling em Go',
+    description: 'Quando o if err != nil é decisão e quando vira ruído: tratar, propagar, traduzir, acumular — e o lugar do Result[T].',
+    href: '/go-error-handling',
+    date: '06 set 2026',
+  },
+  {
     title: 'De Swift para Go',
     description: 'Para quem domina Swift: o que migra, o que não existe e o que engana ao aprender Go.',
     href: '/swift-para-go',

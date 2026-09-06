@@ -1,0 +1,217 @@
+---
+slug: go-style-guides
+title: "Guide to the Go style guides: Effective Go, Google, and Uber"
+authors: [lucabelezal]
+tags: [go, engenharia-de-software]
+date: 2026-09-06T12:37:00
+description: What each Go style guide covers, who it serves, where they disagree, and how to decide when in doubt.
+---
+
+`gofmt` ended the formatting debate in Go. Indentation, alignment, and spacing became the machine's problem. What's left — names, errors, tests, `panic`, `init`, API structure — is still a human decision, and for that there are three reference documents: the official Effective Go, Google's Go Style Guide, and Uber's Go Style Guide.
+
+Each was born in a different context and answers different questions. This post maps the three: what they are, who they serve, where they agree, where they disagree, and which one to use when.
+
+{/* truncate */}
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+<WhatYouWillLearn>
+
+- what `gofmt` decides and what is left for human judgment
+- the role and audience of each of the three guides
+- the points where Google and Uber disagree in practice
+- how to settle a style question without memorizing a rule
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go fundamentals (functions, packages, errors)
+- having already written some Go code and run `gofmt`
+- curiosity about why Go code "looks like Go"
+
+</Prerequisites>
+
+## 1. Context
+
+Go's style culture is atypical. Languages like Python have an official guide (PEP 8) that prescribes format and style; companies add layers on top. In Go, formatting was delegated to a tool that runs before `git commit`. [Effective Go](https://go.dev/doc/effective_go) has existed since the 2009 release and is still the text that teaches what idiomatic code is — names, composition, concurrency, errors.
+
+Over time, two companies published their own guides to tackle the problem at scale: Google's [Go Style Guide](https://google.github.io/styleguide/go/) and Uber's [Go Style Guide](https://github.com/uber-go/guide). Both assume you already know Effective Go — it is the "common baseline of the community". They exist because "idiomatic code" doesn't answer everything: in a codebase with thousands of authors, questions that Effective Go leaves open need a documented decision.
+
+## 2. The problem
+
+A beginner finds three texts that, read together, seem to contradict each other:
+
+- Effective Go shows `panic` and `recover` as a normal part of error handling.
+- Google says to almost never `panic`, never use `recover` to "not crash", and calls the `net/http` server behavior a "historical mistake".
+- Uber bans `panic` in production code but makes an exception for `template.Must`.
+
+Who is right? All of them, in their own context. The problem is not the guide — it is treating them as if they were the same category of document.
+
+There is also the inverse mistake: blindly applying a rule made for a multi-million-line monorepo with "readability" reviewers to a weekend personal project. A company rule reflects the company's infrastructure, not a universal truth.
+
+## 3. Mental model
+
+Think in layers, not competitors.
+
+| Guide | Role | Audience | Structure | Tone |
+| --- | --- | --- | --- | --- |
+| **Effective Go** | Official idiomatic baseline | People learning Go | Prose essay | Didactic, stdlib examples |
+| **Google Go Style Guide** | Style governance at scale | Engineers + readability reviewers | 3 hierarchical docs | Prescriptive with rationale |
+| **Uber Go Style Guide** | Pragmatic review checklist | Uber's Go team (and adopters) | "Bad vs Good" rules | Direct, opinionated |
+
+### Effective Go — the idiomatic "why"
+
+Official document on go.dev. Teaches you to think in Go: why getters don't have a `Get` prefix, why packages have short names, why composition replaces inheritance. It is the text that answers "how would a Go programmer solve this?".
+
+An honest limitation: the document itself warns it was written for the Go of 2009 and does not cover generics, modules, or the current ecosystem. It remains the best introduction to style, but it is not a manual of today's decisions.
+
+### Google — the machine of documented decisions
+
+Google's guide is actually four pages with an explicit hierarchy:
+
+- [**guide**](https://google.github.io/styleguide/go/guide): the canonical core. Few hard rules + ordered principles: clarity, simplicity, conciseness, maintainability, consistency.
+- [**best-practices**](https://google.github.io/styleguide/go/best-practices): situational patterns with trade-offs, without rule status.
+- [**decisions**](https://google.github.io/styleguide/go/decisions): RFC-style decisions — what was decided **and why**. Required reading for readability reviewers.
+- [**index**](https://google.github.io/styleguide/go/index): overview, definitions, and hierarchy.
+
+The detail that sets Google apart: rules come with their rationale. "Don't use assertion libraries in tests" is not dogma — the guide explains that they abort early, omit context, and fragment the experience of whoever runs the suite. It is the most useful text for anyone who wants to understand *why* a convention exists.
+
+### Uber — the guide that fits in a review
+
+The [Uber Go Style Guide](https://github.com/uber-go/guide) is a single file with Guidelines, Performance, Style, and Patterns sections. Each rule is a `Bad | Good` table with code. No rhetoric — the format is built for a reviewer to point and an author to fix.
+
+It is the most pragmatic of the three. It is also the most opinionated on points Effective Go leaves open: buffered channels of size 1 only, enums starting at 1, unexported globals with an `_` prefix.
+
+### The rule all three share
+
+They all end up in the same place: when the objective rule doesn't apply, **local consistency** wins — follow the neighboring code in the same package. Google formalizes this in the consistency principle; Uber has the "Be Consistent" rule; Effective Go asks for code that "other Go programmers understand".
+
+## 4. Implementation
+
+How do you apply this day to day? On these battlegrounds, the guides take different positions. The table shows who says what; the code shows the consequence.
+
+### Errors: wrapping and messages
+
+Everyone agrees: errors are values, use `errors.Is`/`errors.As`, never compare strings. The divergence is in the format.
+
+Google asks for `%w` at the **end** of the message, so the printed chain goes from the newest error to the oldest — with one exception: sentinel errors go at the **start**, so the category leads the message. Uber forbids stacking `"failed to x: failed to y"` and suggests writing context as a noun:
+
+```go title="error-wrap.go"
+// Google: %w at the end, readable chain.
+return fmt.Errorf("open config file: %w", err)
+
+// Uber: context as a noun, without "failed to".
+return fmt.Errorf("config file: %w", err)
+
+// Google, sentinel exception: category first.
+return fmt.Errorf("%w: invalid header", ErrParse)
+```
+
+Both also forbid **logging and returning the same error** — whoever logs decides; whoever returns decides. Doing both becomes noise up and down the stack.
+
+### `panic` and `recover`
+
+This is the point of sharpest contrast between Effective Go and the corporate guides.
+
+Effective Go teaches `panic` for "truly exceptional errors" and `recover` so servers don't go down because of a single goroutine. Google considers that last practice a mistake: recovering a panic to "not crash" means keep running with possibly corrupted state. For broken invariants, the verdict is `log.Fatal` — and the guide notes that the `net/http` server violates its own recommendation by recovering panics from handlers, calling it a *historical mistake*.
+
+```go title="panic.go"
+// Google: broken invariant = log.Fatal, not panic.
+if len(groups) == 0 {
+    log.Fatal("program running without configured groups; aborting")
+}
+
+// Google: don't do this to "survive" a crash.
+func handler() {
+    defer func() { recover() }() // you inherit corrupted state
+}
+```
+
+Uber aligns with Google: production code should not `panic`; errors come back as `error` and the caller decides. Exception accepted by both: `Must*` helpers for initialization values at boot (like `template.Must`), when there is no request yet to answer to.
+
+### Names and getters
+
+Here all three agree — and it is the rule that most surprises people coming from Java/C#.
+
+Getters don't have a `Get` prefix. If the field is `owner`, the method is `Owner()`:
+
+```go title="getter.go"
+// Go: the Get prefix adds no information.
+func (c *Config) Owner() string { return c.owner } // right
+func (c *Config) GetOwner() string { return c.owner } // wrong
+```
+
+Google extends the logic: function names don't repeat what the signature already says. `yamlconfig.Parse` instead of `ParseYAMLConfig`, and variable names reflect use, not origin. If the variable holds a list of users, it is called `users`, not `userSlice` or `numUsers`.
+
+### Tests: testify vs stdlib
+
+A real, direct divergence. Uber uses `stretchr/testify` routinely in its test examples — `assert.Equal` and `require.NoError` appear in the guide. Google **bans assertion libraries and third-party frameworks** across the whole codebase: validation and the failure message must live in the test itself, with the `cmp` library for structural comparison.
+
+```go title="tests.go"
+// Uber (example from the guide): testify.
+require.NoError(t, err)
+assert.Equal(t, "8000", port)
+
+// Google: stdlib + message with function and values.
+if got, want := host, "192.0.2.0"; got != want {
+    t.Errorf("SplitHostPort(%q) host = %q, want %q", addr, got, want)
+}
+```
+
+It is a choice of testing culture, not of quality. Google's argument is organizational: in a huge base, every assertion library fragments the experience of whoever debugs failures. On a small team, testify's `require` saves lines and nobody complains.
+
+### `init()` and global state
+
+Both distrust `init()`, but with different emphases. Uber is direct: avoid `init`; if you use it, it must be deterministic and free of I/O, with no dependence on other `init`s. Google contextualizes: `Must*` functions exist precisely to initialize package variables, and the real enemy is mutable global state and callback registration — not `init` itself.
+
+The lesson that runs through the guides: a library should not expose configurable global state. If you need an HTTP client with a custom timeout, create the instance and inject it — don't configure a package variable every test shares.
+
+### Cases where Uber diverges from the community
+
+Some Uber rules are deliberately non-idiomatic, and it's worth knowing them before adopting:
+
+- **`_` prefix on unexported globals** (`_defaultPort`): signals package scope. Golint and the community use `defaultPort`. The guide itself opens an exception: errors use `err`, not `_err`.
+- **Channel size 1 or none**: a bigger buffer demands justification. The guide's example mocks `make(chan int, 64)` — "ought to be enough for anybody".
+- **Enums start at 1** (`iota + 1`): zero becomes "undefined". It goes against the classic `iota` examples starting at 0.
+
+These rules aren't "more correct" — they are documented local decisions. They serve as an example of how a company guide can (and should) diverge when it has a reason.
+
+## 5. Failures and trade-offs
+
+None of the three guides is sufficient on its own:
+
+- **Effective Go has aged.** No generics, no modules, no current ecosystem. It is the starting point, not the finish line.
+- **Google assumes heavy infrastructure.** Rules about assertion libraries, `readability`, and monorepo make sense at Google. In a small project, part of them is bureaucracy without benefit.
+- **Uber is one company's opinion.** `_` prefix, channel size 1, `iota + 1` — great as local decisions, dangerous if copied without the context.
+- **The guides don't cite each other.** When they disagree, you need to know they disagree in order to choose.
+
+The common mistake is the same at both extremes: memorizing the rule without understanding the reason. If you just want the answer, Uber is the shortcut. If you want to understand *why* the answer exists, read Google's `decisions`. If you want the idiomatic baseline, start with Effective Go.
+
+My personal yardstick for style questions: (1) `gofmt` decides formatting, period; (2) the community decides with Effective Go and stdlib examples; (3) within a team, the team's guide wins; (4) in the absence of a rule, follow the neighboring code in the same package.
+
+## References
+
+- [Effective Go](https://go.dev/doc/effective_go)
+- [Google Go Style Guide](https://google.github.io/styleguide/go/) — [guide](https://google.github.io/styleguide/go/guide), [best-practices](https://google.github.io/styleguide/go/best-practices), [decisions](https://google.github.io/styleguide/go/decisions)
+- [Uber Go Style Guide](https://github.com/uber-go/guide/blob/master/style.md)
+
+<Summary>
+
+- `gofmt` settles formatting; names, errors, tests, and `panic` remain human decisions.
+- Effective Go teaches the idiom; Google documents decisions with rationale; Uber delivers a review checklist.
+- The sharpest divergences: `panic`/`recover`, assertion libraries in tests, and error message format.
+- Rule that runs through all three guides: local consistency wins when the objective rule doesn't apply.
+- A company guide reflects the company's infra — copy the reason, not just the rule.
+
+</Summary>
+
+<NextSteps href="/go/roadmap" title="Back to the Go Backend Roadmap">
+Use the roadmap to decide in what order to study fundamentals, APIs, persistence, concurrency, and production.
+</NextSteps>
+
+<SkillsGained skills={["Code style", "Idiomatic Go", "Naming", "Errors", "Code review"]} />

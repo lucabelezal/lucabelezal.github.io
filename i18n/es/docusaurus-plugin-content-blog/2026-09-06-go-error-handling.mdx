@@ -1,0 +1,421 @@
+---
+slug: go-error-handling
+title: "Manejo de errores en Go: cuándo el if err != nil es decisión y cuándo se vuelve ruido"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-06T15:30:00
+description: No todo if err != nil es el mismo fenómeno. Separar tratar, propagar, traducir y acumular es lo que convierte el manejo de errores de boilerplate en decisión — y muestra dónde Result[T] realmente ayuda.
+---
+
+La queja más común sobre Go es también la más reveladora: *"el `if err != nil` llena el código de boilerplate"*. Parece una discusión de sintaxis, pero esconde un error de modelo. No todo `if err != nil` representa lo mismo — uno propaga el error, otro toma decisión, otro traduce la abstracción. Tratarlos como un fenómeno único es lo que genera la necesidad de abstraerlo todo con `Result[T]`, y es exactamente ahí donde empieza el problema.
+
+Este post separa lo que cada verificación de error realmente hace, muestra por qué el código explícito igualmente tiene bugs, y termina con la pregunta honesta: cuándo vale la pena abstraer — y cuándo `Result[T]` cambia tu problema por otro.
+
+{/* truncate */}
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+<WhatYouWillLearn>
+
+- por qué `if err != nil` no es un fenómeno único — y tratarlo como tal lleva a la abstracción equivocada
+- las cuatro funciones arquitectónicas de una verificación de error: tratar, propagar, traducir y acumular
+- cómo `fmt.Errorf` con `%w`, `errors.Is` y `errors.As` construyen una cadena de causalidad
+- por qué el código explícito sigue produciendo bugs de repetición y alcance
+- el criterio para saber cuándo una abstracción (incluido `Result[T]`) reduce complejidad de verdad
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go básico: funciones, múltiples retornos, `error`, `errors.New`
+- conocer `fmt.Errorf`, `errors.Is` y `errors.As` por encima
+- si vienes de otro lenguaje, ayuda haber leído el mapa de [De Swift a Go](/es/swift-para-go)
+
+</Prerequisites>
+
+## 1. Contexto
+
+La discusión sobre el manejo de errores en Go casi siempre empieza en el mismo lugar: la repetición de
+
+```go
+if err != nil {
+    return err
+}
+```
+
+Quien viene de excepciones lee esto como ruido — el "try/catch que habría escrito se convirtió en tres líneas". Esa lectura es el error de origen. En Go, el error **es un valor**: un retorno común, que el llamador ve y decide qué hacer en cada paso. No existe un camino de error oculto desenrollando la pila hasta un `catch` lejano.
+
+Rob Pike lo formalizó en [Errors are values](https://go.dev/blog/errors-are-values) (2015): *los errores son valores, y los valores pueden programarse*. El `Scanner` de `bufio` es el ejemplo clásico — la API abstrae la comprobación de error del flujo principal, y el llamador consulta `scanner.Err()` una vez al final, en lugar de comprobar en cada iteración.
+
+La consecuencia práctica: **el `if` es donde la decisión sobre el error queda visible**. ¿Verboso? A veces. Pero no existe fallo que ocurra sin que el autor haya pasado por él explícitamente.
+
+El problema empieza cuando esa visibilidad se convierte en dogma al revés: si *todo* se vuelve un `if err != nil` mecánico, el código se vuelve ruidoso de verdad — y ahí nace la tentación de abstraerlo todo.
+
+## 2. El problema
+
+Compara tres fragmentos. Sintácticamente son idénticos:
+
+```go
+// A: la función no sabe qué hacer — solo lo reenvía.
+data, err := repository.Get(ctx, id)
+if err != nil {
+    return nil, err
+}
+
+// B: existe una decisión — fallback a otra fuente.
+data, err := cache.Get(ctx, key)
+if err != nil {
+    data, err = remote.Fetch(ctx, key)
+    if err != nil {
+        return nil, fmt.Errorf("buscar %q en remoto: %w", key, err)
+    }
+}
+
+// C: la capa traduce la abstracción del error.
+user, err := repository.Get(ctx, id)
+if err != nil {
+    if errors.Is(err, sql.ErrNoRows) {
+        return nil, ErrUserNotFound
+    }
+    return nil, fmt.Errorf("get user %q: %w", id, err)
+}
+```
+
+Tres `if err != nil`, tres **funciones arquitectónicas diferentes**:
+
+- **A propaga** — la capa no tiene información para decidir.
+- **B trata** — el error altera el comportamiento (usa otra fuente).
+- **C traduce** — cambia el error de infraestructura (`sql.ErrNoRows`) a dominio (`ErrUserNotFound`).
+
+El momento en que miras los tres y piensas *"se puede abstraer esto en un `Result[T]`"* es el momento en que borras la diferencia entre ellos. Y entonces una abstracción única necesita acomodar tres comportamientos diferentes — o esconde dos de ellos.
+
+## 3. Modelo mental
+
+Antes de decidir sobre cualquier abstracción, clasifica la verificación. Son cuatro categorías:
+
+| Categoría | ¿La capa sabe qué hacer? | Ejemplo |
+| --- | --- | --- |
+| **Tratar** | Sí — el error cambia el comportamiento | fallback, retry, ignorar |
+| **Propagar** | No — reenvía hacia arriba | `return err` |
+| **Traducir** | Cambia la abstracción del error | infra → dominio, dominio → HTTP |
+| **Acumular** | Aplaza la comprobación para el final | `errWriter`, `Scanner` |
+
+La regla de oro: **trata el error en la capa que tiene suficiente información para decidir**. El repository conoce la base de datos; el service conoce la regla de dominio; el handler conoce HTTP. Cada uno traduce el error cuando gana una responsabilidad nueva sobre él.
+
+### Traducir con identidad: `%w`, `errors.Is`, `errors.As`
+
+La traducción no puede destruir la cadena. Aquí es donde entra `fmt.Errorf` con `%w`:
+
+```go
+return fmt.Errorf("crear pedido: %w", err)
+```
+
+cada capa añade contexto sin borrar la causa. Después:
+
+```go
+return fmt.Errorf("checkout: %w", err)
+```
+
+y en la cima `errors.Is` atraviesa toda la cadena:
+
+```go
+if errors.Is(err, ErrUserNotFound) {
+    // 404
+}
+```
+
+Regla dura: **el string no es un contrato de error**. Nunca compares `err.Error() == "user not found"` — el texto es información para humanos, no estructura. Usa centinelas con `errors.Is` o tipos con `errors.As`:
+
+```go
+type ValidationError struct {
+    Field string
+    Msg   string
+}
+
+func (e *ValidationError) Error() string {
+    return e.Field + ": " + e.Msg
+}
+```
+
+```go
+var valErr *ValidationError
+if errors.As(err, &valErr) {
+    // el error lleva dato estructurado: qué campo falló
+}
+```
+
+Tres niveles de contrato: `string` (texto), `errors.Is` (semántica), `errors.As` (tipo + datos estructurados).
+
+### Acumular: el patrón que esconde la comprobación sin esconder el error
+
+No toda repetición pide `Result[T]`. El `errWriter` del post de Pike muestra una alternativa más simple — una API que **añade** la comprobación de error en el punto correcto:
+
+```go
+type errWriter struct {
+    w   io.Writer
+    err error
+}
+
+func (ew *errWriter) write(buf []byte) {
+    if ew.err != nil {
+        return
+    }
+    _, ew.err = ew.w.Write(buf)
+}
+```
+
+Uso:
+
+```go
+ew := &errWriter{w: fd}
+ew.write(p0[a:b])
+ew.write(p1[c:d])
+ew.write(p2[e:f])
+if ew.err != nil {
+    return ew.err
+}
+```
+
+El primer error congela el writer (las siguientes llamadas se vuelven no-op) y se consulta al final. Observa: **la cantidad de comprobaciones disminuyó, pero el tratamiento del error no desapareció** — se movió a una API cuyo contrato permite aplazarlo. Esa es la distinción central: reducir repetición no es reducir handling.
+
+## 4. Implementación
+
+Vamos a armar la traducción por capas en un ejemplo ejecutable. Crea un archivo y ejecútalo con `go run`:
+
+```go title="errores.go"
+package main
+
+import (
+	"errors"
+	"fmt"
+	"net/http"
+)
+
+var ErrNotFound = errors.New("usuario no encontrado")
+var ErrConflict = errors.New("usuario ya existe")
+
+type Repo struct{}
+
+func (Repo) Find(id string) (*User, error) {
+	if id == "0" {
+		return nil, fmt.Errorf("find user %s: %w", id, ErrNotFound)
+	}
+	if id == "dup" {
+		return nil, fmt.Errorf("find user %s: %w", id, ErrConflict)
+	}
+	return &User{ID: id, Name: "Ada"}, nil
+}
+
+type User struct{ ID, Name string }
+
+type Service struct{ repo Repo }
+
+func (s Service) Get(id string) (*User, error) {
+	u, err := s.repo.Find(id)
+	if err != nil {
+		return nil, fmt.Errorf("load user %q: %w", id, err)
+	}
+	return u, nil
+}
+
+func main() {
+	s := Service{}
+	for _, id := range []string{"1", "0", "dup"} {
+		u, err := s.Get(id)
+		if err != nil {
+			switch {
+			case errors.Is(err, ErrNotFound):
+				fmt.Println(id, "->", http.StatusNotFound)
+			case errors.Is(err, ErrConflict):
+				fmt.Println(id, "->", http.StatusConflict)
+			default:
+				fmt.Println(id, "-> 500:", err)
+			}
+			continue
+		}
+		fmt.Println(id, "->", u.Name)
+	}
+}
+```
+
+Salida esperada:
+
+```text
+1 -> Ada
+0 -> 404
+dup -> 409
+```
+
+Lo que muestra el ejemplo:
+
+- **Repo** conoce la base de datos y devuelve errores de infraestructura (`fmt.Errorf("find user...")`).
+- **Service** añade contexto operacional (`"load user %q"`) sin destruir la cadena.
+- **Handler/main** no conoce SQL — decide **solo por semántica**, con `errors.Is`, que atraviesa los dos wrappings.
+
+Si mañana el Repo cambia PostgreSQL por otro almacenamiento, el `main` ni se entera. Así es como el error de dominio y el error de infraestructura quedan desacoplados: cada capa traduce cuando gana responsabilidad, y la identidad sobrevive vía `%w`.
+
+Una cadena de contexto útil tiene este formato:
+
+```text
+error original (sql.ErrNoRows)
+      ↓  repository traduce
+ErrUserNotFound
+      ↓  service contextualiza
+"load user 42: user not found"
+```
+
+Y una cadena *inútil* es la que solo apila el nombre de la función:
+
+```go
+return fmt.Errorf("A: %w", err) // después
+return fmt.Errorf("B: %w", err) // después
+return fmt.Errorf("C: %w", err) // sin información nueva, es ruido
+```
+
+Pregunta de review: *¿este wrapping añade información que el consumidor no tenía?* Si no, es decoración.
+
+## 5. Fallos y trade-offs
+
+### El código explícito no significa código correcto
+
+Aquí vive el giro. El argumento del `if err != nil` explícito es la visibilidad — pero la visibilidad no es lo mismo que la corrección. Los patrones repetidos invitan a **errores mecánicos de repetición**, y ocurren incluso en proyectos grandes y maduros.
+
+El caso más didáctico: verificar el error **equivocado** en la segunda comprobación.
+
+```go
+val, err := jsonutil.EncodeJSON(ks)
+if err != nil {
+    return err
+}
+
+// BUG: err sigue siendo el de EncodeJSON (ya verificado, es nil).
+// El error de Put nunca se comprueba.
+if c.barrier.Put(...); err != nil {
+    return err
+}
+```
+
+La forma correcta da alcance a un `err` nuevo:
+
+```go
+if err := c.barrier.Put(...); err != nil {
+    return err
+}
+```
+
+Otro patrón de bug parecido, el error cambiado por otro:
+
+```go
+err = p.Save(pidPath)
+if err != nil {
+    err2 := p.Stop()
+
+    // BUG: debería comprobar err2. err ya fue verificado y no cambió.
+    if err != nil {
+        return fmt.Errorf("...: %s: %s", err, err2)
+    }
+}
+```
+
+Estos ejemplos (inspirados en casos reales de código abierto, como los que [Jon Calhoun analiza sobre el alcance en Go](https://www.calhoun.io/one-liner-if-statements-with-errors/)) prueban un punto que invierte la discusión: `if err != nil` **no es un mecanismo mágico de seguridad**. Es una construcción simple que deja la decisión visible — y una decisión visible igualmente necesita revisión, tests y herramientas estáticas (`go vet`, `errcheck`, análisis estático). La simplicidad no elimina el error humano; solo garantiza que el error, cuando ocurra, esté en el código que lees.
+
+El artículo de Calhoun es especialmente útil aquí porque muestra que hasta la **sintaxis** del `if` tiene trampa: las variables declaradas en el init del `if` (`if err := f(); err != nil`) viven solo en ese alcance, y `:=` reutilizando `err` de un alcance externo puede re-declarar en lugar de asignar — generando exactamente el tipo de bug de "variable equivocada" de arriba.
+
+### Entonces: ¿cuándo abstraer?
+
+La pregunta correcta no es *"¿cómo elimino `if err != nil`?"*, sino *"¿cada verificación representa una decisión que pertenece a esta función?"*. Tres casos:
+
+**Caso A — decisión diferente en cada paso.** Mantenlo explícito.
+
+```go
+if err != nil {
+    return fmt.Errorf("load user: %w", err)
+}
+```
+
+**Caso B — propagación trivial en cadena corta.** Aceptable tal como está.
+
+```go
+x, err := stepA()
+if err != nil {
+    return err
+}
+y, err := stepB(x)
+if err != nil {
+    return err
+}
+```
+
+**Caso C — secuencia homogénea, misma semántica.** Ahí la abstracción cobra sentido — y Go ya tiene el patrón: `Scanner`, `errWriter`, o encapsular la operación repetitiva.
+
+Observa: solo el caso C (y quizás el B en cadenas largas) es candidato a abstracción. A y B mezclados con C son el escenario en el que `Result[T]` se vuelve dogma.
+
+### `Result[T]` como desenlace — qué resuelve, qué cuesta
+
+Si repetimos tanto el patrón hasta cometer un error mecánico, ¿debemos crear una abstracción? Quizás — pero solo para el problema que ataca. Una implementación mínima:
+
+```go
+type Result[T any] struct {
+    Value T
+    Err   error
+}
+
+func Map[T, U any](r Result[T], f func(T) U) Result[U] {
+    if r.Err != nil {
+        return Result[U]{Err: r.Err}
+    }
+    return Result[U]{Value: f(r.Value)}
+}
+
+func AndThen[T, U any](r Result[T], f func(T) Result[U]) Result[U] {
+    if r.Err != nil {
+        return Result[U]{Err: r.Err}
+    }
+    return f(r.Value)
+}
+```
+
+Esto permite componer computaciones que pueden fallar:
+
+```go
+result :=
+    GetUser(ctx, id).
+        AndThen(ValidateUser).
+        AndThen(CalculatePermissions).
+        AndThen(CreateSession)
+```
+
+El argumento real a favor de `Result[T]` **no es menos código** — es la composición explícita de una secuencia de operaciones que comparten la semántica *"el éxito continúa, el error interrumpe"*. Para un pipeline largo y homogéneo (parse → validate → transform → persist), esto es legítimo y elegante.
+
+Pero sopesa los costos antes:
+
+- **La complejidad total no disminuyó.** Menos sintaxis local no es menos complejidad. Quien lee necesita conocer `Result`, `Map`, `AndThen`, las reglas de propagación y los errores de la librería.
+- **Debugging y stack trace.** El camino de error se vuelve una cadena de llamadas genéricas; encontrar dónde ocurrió el fallo exige desempaquetar. `T, error` muestra el punto exacto.
+- **`Result[T]` no decide por ti.** `result.IsErr()` igualmente te obliga a responder: ¿es 404? ¿timeout? ¿retry? ¿error de base de datos? La abstracción modela el *resultado*; la arquitectura de tratamiento sigue siendo tuya.
+- **Frontera de la API.** En una codebase grande, mezclar `package A → T, error`, `package B → Result[T]`, `package C → panic` fragmenta el modelo mental. El onboarding, el review y la migración entre equipos pagan la cuenta.
+
+La regla que yo usaría: **boundaries idiomáticas (`T, error`); los pipelines internos especializados pueden usar `Result[T]`** — siempre que el paquete entero lo adopte y nadie necesite convertir en el borde. Y nunca `Result[T]` solo para reemplazar `func X() (*User, error)` en un CRUD sin ganancia de composición.
+
+### ¿Y si la repetición viene de demasiada responsabilidad?
+
+Una última advertencia. Doce `if err != nil` en una función pueden indicar no demasiados errores, sino **demasiada responsabilidad** — parse, fetch, transform, persist, publish en el mismo lugar. En ese caso la solución no es `Result[T]`; es **descomponer la función**. La cantidad de error checks es una señal para investigar, no una métrica automática de calidad.
+
+<Summary>
+
+- `if err != nil` no es un fenómeno único: puede tratar, propagar, traducir o acumular — y cada uno pide una solución diferente.
+- Trata el error en la capa que tiene información para decidir; las demás traducen con `%w`, `errors.Is` y `errors.As`, nunca por string.
+- Reducir comprobaciones no es reducir handling: `Scanner` y `errWriter` mueven la comprobación a una API mejor.
+- El código explícito igualmente tiene bugs de repetición y alcance — verificación equivocada, `err` vs `err2`, re-declaración con `:=`. El review y las herramientas estáticas siguen siendo obligatorios.
+- `Result[T]` resuelve la composición de pipelines homogéneos, no el "problema del if err != nil" — y cuesta onboarding, debug y consistencia a cambio.
+
+</Summary>
+
+<NextSteps href="/go/errors" title="Errores en la práctica — Go by Example">
+Ahora que separas tratar de propagar y traducir, revisa los fundamentos de la sintaxis de errores en el Go by Example — sentinelas, custom errors y wrapping listos para copiar.
+</NextSteps>
+
+<SkillsGained skills={["Go", "Error handling", "errors.Is/As", "Wrapping con %w", "API design", "Observabilidad"]} />

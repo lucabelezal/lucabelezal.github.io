@@ -1,0 +1,217 @@
+---
+slug: go-style-guides
+title: "Guía de las guías de estilo de Go: Effective Go, Google y Uber"
+authors: [lucabelezal]
+tags: [go, engenharia-de-software]
+date: 2026-09-06T12:37:00
+description: Qué cubre cada guía de estilo de Go, para quién es, en qué difieren y cómo decidir ante la duda.
+---
+
+El `gofmt` terminó con la discusión sobre el formato en Go. Indentación, alineación y espaciado se volvieron problema de la máquina. Lo que quedó — nombres, errores, tests, `panic`, `init`, estructura de APIs — sigue siendo decisión humana, y para eso existen tres documentos de referencia: el Effective Go oficial, el Go Style Guide de Google y el Go Style Guide de Uber.
+
+Cada uno nació en un contexto distinto y responde preguntas distintas. Este post mapea los tres: qué son, para quién son, en qué coinciden, en qué difieren y cuál usar en cada caso.
+
+{/* truncate */}
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+<WhatYouWillLearn>
+
+- qué decide el `gofmt` y qué queda para decisión humana
+- el rol y la audiencia de cada una de las tres guías
+- los puntos en los que Google y Uber difieren en la práctica
+- cómo resolver una duda de estilo sin memorizar reglas
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- fundamentos de Go (funciones, paquetes, errores)
+- haber escrito algo de código Go y corrido `gofmt`
+- curiosidad por saber por qué el código Go "se ve Go"
+
+</Prerequisites>
+
+## 1. Contexto
+
+La cultura de estilo de Go es atípica. Lenguajes como Python tienen una guía oficial (PEP 8) que prescribe formato y estilo; las empresas agregan capas encima. En Go, el formato se delegó a una herramienta que corre antes del `git commit`. El [Effective Go](https://go.dev/doc/effective_go) existe desde el lanzamiento en 2009 y sigue siendo el texto que enseña qué es código idiomático — nombres, composición, concurrencia, errores.
+
+Con el tiempo, dos empresas publicaron sus propias guías para atacar el problema a escala: el [Go Style Guide de Google](https://google.github.io/styleguide/go/) y el [Go Style Guide de Uber](https://github.com/uber-go/guide). Ambas asumen que ya conoces el Effective Go — es la "línea base común de la comunidad". Existen porque "código idiomático" no responde todo: en un codebase con miles de autores, las dudas que el Effective Go deja abiertas necesitan una decisión documentada.
+
+## 2. El problema
+
+Un principiante encuentra tres textos que, leídos juntos, parecen contradecirse:
+
+- El Effective Go muestra `panic` y `recover` como parte normal del manejo de errores.
+- Google dice casi nunca hacer `panic`, nunca usar `recover` para "no crashear" y llama al comportamiento del servidor `net/http` un "error histórico".
+- Uber prohíbe `panic` en código de producción, pero abre excepción para `template.Must`.
+
+¿Quién tiene razón? Todos, en su contexto. El problema no es la guía — es tratarlas como si fueran la misma categoría de documento.
+
+Existe también el error inverso: aplicar a ciegas una regla hecha para un monorepo de millones de líneas con revisores de "readability" en un proyecto personal de fin de semana. Una regla de empresa refleja la infraestructura de la empresa, no una verdad universal.
+
+## 3. Modelo mental
+
+Pensá en capas, no en competidores.
+
+| Guía | Rol | Audiencia | Estructura | Tono |
+| --- | --- | --- | --- | --- |
+| **Effective Go** | Baseline idiomática oficial | Quien está aprendiendo Go | Ensayo en prosa | Didáctico, ejemplos del stdlib |
+| **Google Go Style Guide** | Gobernanza de estilo a escala | Ingenieros + revisores de readability | 3 docs jerárquicos | Prescriptivo con justificación |
+| **Uber Go Style Guide** | Checklist pragmático de review | Equipo de Go de Uber (y quienes lo adoptan) | Reglas "Bad vs Good" | Directo, opinativo |
+
+### Effective Go — el "porqué" idiomático
+
+Documento oficial en go.dev. Enseña a pensar en Go: por qué los getters no llevan prefijo `Get`, por qué los paquetes tienen nombres cortos, por qué la composición reemplaza a la herencia. Es el texto que responde "¿cómo resuelve esto un Go programmer?".
+
+Una limitación honesta: el propio documento avisa que fue escrito para el Go de 2009 y no cubre generics, módulos ni el ecosistema actual. Sigue siendo la mejor introducción al estilo, pero no es un manual de decisiones de hoy.
+
+### Google — la máquina de decisiones documentadas
+
+La guía de Google en realidad son cuatro páginas con jerarquía explícita:
+
+- [**guide**](https://google.github.io/styleguide/go/guide): el núcleo canónico. Pocas reglas duras + principios ordenados: claridad, simplicidad, concisión, mantenibilidad, consistencia.
+- [**best-practices**](https://google.github.io/styleguide/go/best-practices): patrones situacionales con trade-offs, sin estatus de regla.
+- [**decisions**](https://google.github.io/styleguide/go/decisions): decisiones estilo RFC — lo que se decidió **y por qué**. Lectura obligatoria de los revisores de readability.
+- [**index**](https://google.github.io/styleguide/go/index): visión general, definiciones y jerarquía.
+
+El detalle que distingue a Google: las reglas vienen acompañadas de la razón. "No uses bibliotecas de aserción en los tests" no es dogma — la guía explica que abortan temprano, omiten contexto y fragmentan la experiencia de quien corre la suite. Es el texto más útil para quien quiere entender *por qué* existe una convención.
+
+### Uber — la guía que cabe en el review
+
+El [Uber Go Style Guide](https://github.com/uber-go/guide) es un archivo único con las secciones Guidelines, Performance, Style y Patterns. Cada regla es una tabla `Bad | Good` con código. Sin retórica — el formato está hecho para que el revisor señale y el autor corrija.
+
+Es el más pragmático de los tres. También es el más opinativo en puntos que el Effective Go deja abiertos: canales con buffer solo de tamaño 1, enums que empiezan en 1, globals no exportados con prefijo `_`.
+
+### La regla que comparten los tres
+
+Todos terminan en el mismo lugar: cuando la regla objetiva no aplica, vale la **consistencia local** — sigue el código vecino del mismo paquete. Google lo formaliza en el principio de consistencia; Uber tiene la regla "Be Consistent"; el Effective Go pide código que "otros Go programmers entiendan".
+
+## 4. Implementación
+
+¿Cómo aplicar esto en el día a día? En estos campos de batalla, las guías toman posiciones distintas. La tabla muestra quién dice qué; el código muestra la consecuencia.
+
+### Errores: wrapping y mensajes
+
+Todos coinciden: los errores son valores, usá `errors.Is`/`errors.As`, nunca compares strings. La divergencia está en el formato.
+
+Google pide `%w` al **final** del mensaje, para que la cadena impresa vaya del error más nuevo al más antiguo — con una excepción: los errores sentinela van al **inicio**, para que la categoría lidere el mensaje. Uber prohíbe el apilamiento de `"failed to x: failed to y"` y sugiere escribir el contexto como un sustantivo:
+
+```go title="error-wrap.go"
+// Google: %w al final, cadena legible.
+return fmt.Errorf("abrir archivo de config: %w", err)
+
+// Uber: contexto como sustantivo, sin "failed to".
+return fmt.Errorf("config file: %w", err)
+
+// Google, excepción de sentinela: categoría primero.
+return fmt.Errorf("%w: cabecera inválida", ErrParse)
+```
+
+Los dos también prohíben **loguear y devolver el mismo error** — quien loguea decide; quien devuelve decide. Hacer ambos se vuelve ruido en toda la pila.
+
+### `panic` y `recover`
+
+Es el punto de mayor contraste entre el Effective Go y las guías corporativas.
+
+El Effective Go enseña `panic` para "errores realmente excepcionales" y `recover` para que los servidores no caigan por culpa de una goroutine. Google considera esa última práctica un error: recuperar un panic para "no crashear" significa seguir corriendo con un estado posiblemente corrupto. Para invariantes rotos, el veredicto es `log.Fatal` — y la guía anota que el servidor `net/http` viola su propia recomendación al recuperar panics de handlers, llamándolo *historical mistake*.
+
+```go title="panic.go"
+// Google: invariante roto = log.Fatal, no panic.
+if len(groups) == 0 {
+    log.Fatal("programa sin grupos configurados; abortando")
+}
+
+// Google: no hagas esto para "sobrevivir" a un crash.
+func handler() {
+    defer func() { recover() }() // heredás estado corrupto
+}
+```
+
+Uber se alinea con Google: el código de producción no debe hacer `panic`; los errores vuelven como `error` y quien llama decide. Excepción aceptada por ambos: helpers `Must*` para valores de inicialización en el boot (como `template.Must`), cuando todavía no hay un request que responder.
+
+### Nombres y getters
+
+Aquí los tres coinciden — y es la regla que más sorprende a quien viene de Java/C#.
+
+Los getters no llevan prefijo `Get`. Si el campo es `owner`, el método es `Owner()`:
+
+```go title="getter.go"
+// Go: el prefijo Get no agrega información.
+func (c *Config) Owner() string { return c.owner } // correcto
+func (c *Config) GetOwner() string { return c.owner } // incorrecto
+```
+
+Google extiende la lógica: los nombres de función no repiten lo que la firma ya dice. `yamlconfig.Parse` en vez de `ParseYAMLConfig`, y los nombres de variable reflejan uso, no origen. Si la variable guarda una lista de usuarios, se llama `users`, no `userSlice` ni `numUsers`.
+
+### Tests: testify vs stdlib
+
+Divergencia real y directa. Uber usa `stretchr/testify` normalmente en los ejemplos de test — `assert.Equal` y `require.NoError` aparecen en la guía. Google **prohíbe las bibliotecas de aserción y los frameworks de terceros** en todo el codebase: la validación y el mensaje de fallo deben vivir en el propio test, con la biblioteca `cmp` para la comparación estructural.
+
+```go title="tests.go"
+// Uber (ejemplo de la guía): testify.
+require.NoError(t, err)
+assert.Equal(t, "8000", port)
+
+// Google: stdlib + mensaje con función y valores.
+if got, want := host, "192.0.2.0"; got != want {
+    t.Errorf("SplitHostPort(%q) host = %q, want %q", addr, got, want)
+}
+```
+
+Es una elección de cultura de test, no de calidad. El argumento de Google es organizacional: en una base gigante, cada biblioteca de aserción fragmenta la experiencia de quien depura fallos. En un equipo chico, el `require` de testify ahorra líneas y nadie se queja.
+
+### `init()` y estado global
+
+Ambas desconfían de `init()`, pero con énfasis distintos. Uber es directo: evita `init`; si lo usas, debe ser determinístico y sin I/O, sin depender de otros `init`. Google lo contextualiza: las funciones `Must*` existen justamente para inicializar variables de paquete, y el enemigo real es el estado global mutable y el registro de callbacks — no el `init` en sí.
+
+La lección que atraviesa las guías: una biblioteca no debe exponer estado global configurable. Si necesitas un cliente HTTP con timeout personalizado, crea la instancia e inyectala — no configures una variable de paquete que todos los tests comparten.
+
+### Casos en los que Uber diverge de la comunidad
+
+Algunas reglas de Uber son deliberadamente no idiomáticas y conviene conocerlas antes de adoptarlas:
+
+- **Prefijo `_` en globals no exportados** (`_defaultPort`): señala el scope de paquete. Golint y la comunidad usan `defaultPort`. La propia guía abre una excepción: los errores usan `err`, no `_err`.
+- **Canales de tamaño 1 o ninguno**: un buffer mayor exige justificación. El ejemplo de la guía se burla del `make(chan int, 64)` — "ought to be enough for anybody".
+- **Enums que empiezan en 1** (`iota + 1`): el cero pasa a ser "no definido". Contradice los ejemplos clásicos de `iota` desde 0.
+
+Estas reglas no son "más correctas" — son decisiones locales documentadas. Sirven de ejemplo de cómo una guía de empresa puede (y debe) divergir cuando tiene un motivo.
+
+## 5. Fallas y trade-offs
+
+Ninguna de las tres guías es suficiente por sí sola:
+
+- **Effective Go envejeció.** Sin generics, sin módulos, sin el ecosistema actual. Es el punto de partida, no el punto de llegada.
+- **Google asume infraestructura pesada.** Las reglas sobre bibliotecas de aserción, `readability` y monorepo tienen sentido en Google. En un proyecto chico, parte de ellas es burocracia sin beneficio.
+- **Uber es la opinión de una empresa.** Prefijo `_`, canal de tamaño 1, `iota + 1` — excelentes como decisiones locales, peligrosos si se copian sin el contexto.
+- **Las guías no se citan entre sí.** Cuando difieren, necesitas saber que difieren para elegir.
+
+El error común es el mismo en los dos extremos: memorizar la regla sin entender la razón. Si solo quieres la respuesta, Uber es el atajo. Si quieres entender *por qué* existe la respuesta, lee el `decisions` de Google. Si quieres la base idiomática, empieza por el Effective Go.
+
+Mi regla personal para dudas de estilo: (1) el `gofmt` decide el formato, punto; (2) la comunidad decide con el Effective Go y ejemplos del stdlib; (3) dentro de un equipo, gana la guía del equipo; (4) ante la ausencia de regla, sigue el código vecino del mismo paquete.
+
+## Referencias
+
+- [Effective Go](https://go.dev/doc/effective_go)
+- [Google Go Style Guide](https://google.github.io/styleguide/go/) — [guide](https://google.github.io/styleguide/go/guide), [best-practices](https://google.github.io/styleguide/go/best-practices), [decisions](https://google.github.io/styleguide/go/decisions)
+- [Uber Go Style Guide](https://github.com/uber-go/guide/blob/master/style.md)
+
+<Summary>
+
+- `gofmt` resuelve el formato; nombres, errores, tests y `panic` siguen siendo decisión humana.
+- Effective Go enseña el idioma; Google documenta decisiones con su razón; Uber entrega un checklist de review.
+- Las divergencias más agudas: `panic`/`recover`, bibliotecas de aserción en tests y formato de mensajes de error.
+- Regla que atraviesa las tres guías: la consistencia local gana cuando la regla objetiva no aplica.
+- Una guía de empresa refleja la infra de la empresa — copiá la razón, no solo la regla.
+
+</Summary>
+
+<NextSteps href="/go/roadmap" title="Volver al Go Backend Roadmap">
+Usá el roadmap para decidir en qué orden estudiar fundamentos, APIs, persistencia, concurrencia y producción.
+</NextSteps>
+
+<SkillsGained skills={["Estilo de código", "Go idiomático", "Nombres", "Errores", "Revisión de código"]} />
