@@ -49,7 +49,7 @@
 /* Leitura mais confortável dentro do conteúdo */
 .theme-doc-markdown,
 .blog-wrapper article {
-  font-size: 1.02rem;
+  font-size: 1.06rem;
   line-height: 1.75;
 }
 
@@ -63,7 +63,7 @@ code {
 .theme-code-block {
   border: 1px solid #d0d7de;
   border-radius: 8px;
-  font-size: 0.9rem;
+  font-size: 0.95rem;
 }
 
 .theme-code-block .prism-code {
@@ -237,7 +237,7 @@ code {
   .theme-code-block .prism-code,
   .theme-doc-markdown pre code,
   .blog-wrapper article pre code {
-    font-size: 0.78rem;
+    font-size: 0.88rem;
     line-height: 1.7;
   }
 

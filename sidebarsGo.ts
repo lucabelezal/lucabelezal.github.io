@@ -102,6 +102,20 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'link',
+          label: 'Style Guide Go',
+          href: '/go/style-guide',
+          description: 'Minhas decisões de estilo com a razão de cada uma.',
+          customProps: {date: '06 set 2026'},
+        },
+        {
+          type: 'link',
+          label: 'Guia dos guias de estilo do Go',
+          href: '/go-style-guides',
+          description: 'Effective Go, Google e Uber: como navegar e decidir.',
+          customProps: {date: '06 set 2026'},
+        },
+        {
+          type: 'link',
           label: 'Go Backend Roadmap',
           href: '/go/roadmap',
           description: 'A sequência de estudo para chegar ao backend.',

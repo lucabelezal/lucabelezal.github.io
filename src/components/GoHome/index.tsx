@@ -3,6 +3,18 @@ import styles from './styles.module.css';
 
 const contents = [
   {
+    title: 'Style Guide Go',
+    description: 'Minhas decisões de estilo em português, com a razão de cada uma e quando quebro a regra.',
+    href: '/go/style-guide',
+    date: '06 set 2026',
+  },
+  {
+    title: 'Guia dos guias de estilo do Go',
+    description: 'Effective Go, Google e Uber: o que cobre cada guia, para quem serve e como decidir na dúvida.',
+    href: '/go-style-guides',
+    date: '06 set 2026',
+  },
+  {
     title: 'Go 1.27: novidades que importam para backend',
     description: 'Uma leitura prática das novidades da versão e do que vale adotar em serviços backend.',
     href: '/go-1-27-novidades',
