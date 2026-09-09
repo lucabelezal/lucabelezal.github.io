@@ -9,33 +9,34 @@ Enviar e receber bloqueiam até o outro lado aparecer — às vezes você só qu
   title={"non-blocking-channel-operations.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func main() {
-    messages := make(chan string)
-    signals := make(chan bool)
-    select {
-    case msg := <-messages:
-        fmt.Println("received message", msg)
-    default:
-        fmt.Println("no message received")
-    }
-    msg := "hi"
-    select {
-    case messages <- msg:
-        fmt.Println("sent message", msg)
-    default:
-        fmt.Println("no message sent")
-    }
-    select {
-    case msg := <-messages:
-        fmt.Println("received message", msg)
-    case sig := <-signals:
-        fmt.Println("received signal", sig)
-    default:
-        fmt.Println("no activity")
-    }
-}`}
+	func main() {
+		messages := make(chan string)
+		signals := make(chan bool)
+		select {
+		case msg := <-messages:
+			fmt.Println("received message", msg)
+		default:
+			fmt.Println("no message received")
+		}
+		msg := "hi"
+		select {
+		case messages <- msg:
+			fmt.Println("sent message", msg)
+		default:
+			fmt.Println("no message sent")
+		}
+		select {
+		case msg := <-messages:
+			fmt.Println("received message", msg)
+		case sig := <-signals:
+			fmt.Println("received signal", sig)
+		default:
+			fmt.Println("no activity")
+		}
+	}
+`}
   sections={[
     {text: "Receive não-bloqueante: `messages` está vazio e sem remetente, então o `default` roda — sem esperar."},
     {text: "Send não-bloqueante: `messages` não tem buffer nem receptor, então o envio falharia bloqueando; o `default` roda."},
@@ -51,9 +52,9 @@ Um `select` **com** `default` nunca bloqueia: se nenhum case está pronto, o def
 ```go
 select {
 case v := <-ch:
-    // chegou algo
+	// chegou algo
 default:
-    // nada agora — segue em frente
+	// nada agora — segue em frente
 }
 ```
 

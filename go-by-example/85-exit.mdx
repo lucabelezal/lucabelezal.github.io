@@ -10,15 +10,16 @@ Todo programa termina com um **código de saída**: `0` para sucesso, diferente 
   title={"exit.go"}
   code={`package main
 
-import (
-    "fmt"
-    "os"
-)
+	import (
+		"fmt"
+		"os"
+	)
 
-func main() {
-    defer fmt.Println("!")
-    os.Exit(3)
-}`}
+	func main() {
+		defer fmt.Println("!")
+		os.Exit(3)
+	}
+`}
   sections={[
     {text: "`defer fmt.Println(\"!\")` nunca roda: o `os.Exit` encerra o processo **imediatamente**, sem executar os defers pendentes."},
     {text: "`os.Exit(3)` termina o processo com código 3. O `0` é o sucesso; qualquer outro valor sinaliza erro."},
@@ -54,9 +55,9 @@ O padrão limpo: funções devolvem `error`, o `main` decide o código:
 
 ```go
 func main() {
-    if err := run(); err != nil {
-        log.Fatal(err) // loga + os.Exit(1)
-    }
+	if err := run(); err != nil {
+		log.Fatal(err) // loga + os.Exit(1)
+	}
 }
 ```
 
@@ -64,8 +65,8 @@ func main() {
 
 ```go
 func main() {
-    code := run()          // defers rodam quando run() retorna
-    os.Exit(code)          // agora sim, com cleanup feito
+	code := run() // defers rodam quando run() retorna
+	os.Exit(code) // agora sim, com cleanup feito
 }
 ```
 

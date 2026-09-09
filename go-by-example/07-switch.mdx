@@ -10,49 +10,50 @@ Quando uma decisão tem muitos caminhos, uma escada de `else if` fica difícil d
   title={"switch.go"}
   code={`package main
 
-import (
-    "fmt"
-    "time"
-)
+	import (
+		"fmt"
+		"time"
+	)
 
-func main() {
-    i := 2
-    fmt.Print("Write ", i, " as ")
-    switch i {
-    case 1:
-        fmt.Println("one")
-    case 2:
-        fmt.Println("two")
-    case 3:
-        fmt.Println("three")
-    }
-    switch time.Now().Weekday() {
-    case time.Saturday, time.Sunday:
-        fmt.Println("It's the weekend")
-    default:
-        fmt.Println("It's a weekday")
-    }
-    t := time.Now()
-    switch {
-    case t.Hour() < 12:
-        fmt.Println("It's before noon")
-    default:
-        fmt.Println("It's after noon")
-    }
-    whatAmI := func(i any) {
-        switch t := i.(type) {
-        case bool:
-            fmt.Println("I'm a bool")
-        case int:
-            fmt.Println("I'm an int")
-        default:
-            fmt.Printf("Don't know type %T\n", t)
-        }
-    }
-    whatAmI(true)
-    whatAmI(1)
-    whatAmI("hey")
-}`}
+	func main() {
+		i := 2
+		fmt.Print("Write ", i, " as ")
+		switch i {
+		case 1:
+			fmt.Println("one")
+		case 2:
+			fmt.Println("two")
+		case 3:
+			fmt.Println("three")
+		}
+		switch time.Now().Weekday() {
+		case time.Saturday, time.Sunday:
+			fmt.Println("It's the weekend")
+		default:
+			fmt.Println("It's a weekday")
+		}
+		t := time.Now()
+		switch {
+		case t.Hour() < 12:
+			fmt.Println("It's before noon")
+		default:
+			fmt.Println("It's after noon")
+		}
+		whatAmI := func(i any) {
+			switch t := i.(type) {
+			case bool:
+				fmt.Println("I'm a bool")
+			case int:
+				fmt.Println("I'm an int")
+			default:
+				fmt.Printf("Don't know type %T\n", t)
+			}
+		}
+		whatAmI(true)
+		whatAmI(1)
+		whatAmI("hey")
+	}
+`}
   sections={[
     {text: "O `switch` básico compara `i` contra cada `case`, de cima para baixo. Como `i` vale 2, o segundo case roda e imprime \"two\" — e o switch **termina ali**, sem precisar de `break`."},
     {text: "Um `case` pode listar **vários valores** separados por vírgula: aqui `time.Saturday` e `time.Sunday` caem no mesmo ramo. `default` é opcional e roda quando nenhum case casa."},

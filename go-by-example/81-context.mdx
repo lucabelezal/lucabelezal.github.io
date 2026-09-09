@@ -10,30 +10,31 @@ Uma requisição HTTP chega, o handler chama o banco, o banco espera a rede... e
   title={"context.go"}
   code={`package main
 
-import (
-    "fmt"
-    "net/http"
-    "time"
-)
+	import (
+		"fmt"
+		"net/http"
+		"time"
+	)
 
-func hello(w http.ResponseWriter, req *http.Request) {
-    ctx := req.Context()
-    fmt.Println("server: hello handler started")
-    defer fmt.Println("server: hello handler ended")
-    select {
-    case <-time.After(10 * time.Second):
-        fmt.Fprintf(w, "hello\n")
-    case <-ctx.Done():
-        err := ctx.Err()
-        fmt.Println("server:", err)
-        internalError := http.StatusInternalServerError
-        http.Error(w, err.Error(), internalError)
-    }
-}
-func main() {
-    http.HandleFunc("/hello", hello)
-    http.ListenAndServe(":8090", nil)
-}`}
+	func hello(w http.ResponseWriter, req *http.Request) {
+		ctx := req.Context()
+		fmt.Println("server: hello handler started")
+		defer fmt.Println("server: hello handler ended")
+		select {
+		case <-time.After(10 * time.Second):
+			fmt.Fprintf(w, "hello\n")
+		case <-ctx.Done():
+			err := ctx.Err()
+			fmt.Println("server:", err)
+			internalError := http.StatusInternalServerError
+			http.Error(w, err.Error(), internalError)
+		}
+	}
+	func main() {
+		http.HandleFunc("/hello", hello)
+		http.ListenAndServe(":8090", nil)
+	}
+`}
   sections={[
     {text: "`req.Context()` — o `net/http` cria um **context por request** e o entrega aqui. Ele é cancelado quando o cliente desiste, a conexão cai ou o servidor encerra."},
     {text: "O handler simula trabalho de 10s (`time.After`). Enquanto isso, fica de olho no `ctx.Done()` — um channel que **fecha quando o contexto é cancelado**."},
@@ -58,9 +59,9 @@ Trabalho que pode demorar deve observar `ctx.Done()` — o `select` com `time.Af
 ```go
 select {
 case resultado := <-busca(ctx): // operação que também respeita ctx
-    return resultado, nil
+	return resultado, nil
 case <-ctx.Done():
-    return nil, ctx.Err() // cancelado: devolve o erro e para
+	return nil, ctx.Err() // cancelado: devolve o erro e para
 }
 ```
 

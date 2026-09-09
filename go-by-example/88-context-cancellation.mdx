@@ -13,32 +13,33 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
   title={"context.go"}
   code={`package main
 
-import (
-    "context"
-    "fmt"
-    "time"
-)
+	import (
+		"context"
+		"fmt"
+		"time"
+	)
 
-func fetch(ctx context.Context) (string, error) {
-    select {
-    case <-time.After(2 * time.Second):
-        return "resultado", nil
-    case <-ctx.Done():
-        return "", ctx.Err()
-    }
-}
+	func fetch(ctx context.Context) (string, error) {
+		select {
+		case <-time.After(2 * time.Second):
+			return "resultado", nil
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}
 
-func main() {
-    ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-    defer cancel()
+	func main() {
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
 
-    result, err := fetch(ctx)
-    if err != nil {
-        fmt.Println("request failed:", err)
-        return
-    }
-    fmt.Println(result)
-}`}
+		result, err := fetch(ctx)
+		if err != nil {
+			fmt.Println("request failed:", err)
+			return
+		}
+		fmt.Println(result)
+	}
+`}
   sections={[
     {text: "`fetch` recebe o context como primeiro parâmetro. Isso deixa explícito que a operação pertence ao ciclo de vida do chamador."},
     {text: "O `select` aguarda o trabalho ou o sinal de cancelamento. Sem o segundo caso, a função continuaria trabalhando mesmo depois do timeout."},

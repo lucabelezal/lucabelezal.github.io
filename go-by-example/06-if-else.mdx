@@ -10,28 +10,29 @@ Laços decidem *quando repetir*; **condicionais** decidem *qual caminho tomar*. 
   title={"if-else.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func main() {
-    if 7%2 == 0 {
-        fmt.Println("7 is even")
-    } else {
-        fmt.Println("7 is odd")
-    }
-    if 8%4 == 0 {
-        fmt.Println("8 is divisible by 4")
-    }
-    if 8%2 == 0 || 7%2 == 0 {
-        fmt.Println("either 8 or 7 are even")
-    }
-    if num := 9; num < 0 {
-        fmt.Println(num, "is negative")
-    } else if num < 10 {
-        fmt.Println(num, "has 1 digit")
-    } else {
-        fmt.Println(num, "has multiple digits")
-    }
-}`}
+	func main() {
+		if 7%2 == 0 {
+			fmt.Println("7 is even")
+		} else {
+			fmt.Println("7 is odd")
+		}
+		if 8%4 == 0 {
+			fmt.Println("8 is divisible by 4")
+		}
+		if 8%2 == 0 || 7%2 == 0 {
+			fmt.Println("either 8 or 7 are even")
+		}
+		if num := 9; num < 0 {
+			fmt.Println(num, "is negative")
+		} else if num < 10 {
+			fmt.Println(num, "has 1 digit")
+		} else {
+			fmt.Println(num, "has multiple digits")
+		}
+	}
+`}
   sections={[
     {text: "O `if` básico com `else`. A condição `7%2 == 0` é `false` (o resto de 7 por 2 é 1), então o bloco do `else` roda e imprime \"7 is odd\"."},
     {text: "O `else` é opcional. `8%4 == 0` é verdadeiro, o bloco roda e o programa segue — sem nenhum ramo alternativo."},
@@ -60,7 +61,7 @@ O padrão que você verá em quase todo arquivo Go é o `if` com inicialização
 
 ```go
 if err := doThing(); err != nil {
-    return err
+	return err
 }
 ```
 

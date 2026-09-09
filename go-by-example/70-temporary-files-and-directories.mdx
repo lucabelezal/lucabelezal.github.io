@@ -10,32 +10,33 @@ Upload que precisa de um arquivo intermediário, um teste que grava num local is
   title={"temporary-files-and-directories.go"}
   code={`package main
 
-import (
-    "fmt"
-    "os"
-    "path/filepath"
-)
+	import (
+		"fmt"
+		"os"
+		"path/filepath"
+	)
 
-func check(e error) {
-    if e != nil {
-        panic(e)
-    }
-}
-func main() {
-    f, err := os.CreateTemp("", "sample")
-    check(err)
-    fmt.Println("Temp file name:", f.Name())
-    defer os.Remove(f.Name())
-    _, err = f.Write([]byte{1, 2, 3, 4})
-    check(err)
-    dname, err := os.MkdirTemp("", "sampledir")
-    check(err)
-    fmt.Println("Temp dir name:", dname)
-    defer os.RemoveAll(dname)
-    fname := filepath.Join(dname, "file1")
-    err = os.WriteFile(fname, []byte{1, 2}, 0666)
-    check(err)
-}`}
+	func check(e error) {
+		if e != nil {
+			panic(e)
+		}
+	}
+	func main() {
+		f, err := os.CreateTemp("", "sample")
+		check(err)
+		fmt.Println("Temp file name:", f.Name())
+		defer os.Remove(f.Name())
+		_, err = f.Write([]byte{1, 2, 3, 4})
+		check(err)
+		dname, err := os.MkdirTemp("", "sampledir")
+		check(err)
+		fmt.Println("Temp dir name:", dname)
+		defer os.RemoveAll(dname)
+		fname := filepath.Join(dname, "file1")
+		err = os.WriteFile(fname, []byte{1, 2}, 0666)
+		check(err)
+	}
+`}
   sections={[
     {text: "`os.CreateTemp(\"\", \"sample\")` — o primeiro arg `\"\"` diz \"use o diretório temporário do sistema\"; o segundo é o **prefixo** do nome. O arquivo já nasce **aberto** para leitura/escrita."},
     {text: "`f.Name()` mostra o caminho: diretório do sistema + prefixo + número aleatório único (`sample3501198187`). Em macOS, o diretório é o `$TMPDIR`, não `/tmp` fixo."},
@@ -57,7 +58,7 @@ func main() {
 ```go
 f, err := os.CreateTemp("", "meuapp-")
 if err != nil {
-    return err
+	return err
 }
 defer os.Remove(f.Name()) // limpeza garantida
 

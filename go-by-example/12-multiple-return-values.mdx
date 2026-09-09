@@ -10,18 +10,19 @@ A maioria das linguagens devolve **um** valor por função. Go devolve quantos q
   title={"multiple-return-values.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func vals() (int, int) {
-    return 3, 7
-}
-func main() {
-    a, b := vals()
-    fmt.Println(a)
-    fmt.Println(b)
-    _, c := vals()
-    fmt.Println(c)
-}`}
+	func vals() (int, int) {
+		return 3, 7
+	}
+	func main() {
+		a, b := vals()
+		fmt.Println(a)
+		fmt.Println(b)
+		_, c := vals()
+		fmt.Println(c)
+	}
+`}
   sections={[
     {text: "`(int, int)` na assinatura anuncia: esta função devolve **dois** valores inteiros. Em Go, o retorno é uma lista, não um único valor."},
     {text: "`return 3, 7` devolve os dois, na ordem. O `return` precisa entregar exatamente o que a assinatura prometeu — nem mais, nem menos."},
@@ -41,8 +42,8 @@ O padrão que você vai encontrar em quase toda função de Go é devolver o res
 
 ```go
 func buscarUsuario(id int) (Usuario, error) {
-    // se algo falhar: return Usuario{}, err
-    // se der certo:    return usuario, nil
+	// se algo falhar: return Usuario{}, err
+	// se der certo:    return usuario, nil
 }
 ```
 
@@ -54,9 +55,9 @@ Além de devolver vários valores, você pode **nomear** os retornos na assinatu
 
 ```go
 func dividir(a, b int) (quociente, resto int) {
-    quociente = a / b
-    resto = a % b
-    return // devolve quociente e resto (naked return)
+	quociente = a / b
+	resto = a % b
+	return // devolve quociente e resto (naked return)
 }
 ```
 

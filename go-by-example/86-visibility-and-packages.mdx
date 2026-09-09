@@ -13,22 +13,23 @@ Em Go, a primeira letra do identificador define se ele pode ser usado por outro 
   title={"visibility.go"}
   code={`package catalog
 
-type Product struct {
-    ID    string
-    price int
-}
+	type Product struct {
+		ID    string
+		price int
+	}
 
-func NewProduct(id string, price int) Product {
-    return Product{ID: id, price: price}
-}
+	func NewProduct(id string, price int) Product {
+		return Product{ID: id, price: price}
+	}
 
-func (p Product) Price() int {
-    return p.price
-}
+	func (p Product) Price() int {
+		return p.price
+	}
 
-func normalizeID(id string) string {
-    return id
-}`}
+	func normalizeID(id string) string {
+		return id
+	}
+`}
   sections={[
     {text: "`Product` e `ID` começam com maiúscula, então podem ser usados por outro package. Eles fazem parte da API pública do package `catalog`."},
     {text: "`price` começa com minúscula. Um consumidor não consegue alterar esse campo diretamente; precisa usar as operações que o package decidir expor."},

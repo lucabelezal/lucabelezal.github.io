@@ -1,5 +1,63 @@
+import {useEffect, useState, type ReactNode} from 'react';
 import CodeBlock from '@theme/CodeBlock';
 import styles from './styles.module.css';
+
+const EXPAND_LABEL: Record<string, string> = {
+  'pt-BR': 'Expandir código',
+  en: 'Expand code',
+  es: 'Expandir código',
+};
+
+const RESTORE_LABEL: Record<string, string> = {
+  'pt-BR': 'Mostrar explicação',
+  en: 'Show explanation',
+  es: 'Mostrar explicación',
+};
+
+function storageKey(fileName: string): string | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  return `gbe.codex.expand::${window.location.pathname}::${fileName}`;
+}
+
+function ExpandIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9.5 3.5 5 8l4.5 4.5" />
+      <path d="M13.5 3.5 9 8l4.5 4.5" />
+    </svg>
+  );
+}
+
+function RestoreIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M6.5 3.5 11 8l-4.5 4.5" />
+      <path d="M2.5 3.5 7 8l-4.5 4.5" />
+    </svg>
+  );
+}
 
 type Section = {
   text: string;
@@ -76,16 +134,68 @@ export default function CodeExplanation({
     : `${title.toLowerCase().replace(/\s+/g, '-')}.go`;
   const terminalSections = sections.filter((s) => isTerminalSection(s.text));
   const contentSections = sections.filter((s) => !isTerminalSection(s.text));
+  const [expanded, setExpanded] = useState(false);
+  const [restoredFromStorage, setRestoredFromStorage] = useState(false);
+
+  useEffect(() => {
+    const key = storageKey(fileName);
+    if (!key) {
+      return;
+    }
+    try {
+      setExpanded(sessionStorage.getItem(key) === '1');
+    } catch {
+      // storage indisponível — mantém estado padrão
+    }
+    setRestoredFromStorage(true);
+  }, [fileName]);
+
+  useEffect(() => {
+    if (!restoredFromStorage) {
+      return;
+    }
+    const key = storageKey(fileName);
+    if (!key) {
+      return;
+    }
+    try {
+      if (expanded) {
+        sessionStorage.setItem(key, '1');
+      } else {
+        sessionStorage.removeItem(key);
+      }
+    } catch {
+      // storage indisponível — ignora
+    }
+  }, [expanded, fileName, restoredFromStorage]);
+
+  const toggle = () => setExpanded((v) => !v);
+  const label = (expanded ? RESTORE_LABEL : EXPAND_LABEL)[locale] ?? EXPAND_LABEL['pt-BR'];
+
   return (
-    <div className={styles.container}>
-      <div className={styles.left}>
-        <h3>{title}</h3>
-        {contentSections.map((s, i) => (
-          <p key={i}>
-            <InlineText text={s.text} />
-          </p>
-        ))}
-      </div>
+    <div className={expanded ? `${styles.container} ${styles.codeOnly}` : styles.container}>
+      {!expanded && (
+        <div className={styles.left}>
+          <div className={styles.leftHeader}>
+            <h3>{title}</h3>
+            <button
+              type="button"
+              className={styles.toggle}
+              onClick={toggle}
+              aria-expanded={false}
+              aria-label={label}
+              title={label}
+            >
+              <ExpandIcon />
+            </button>
+          </div>
+          {contentSections.map((s, i) => (
+            <p key={i}>
+              <InlineText text={s.text} />
+            </p>
+          ))}
+        </div>
+      )}
       <div className={styles.right}>
         <div className={styles.codeStack}>
           <CodeBlock language={language} title={fileName} showLineNumbers>
@@ -103,6 +213,18 @@ export default function CodeExplanation({
           })}
         </div>
       </div>
+      {expanded && (
+        <button
+          type="button"
+          className={styles.restore}
+          onClick={toggle}
+          aria-expanded={true}
+          aria-label={label}
+          title={label}
+        >
+          <RestoreIcon />
+        </button>
+      )}
     </div>
   );
 }

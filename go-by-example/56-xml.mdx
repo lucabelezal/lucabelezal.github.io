@@ -10,44 +10,45 @@ JSON domina as APIs modernas, mas o mundo legado ainda fala **XML**: SOAP, RSS/A
   title={"xml.go"}
   code={`package main
 
-import (
-    "encoding/xml"
-    "fmt"
-)
+	import (
+		"encoding/xml"
+		"fmt"
+	)
 
-type Plant struct {
-    XMLName xml.Name \`xml:"plant"\`
-    Id      int      \`xml:"id,attr"\`
-    Name    string   \`xml:"name"\`
-    Origin  []string \`xml:"origin"\`
-}
+	type Plant struct {
+		XMLName xml.Name \`xml:"plant"\`
+		Id      int      \`xml:"id,attr"\`
+		Name    string   \`xml:"name"\`
+		Origin  []string \`xml:"origin"\`
+	}
 
-type Nesting struct {
-    Plants []*Plant \`xml:"plant"\`
-}
+	type Nesting struct {
+		Plants []*Plant \`xml:"plant"\`
+	}
 
-func (p Plant) String() string {
-    return fmt.Sprintf("Plant id=%v, name=%v, origin=%v",
-        p.Id, p.Name, p.Origin)
-}
-func main() {
-    coffee := &Plant{Id: 27, Name: "Coffee"}
-    coffee.Origin = []string{"Ethiopia", "Brazil"}
-    out, _ := xml.MarshalIndent(coffee, " ", "  ")
-    fmt.Println(string(out))
-    fmt.Println(xml.Header + string(out))
-    var p Plant
-    if err := xml.Unmarshal(out, &p); err != nil {
-        panic(err)
-    }
-    fmt.Println(p)
-    tomato := &Plant{Id: 81, Name: "Tomato"}
-    tomato.Origin = []string{"Mexico", "California"}
-    nesting := &Nesting{}
-    nesting.Plants = []*Plant{coffee, tomato}
-    out, _ = xml.MarshalIndent(nesting, " ", "  ")
-    fmt.Println(string(out))
-}`}
+	func (p Plant) String() string {
+		return fmt.Sprintf("Plant id=%v, name=%v, origin=%v",
+			p.Id, p.Name, p.Origin)
+	}
+	func main() {
+		coffee := &Plant{Id: 27, Name: "Coffee"}
+		coffee.Origin = []string{"Ethiopia", "Brazil"}
+		out, _ := xml.MarshalIndent(coffee, " ", "  ")
+		fmt.Println(string(out))
+		fmt.Println(xml.Header + string(out))
+		var p Plant
+		if err := xml.Unmarshal(out, &p); err != nil {
+			panic(err)
+		}
+		fmt.Println(p)
+		tomato := &Plant{Id: 81, Name: "Tomato"}
+		tomato.Origin = []string{"Mexico", "California"}
+		nesting := &Nesting{}
+		nesting.Plants = []*Plant{coffee, tomato}
+		out, _ = xml.MarshalIndent(nesting, " ", "  ")
+		fmt.Println(string(out))
+	}
+`}
   sections={[
     {text: "`Plant` mapeia para XML via tags. Três direções: `xml:\"plant\"` em `XMLName` dita o **nome do elemento raiz**; `xml:\"id,attr\"` faz `Id` virar **atributo**; `xml:\"name\"`/`xml:\"origin\"` são elementos aninhados."},
     {text: "`Nesting` mostra repetição: `[]*Plant` com `xml:\"plant\"` serializa vários `<plant>` filhos."},

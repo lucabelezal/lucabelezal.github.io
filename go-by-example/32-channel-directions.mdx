@@ -9,22 +9,23 @@ Um channel comum permite enviar e receber. Quando passado a uma função, porém
   title={"channel-directions.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func ping(pings chan<- string, msg string) {
-    pings <- msg
-}
-func pong(pings <-chan string, pongs chan<- string) {
-    msg := <-pings
-    pongs <- msg
-}
-func main() {
-    pings := make(chan string, 1)
-    pongs := make(chan string, 1)
-    ping(pings, "passed message")
-    pong(pings, pongs)
-    fmt.Println(<-pongs)
-}`}
+	func ping(pings chan<- string, msg string) {
+		pings <- msg
+	}
+	func pong(pings <-chan string, pongs chan<- string) {
+		msg := <-pings
+		pongs <- msg
+	}
+	func main() {
+		pings := make(chan string, 1)
+		pongs := make(chan string, 1)
+		ping(pings, "passed message")
+		pong(pings, pongs)
+		fmt.Println(<-pongs)
+	}
+`}
   sections={[
     {text: "`func ping(pings chan<- string, ...)` — `pings` só pode **enviar**. Tentar `<-pings` aqui é erro de compilação, não de runtime."},
     {text: "`pong` recebe um canal **somente leitura** (`<-chan`) e um **somente escrita** (`chan<-`): repassa a mensagem de um para o outro."},

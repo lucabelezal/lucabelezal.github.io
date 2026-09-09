@@ -10,28 +10,29 @@ Templates, CSS, SQL, certificados de teste — arquivos que o programa precisa m
   title={"embed.go"}
   code={`package main
 
-import (
-    "embed"
-)
+	import (
+		"embed"
+	)
 
-//go:embed folder/single_file.txt
-var fileString string
+	//go:embed folder/single_file.txt
+	var fileString string
 
-//go:embed folder/single_file.txt
-var fileByte []byte
+	//go:embed folder/single_file.txt
+	var fileByte []byte
 
-//go:embed folder/single_file.txt
-//go:embed folder/*.hash
-var folder embed.FS
+	//go:embed folder/single_file.txt
+	//go:embed folder/*.hash
+	var folder embed.FS
 
-func main() {
-    print(fileString)
-    print(string(fileByte))
-    content1, _ := folder.ReadFile("folder/file1.hash")
-    print(string(content1))
-    content2, _ := folder.ReadFile("folder/file2.hash")
-    print(string(content2))
-}`}
+	func main() {
+		print(fileString)
+		print(string(fileByte))
+		content1, _ := folder.ReadFile("folder/file1.hash")
+		print(string(content1))
+		content2, _ := folder.ReadFile("folder/file2.hash")
+		print(string(content2))
+	}
+`}
   sections={[
     {text: "`//go:embed folder/single_file.txt` — a [diretiva de compilador](https://pkg.go.dev/cmd/compile#hdr-Compiler_Directives) antes da declaração de uma variável `string` embute o arquivo **naquela variável**, em tempo de build."},
     {text: "Um mesmo arquivo pode ir para uma variável `[]byte` — bytes crus, útil para binários."},

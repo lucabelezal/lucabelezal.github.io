@@ -10,21 +10,22 @@ Alguns valores não devem mudar: o limite de uma fila, a taxa de conversão, o p
   title={"constants.go"}
   code={`package main
 
-import (
-    "fmt"
-    "math"
-)
+	import (
+		"fmt"
+		"math"
+	)
 
-const s string = "constant"
+	const s string = "constant"
 
-func main() {
-    fmt.Println(s)
-    const n = 500000000
-    const d = 3e20 / n
-    fmt.Println(d)
-    fmt.Println(int64(d))
-    fmt.Println(math.Sin(n))
-}`}
+	func main() {
+		fmt.Println(s)
+		const n = 500000000
+		const d = 3e20 / n
+		fmt.Println(d)
+		fmt.Println(int64(d))
+		fmt.Println(math.Sin(n))
+	}
+`}
   sections={[
     {text: "`const s string = \"constant\"` declara uma constante **tipada** no nível de package. Constantes podem viver fora de funções; variáveis no nível de package, em geral, deveriam ser evitadas — com `const` é o contrário, é o lugar natural."},
     {text: "`const n = 500000000` — constantes também podem ser declaradas dentro de funções, e aqui o tipo é **omitido**. Veremos por que isso importa."},

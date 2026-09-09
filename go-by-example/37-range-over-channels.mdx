@@ -9,17 +9,18 @@ A página anterior consumiu um canal com `v, ok := <-ch` num laço manual. Quand
   title={"range-over-channels.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func main() {
-    queue := make(chan string, 2)
-    queue <- "one"
-    queue <- "two"
-    close(queue)
-    for elem := range queue {
-        fmt.Println(elem)
-    }
-}`}
+	func main() {
+		queue := make(chan string, 2)
+		queue <- "one"
+		queue <- "two"
+		close(queue)
+		for elem := range queue {
+			fmt.Println(elem)
+		}
+	}
+`}
   sections={[
     {text: "`queue` tem 2 valores em buffer."},
     {text: "`close(queue)` antes de iterar: o `range` precisa do fechamento para saber quando parar."},
@@ -35,8 +36,8 @@ func main() {
 ## O padrão consumidor
 
 ```go
-for job := range jobs {   // recebe até o produtor fechar
-    processar(job)
+for job := range jobs { // recebe até o produtor fechar
+	processar(job)
 }
 ```
 

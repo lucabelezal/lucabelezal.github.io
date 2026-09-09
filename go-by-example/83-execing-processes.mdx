@@ -10,24 +10,25 @@ Na página anterior, o programa criou um **filho** e continuou vivo. `syscall.Ex
   title={"execing-processes.go"}
   code={`package main
 
-import (
-    "os"
-    "os/exec"
-    "syscall"
-)
+	import (
+		"os"
+		"os/exec"
+		"syscall"
+	)
 
-func main() {
-    binary, lookErr := exec.LookPath("ls")
-    if lookErr != nil {
-        panic(lookErr)
-    }
-    args := []string{"ls", "-a", "-l", "-h"}
-    env := os.Environ()
-    execErr := syscall.Exec(binary, args, env)
-    if execErr != nil {
-        panic(execErr)
-    }
-}`}
+	func main() {
+		binary, lookErr := exec.LookPath("ls")
+		if lookErr != nil {
+			panic(lookErr)
+		}
+		args := []string{"ls", "-a", "-l", "-h"}
+		env := os.Environ()
+		execErr := syscall.Exec(binary, args, env)
+		if execErr != nil {
+			panic(execErr)
+		}
+	}
+`}
   sections={[
     {text: "`exec.LookPath(\"ls\")` acha o caminho absoluto do binário no PATH (provavelmente `/bin/ls`) — o `syscall.Exec` exige o caminho, não um nome."},
     {text: "Os argumentos são uma lista; **o primeiro é o nome do programa** (`ls`), o resto são os args dele. Igual à regra de [Argumentos de Linha de Comando](command-line-arguments)."},

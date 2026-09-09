@@ -9,22 +9,23 @@ Esperar uma goroutine terminar é um dos atos mais comuns da concorrência. Uma 
   title={"channel-synchronization.go"}
   code={`package main
 
-import (
-    "fmt"
-    "time"
-)
+	import (
+		"fmt"
+		"time"
+	)
 
-func worker(done chan bool) {
-    fmt.Print("working...")
-    time.Sleep(time.Second)
-    fmt.Println("done")
-    done <- true
-}
-func main() {
-    done := make(chan bool, 1)
-    go worker(done)
-    <-done
-}`}
+	func worker(done chan bool) {
+		fmt.Print("working...")
+		time.Sleep(time.Second)
+		fmt.Println("done")
+		done <- true
+	}
+	func main() {
+		done := make(chan bool, 1)
+		go worker(done)
+		<-done
+	}
+`}
   sections={[
     {text: "`worker` recebe o channel `done` para avisar quando terminar. O trabalho real é o `Sleep` de 1s."},
     {text: "`done <- true` — o sinal de conclusão. O buffer 1 evita o envio bloquear (ninguém precisa estar recebendo na hora)."},

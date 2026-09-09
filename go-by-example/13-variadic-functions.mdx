@@ -10,22 +10,23 @@ Algumas funções precisam aceitar **qualquer quantidade** de argumentos: `fmt.P
   title={"variadic-functions.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func sum(nums ...int) {
-    fmt.Print(nums, " ")
-    total := 0
-    for _, num := range nums {
-        total += num
-    }
-    fmt.Println(total)
-}
-func main() {
-    sum(1, 2)
-    sum(1, 2, 3)
-    nums := []int{1, 2, 3, 4}
-    sum(nums...)
-}`}
+	func sum(nums ...int) {
+		fmt.Print(nums, " ")
+		total := 0
+		for _, num := range nums {
+			total += num
+		}
+		fmt.Println(total)
+	}
+	func main() {
+		sum(1, 2)
+		sum(1, 2, 3)
+		nums := []int{1, 2, 3, 4}
+		sum(nums...)
+	}
+`}
   sections={[
     {text: "`nums ...int` — o `...` antes do tipo diz: aceite zero ou mais `int`s. Dentro da função, `nums` é um **slice** `[]int` comum: dá para usar `len`, `range`, indexar."},
     {text: "`fmt.Print(nums, \" \")` imprime o slice como veio; o loop soma elemento a elemento."},

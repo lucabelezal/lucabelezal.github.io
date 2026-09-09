@@ -9,29 +9,30 @@ O timer dispara uma vez; o **ticker** dispara **repetidamente** a cada intervalo
   title={"tickers.go"}
   code={`package main
 
-import (
-    "fmt"
-    "time"
-)
+	import (
+		"fmt"
+		"time"
+	)
 
-func main() {
-    ticker := time.NewTicker(500 * time.Millisecond)
-    done := make(chan bool)
-    go func() {
-        for {
-            select {
-            case <-done:
-                return
-            case t := <-ticker.C:
-                fmt.Println("Tick at", t)
-            }
-        }
-    }()
-    time.Sleep(1600 * time.Millisecond)
-    ticker.Stop()
-    done <- true
-    fmt.Println("Ticker stopped")
-}`}
+	func main() {
+		ticker := time.NewTicker(500 * time.Millisecond)
+		done := make(chan bool)
+		go func() {
+			for {
+				select {
+				case <-done:
+					return
+				case t := <-ticker.C:
+					fmt.Println("Tick at", t)
+				}
+			}
+		}()
+		time.Sleep(1600 * time.Millisecond)
+		ticker.Stop()
+		done <- true
+		fmt.Println("Ticker stopped")
+	}
+`}
   sections={[
     {text: "`NewTicker(500ms)` — um valor em `ticker.C` a cada meio segundo."},
     {text: "A goroutine escuta com `select`: imprime cada tick OU para quando `done` chegar. O `done` é o \"cancela\"."},

@@ -10,25 +10,26 @@ Cem goroutines incrementando o mesmo contador é o experimento que todo mundo fa
   title={"atomic-counters.go"}
   code={`package main
 
-import (
-    "fmt"
-    "sync"
-    "sync/atomic"
-)
+	import (
+		"fmt"
+		"sync"
+		"sync/atomic"
+	)
 
-func main() {
-    var ops atomic.Uint64
-    var wg sync.WaitGroup
-    for range 50 {
-        wg.Go(func() {
-            for range 1000 {
-                ops.Add(1)
-            }
-        })
-    }
-    wg.Wait()
-    fmt.Println("ops:", ops.Load())
-}`}
+	func main() {
+		var ops atomic.Uint64
+		var wg sync.WaitGroup
+		for range 50 {
+			wg.Go(func() {
+				for range 1000 {
+					ops.Add(1)
+				}
+			})
+		}
+		wg.Wait()
+		fmt.Println("ops:", ops.Load())
+	}
+`}
   sections={[
     {text: "`ops` é um `atomic.Uint64` — um inteiro sem sinal de 64 bits com operações atômicas. O pacote moderno expõe tipos (`.Add`, `.Load`) em vez de funções soltas."},
     {text: "`wg.Go` dispara as goroutines e espera todas — o padrão da página de [WaitGroups](waitgroups)."},
@@ -47,24 +48,25 @@ Vamos repetir o experimento **sem** atômico — só `contador++`:
   title={"race.go"}
   code={`package main
 
-import (
-    "fmt"
-    "sync"
-)
+	import (
+		"fmt"
+		"sync"
+	)
 
-func main() {
-    var contador int
-    var wg sync.WaitGroup
-    for range 100 {
-        wg.Go(func() {
-            for range 1000 {
-                contador++
-            }
-        })
-    }
-    wg.Wait()
-    fmt.Println("contador:", contador)
-}`}
+	func main() {
+		var contador int
+		var wg sync.WaitGroup
+		for range 100 {
+			wg.Go(func() {
+				for range 1000 {
+					contador++
+				}
+			})
+		}
+		wg.Wait()
+		fmt.Println("contador:", contador)
+	}
+`}
   sections={[
     {text: "100 goroutines × 1000 incrementos. O esperado seria 100.000 — mas `contador++` não é atômico: é ler, somar, escrever."},
     {text: "Duas goroutines podem ler `contador` com o mesmo valor (ex.: 42), somar 1 cada uma e escrever 43 duas vezes — **uma atualização se perde**."},

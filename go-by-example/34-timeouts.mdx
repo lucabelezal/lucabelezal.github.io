@@ -9,35 +9,36 @@ Uma chamada externa que nunca responde trava seu programa. O padrão Go para "es
   title={"timeouts.go"}
   code={`package main
 
-import (
-    "fmt"
-    "time"
-)
+	import (
+		"fmt"
+		"time"
+	)
 
-func main() {
-    c1 := make(chan string, 1)
-    go func() {
-        time.Sleep(2 * time.Second)
-        c1 <- "result 1"
-    }()
-    select {
-    case res := <-c1:
-        fmt.Println(res)
-    case <-time.After(1 * time.Second):
-        fmt.Println("timeout 1")
-    }
-    c2 := make(chan string, 1)
-    go func() {
-        time.Sleep(2 * time.Second)
-        c2 <- "result 2"
-    }()
-    select {
-    case res := <-c2:
-        fmt.Println(res)
-    case <-time.After(3 * time.Second):
-        fmt.Println("timeout 2")
-    }
-}`}
+	func main() {
+		c1 := make(chan string, 1)
+		go func() {
+			time.Sleep(2 * time.Second)
+			c1 <- "result 1"
+		}()
+		select {
+		case res := <-c1:
+			fmt.Println(res)
+		case <-time.After(1 * time.Second):
+			fmt.Println("timeout 1")
+		}
+		c2 := make(chan string, 1)
+		go func() {
+			time.Sleep(2 * time.Second)
+			c2 <- "result 2"
+		}()
+		select {
+		case res := <-c2:
+			fmt.Println(res)
+		case <-time.After(3 * time.Second):
+			fmt.Println("timeout 2")
+		}
+	}
+`}
   sections={[
     {text: "O trabalho (aqui, um `Sleep` de 2s) entrega o resultado em `c1`. O buffer 1 permite o envio sem receptor — a goroutine não vaza se ninguém ler."},
     {text: "`select` entre `res := <-c1` e `<-time.After(1s)`: o resultado leva 2s, o timer dispara em 1s — o **timeout vence** e imprime \"timeout 1\"."},
@@ -50,10 +51,10 @@ func main() {
 
 ```go
 select {
-case res := <-resultado:      // a operação respondeu
-    return res
-case <-time.After(prazo):      // estourou o prazo
-    return errTimeout
+case res := <-resultado: // a operação respondeu
+	return res
+case <-time.After(prazo): // estourou o prazo
+	return errTimeout
 }
 ```
 

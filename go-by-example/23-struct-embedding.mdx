@@ -10,37 +10,38 @@ Quem vem de Java ou C# procura `extends` e não encontra. **Go não tem herança
   title={"struct-embedding.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-type base struct {
-    num int
-}
+	type base struct {
+		num int
+	}
 
-func (b base) describe() string {
-    return fmt.Sprintf("base with num=%v", b.num)
-}
+	func (b base) describe() string {
+		return fmt.Sprintf("base with num=%v", b.num)
+	}
 
-type container struct {
-    base
-    str string
-}
+	type container struct {
+		base
+		str string
+	}
 
-func main() {
-    co := container{
-        base: base{
-            num: 1,
-        },
-        str: "some name",
-    }
-    fmt.Printf("co={num: %v, str: %v}\n", co.num, co.str)
-    fmt.Println("also num:", co.base.num)
-    fmt.Println("describe:", co.describe())
-    type describer interface {
-        describe() string
-    }
-    var d describer = co
-    fmt.Println("describer:", d.describe())
-}`}
+	func main() {
+		co := container{
+			base: base{
+				num: 1,
+			},
+			str: "some name",
+		}
+		fmt.Printf("co={num: %v, str: %v}\n", co.num, co.str)
+		fmt.Println("also num:", co.base.num)
+		fmt.Println("describe:", co.describe())
+		type describer interface {
+			describe() string
+		}
+		var d describer = co
+		fmt.Println("describer:", d.describe())
+	}
+`}
   sections={[
     {text: "`container` faz *embed* de `base`: um campo sem nome cujo tipo é `base`. Sintaticamente é só `base` na lista de campos."},
     {text: "No literal, o tipo embutido vira o nome do campo: `base: base{num: 1}`. Embedding encurta o acesso, não a construção."},
@@ -64,33 +65,34 @@ O método do tipo externo **esconde** o do embutido, mas os dois continuam acess
   title={"shadowing.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-type Base struct{}
+	type Base struct{}
 
-func (b Base) Hello() string { return "base" }
+	func (b Base) Hello() string { return "base" }
 
-type Child struct {
-    Base
-}
+	type Child struct {
+		Base
+	}
 
-func (c Child) Hello() string { return "child" }
+	func (c Child) Hello() string { return "child" }
 
-type Greeter interface {
-    Hello() string
-}
+	type Greeter interface {
+		Hello() string
+	}
 
-func Greet(g Greeter) {
-    fmt.Println(g.Hello())
-}
+	func Greet(g Greeter) {
+		fmt.Println(g.Hello())
+	}
 
-func main() {
-    c := Child{}
-    fmt.Println("c.Hello():", c.Hello())
-    fmt.Println("c.Base.Hello():", c.Base.Hello())
-    Greet(Base{})
-    Greet(Child{})
-}`}
+	func main() {
+		c := Child{}
+		fmt.Println("c.Hello():", c.Hello())
+		fmt.Println("c.Base.Hello():", c.Base.Hello())
+		Greet(Base{})
+		Greet(Child{})
+	}
+`}
   sections={[
     {text: "`Child` embute `Base` **e** define seu próprio `Hello()`. O método de `Child` tem prioridade — chamar `c.Hello()` devolve `\"child\"`."},
     {text: "O método embutido não foi sobrescrito: `c.Base.Hello()` ainda devolve `\"base\"`. Ambos coexistem."},
@@ -108,11 +110,11 @@ Quando a subestrutura é um detalhe interno, o embedding encurta o código (`co.
 
 ```go
 type Carro struct {
-    Motor // campo promovido: carro.Potencia()
+	Motor // campo promovido: carro.Potencia()
 }
 
 type CarroNomeado struct {
-    motor Motor // campo comum: carroNomeado.motor.Potencia()
+	motor Motor // campo comum: carroNomeado.motor.Potencia()
 }
 ```
 

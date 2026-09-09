@@ -10,26 +10,27 @@ Você disparou várias goroutines e precisa que o programa só prossiga quando *
   title={"waitgroups.go"}
   code={`package main
 
-import (
-    "fmt"
-    "sync"
-    "time"
-)
+	import (
+		"fmt"
+		"sync"
+		"time"
+	)
 
-func worker(id int) {
-    fmt.Printf("Worker %d starting\n", id)
-    time.Sleep(time.Second)
-    fmt.Printf("Worker %d done\n", id)
-}
-func main() {
-    var wg sync.WaitGroup
-    for i := 1; i <= 5; i++ {
-        wg.Go(func() {
-            worker(i)
-        })
-    }
-    wg.Wait()
-}`}
+	func worker(id int) {
+		fmt.Printf("Worker %d starting\n", id)
+		time.Sleep(time.Second)
+		fmt.Printf("Worker %d done\n", id)
+	}
+	func main() {
+		var wg sync.WaitGroup
+		for i := 1; i <= 5; i++ {
+			wg.Go(func() {
+				worker(i)
+			})
+		}
+		wg.Wait()
+	}
+`}
   sections={[
     {text: "`worker` é o trabalho: imprime início, espera 1s (simulando tarefa custosa) e imprime o fim."},
     {text: "`var wg sync.WaitGroup` — o contador. Seu *zero value* já é utilizável; e ele **não pode ser copiado** (passar para função é sempre por ponteiro)."},
@@ -53,11 +54,11 @@ O **idioma clássico** (anterior ao Go 1.23) fazia os três passos na mão — e
 
 ```go
 for i := 1; i <= 5; i++ {
-    wg.Add(1)
-    go func() {
-        defer wg.Done() // garante o decremento mesmo em panic/return
-        worker(i)
-    }()
+	wg.Add(1)
+	go func() {
+		defer wg.Done() // garante o decremento mesmo em panic/return
+		worker(i)
+	}()
 }
 wg.Wait()
 ```

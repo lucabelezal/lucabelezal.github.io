@@ -10,52 +10,53 @@ Em linguagens com herança (Java, C++, C#), você organiza o código por hierarq
   title={"interfaces.go"}
   code={`package main
 
-import (
-    "fmt"
-    "math"
-)
+	import (
+		"fmt"
+		"math"
+	)
 
-type geometry interface {
-    area() float64
-    perim() float64
-}
-type rect struct {
-    width, height float64
-}
-type circle struct {
-    radius float64
-}
+	type geometry interface {
+		area() float64
+		perim() float64
+	}
+	type rect struct {
+		width, height float64
+	}
+	type circle struct {
+		radius float64
+	}
 
-func (r rect) area() float64 {
-    return r.width * r.height
-}
-func (r rect) perim() float64 {
-    return 2*r.width + 2*r.height
-}
-func (c circle) area() float64 {
-    return math.Pi * c.radius * c.radius
-}
-func (c circle) perim() float64 {
-    return 2 * math.Pi * c.radius
-}
-func measure(g geometry) {
-    fmt.Println(g)
-    fmt.Println(g.area())
-    fmt.Println(g.perim())
-}
-func detectCircle(g geometry) {
-    if c, ok := g.(circle); ok {
-        fmt.Println("circle with radius", c.radius)
-    }
-}
-func main() {
-    r := rect{width: 3, height: 4}
-    c := circle{radius: 5}
-    measure(r)
-    measure(c)
-    detectCircle(r)
-    detectCircle(c)
-}`}
+	func (r rect) area() float64 {
+		return r.width * r.height
+	}
+	func (r rect) perim() float64 {
+		return 2*r.width + 2*r.height
+	}
+	func (c circle) area() float64 {
+		return math.Pi * c.radius * c.radius
+	}
+	func (c circle) perim() float64 {
+		return 2 * math.Pi * c.radius
+	}
+	func measure(g geometry) {
+		fmt.Println(g)
+		fmt.Println(g.area())
+		fmt.Println(g.perim())
+	}
+	func detectCircle(g geometry) {
+		if c, ok := g.(circle); ok {
+			fmt.Println("circle with radius", c.radius)
+		}
+	}
+	func main() {
+		r := rect{width: 3, height: 4}
+		c := circle{radius: 5}
+		measure(r)
+		measure(c)
+		detectCircle(r)
+		detectCircle(c)
+	}
+`}
   sections={[
     {text: "`type geometry interface { ... }` declara o contrato: quem tiver `area()` e `perim()` com essas assinaturas é uma `geometry`. Só isso — sem `implements`, sem declaração."},
     {text: "`rect` e `circle` são tipos independentes (nenhum extends o outro). Cada um define os dois métodos do seu jeito."},
@@ -78,7 +79,7 @@ O melhor jeito de entender interface é ver a dor que ela resolve. Imagine que `
 
 ```go
 func Print(a Article) { // acoplado ao tipo concreto
-    fmt.Println(a.String())
+	fmt.Println(a.String())
 }
 ```
 
@@ -88,35 +89,36 @@ A função só usa `String`. Se `Book` também tem `String`, `Print(book)` **nã
   title={"stringer.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-type Article struct {
-    Title  string
-    Author string
-}
+	type Article struct {
+		Title  string
+		Author string
+	}
 
-func (a Article) String() string {
-    return fmt.Sprintf("The %q article was written by %s.", a.Title, a.Author)
-}
+	func (a Article) String() string {
+		return fmt.Sprintf("The %q article was written by %s.", a.Title, a.Author)
+	}
 
-type Book struct {
-    Title  string
-    Author string
-    Pages  int
-}
+	type Book struct {
+		Title  string
+		Author string
+		Pages  int
+	}
 
-func (b Book) String() string {
-    return fmt.Sprintf("The %q book was written by %s (%d pages).", b.Title, b.Author, b.Pages)
-}
+	func (b Book) String() string {
+		return fmt.Sprintf("The %q book was written by %s (%d pages).", b.Title, b.Author, b.Pages)
+	}
 
-func Print(s fmt.Stringer) {
-    fmt.Println(s.String())
-}
+	func Print(s fmt.Stringer) {
+		fmt.Println(s.String())
+	}
 
-func main() {
-    Print(Article{Title: "Understanding Interfaces in Go", Author: "Sammy Shark"})
-    Print(Book{Title: "All About Go", Author: "Jenny Dolphin", Pages: 25})
-}`}
+	func main() {
+		Print(Article{Title: "Understanding Interfaces in Go", Author: "Sammy Shark"})
+		Print(Book{Title: "All About Go", Author: "Jenny Dolphin", Pages: 25})
+	}
+`}
   sections={[
     {text: "`Article` tem o método `String()` — sem declarar nada, já atende a interface `fmt.Stringer`, definida na biblioteca padrão."},
     {text: "`Book` também define `String()`. Dois tipos independentes, mesmo contrato."},
@@ -136,12 +138,12 @@ A sabedoria Go: **aceite a menor interface que a função precisa**. Quanto maio
 
 ```go
 type Sizer interface {
-    Area() float64
+	Area() float64
 }
 
 type Shaper interface {
-    Sizer
-    fmt.Stringer
+	Sizer
+	fmt.Stringer
 }
 ```
 
@@ -149,10 +151,10 @@ type Shaper interface {
 
 ```go
 func Menor(s1, s2 Sizer) Sizer { // só precisa de Area()
-    if s1.Area() < s2.Area() {
-        return s1
-    }
-    return s2
+	if s1.Area() < s2.Area() {
+		return s1
+	}
+	return s2
 }
 ```
 
@@ -187,10 +189,10 @@ Esse é o *typed nil*: a comparação `id == nil` mente — o código entra no `
 
 ```go
 func Novo(s *Usuario) Identificavel {
-    if s == nil {
-        return nil
-    }
-    return s
+	if s == nil {
+		return nil
+	}
+	return s
 }
 ```
 

@@ -10,23 +10,24 @@ Funções podem devolver funções — e a função devolvida pode **lembrar do 
   title={"closures.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func intSeq() func() int {
-    i := 0
-    return func() int {
-        i++
-        return i
-    }
-}
-func main() {
-    nextInt := intSeq()
-    fmt.Println(nextInt())
-    fmt.Println(nextInt())
-    fmt.Println(nextInt())
-    newInts := intSeq()
-    fmt.Println(newInts())
-}`}
+	func intSeq() func() int {
+		i := 0
+		return func() int {
+			i++
+			return i
+		}
+	}
+	func main() {
+		nextInt := intSeq()
+		fmt.Println(nextInt())
+		fmt.Println(nextInt())
+		fmt.Println(nextInt())
+		newInts := intSeq()
+		fmt.Println(newInts())
+	}
+`}
   sections={[
     {text: "`intSeq` devolve uma `func() int`. Repare na assinatura: o retorno é uma função. Dentro do corpo, a função anônima **usa `i`**, uma variável local de `intSeq`."},
     {text: "Quando `intSeq` retorna, você poderia achar que `i` morreu. Não morreu: a função anônima capturou `i`, e enquanto ela existir, `i` continua vivo. Cada chamada a `nextInt()` incrementa esse mesmo `i`."},

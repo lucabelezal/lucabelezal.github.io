@@ -9,33 +9,34 @@ Um channel comunica valores; o **`close`** comunica o fim: "não virá mais nada
   title={"closing-channels.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func main() {
-    jobs := make(chan int, 5)
-    done := make(chan bool)
-    go func() {
-        for {
-            j, more := <-jobs
-            if more {
-                fmt.Println("received job", j)
-            } else {
-                fmt.Println("received all jobs")
-                done <- true
-                return
-            }
-        }
-    }()
-    for j := 1; j <= 3; j++ {
-        jobs <- j
-        fmt.Println("sent job", j)
-    }
-    close(jobs)
-    fmt.Println("sent all jobs")
-    <-done
-    _, ok := <-jobs
-    fmt.Println("received more jobs:", ok)
-}`}
+	func main() {
+		jobs := make(chan int, 5)
+		done := make(chan bool)
+		go func() {
+			for {
+				j, more := <-jobs
+				if more {
+					fmt.Println("received job", j)
+				} else {
+					fmt.Println("received all jobs")
+					done <- true
+					return
+				}
+			}
+		}()
+		for j := 1; j <= 3; j++ {
+			jobs <- j
+			fmt.Println("sent job", j)
+		}
+		close(jobs)
+		fmt.Println("sent all jobs")
+		<-done
+		_, ok := <-jobs
+		fmt.Println("received more jobs:", ok)
+	}
+`}
   sections={[
     {text: "`jobs` (buffer 5) transporta o trabalho da main para o worker; `done` sinaliza o fim."},
     {text: "`j, more := <-jobs` — a forma com dois valores: `more == true` enquanto há dados; `false` quando o canal **foi fechado e esvaziado**."},

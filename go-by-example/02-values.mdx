@@ -10,16 +10,17 @@ Antes de declarar variáveis e estruturas, você precisa conhecer os blocos de c
   title={"values.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func main() {
-    fmt.Println("go" + "lang")
-    fmt.Println("1+1 =", 1+1)
-    fmt.Println("7.0/3.0 =", 7.0/3.0)
-    fmt.Println(true && false)
-    fmt.Println(true || false)
-    fmt.Println(!true)
-}`}
+	func main() {
+		fmt.Println("go" + "lang")
+		fmt.Println("1+1 =", 1+1)
+		fmt.Println("7.0/3.0 =", 7.0/3.0)
+		fmt.Println(true && false)
+		fmt.Println(true || false)
+		fmt.Println(!true)
+	}
+`}
   sections={[
     {text: "Strings são concatenadas com `+`. \"go\" + \"lang\" vira \"golang\", sem espaço automático — o operador junta exatamente o que você passa."},
     {text: "`1+1` soma dois inteiros e o resultado também é inteiro. Repare que o `+` aqui é **aritmético**, diferente do `+` de strings acima."},

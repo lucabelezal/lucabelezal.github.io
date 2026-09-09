@@ -10,26 +10,27 @@ O outro lado do `net/http`: um **servidor HTTP**. A peça central é o *handler*
   title={"http-server.go"}
   code={`package main
 
-import (
-    "fmt"
-    "net/http"
-)
+	import (
+		"fmt"
+		"net/http"
+	)
 
-func hello(w http.ResponseWriter, req *http.Request) {
-    fmt.Fprintf(w, "hello\n")
-}
-func headers(w http.ResponseWriter, req *http.Request) {
-    for name, headers := range req.Header {
-        for _, h := range headers {
-            fmt.Fprintf(w, "%v: %v\n", name, h)
-        }
-    }
-}
-func main() {
-    http.HandleFunc("/hello", hello)
-    http.HandleFunc("/headers", headers)
-    http.ListenAndServe(":8090", nil)
-}`}
+	func hello(w http.ResponseWriter, req *http.Request) {
+		fmt.Fprintf(w, "hello\n")
+	}
+	func headers(w http.ResponseWriter, req *http.Request) {
+		for name, headers := range req.Header {
+			for _, h := range headers {
+				fmt.Fprintf(w, "%v: %v\n", name, h)
+			}
+		}
+	}
+	func main() {
+		http.HandleFunc("/hello", hello)
+		http.HandleFunc("/headers", headers)
+		http.ListenAndServe(":8090", nil)
+	}
+`}
   sections={[
     {text: "`hello` é um handler: recebe um `http.ResponseWriter` (onde se escreve a resposta) e um `*http.Request` (o pedido). Assinatura padrão de handler."},
     {text: "`fmt.Fprintf(w, ...)` escreve no `ResponseWriter` — que é um `io.Writer`. Aqui, a resposta é o texto `hello\\n`."},
@@ -58,9 +59,9 @@ Assim como o cliente, o `http.Server` padrão de `ListenAndServe` não configura
 
 ```go
 srv := &http.Server{
-    Addr:              ":8090",
-    Handler:           mux,
-    ReadHeaderTimeout: 5 * time.Second,
+	Addr:              ":8090",
+	Handler:           mux,
+	ReadHeaderTimeout: 5 * time.Second,
 }
 log.Fatal(srv.ListenAndServe())
 ```

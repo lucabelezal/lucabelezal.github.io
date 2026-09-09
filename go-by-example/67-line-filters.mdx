@@ -10,24 +10,25 @@ Uma das tradições mais antigas do Unix é o **filtro de linha**: um programa q
   title={"line-filters.go"}
   code={`package main
 
-import (
-    "bufio"
-    "fmt"
-    "os"
-    "strings"
-)
+	import (
+		"bufio"
+		"fmt"
+		"os"
+		"strings"
+	)
 
-func main() {
-    scanner := bufio.NewScanner(os.Stdin)
-    for scanner.Scan() {
-        ucl := strings.ToUpper(scanner.Text())
-        fmt.Println(ucl)
-    }
-    if err := scanner.Err(); err != nil {
-        fmt.Fprintln(os.Stderr, "error:", err)
-        os.Exit(1)
-    }
-}`}
+	func main() {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			ucl := strings.ToUpper(scanner.Text())
+			fmt.Println(ucl)
+		}
+		if err := scanner.Err(); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+	}
+`}
   sections={[
     {text: "`bufio.NewScanner(os.Stdin)` — um scanner sobre a entrada padrão, com o método `Scan` que avança para a próxima linha a cada chamada."},
     {text: "O laço `for scanner.Scan()` itera pelas linhas até o fim da entrada (EOF). O `Scan` devolve `false` no fim."},
@@ -43,12 +44,12 @@ func main() {
 ```go
 scanner := bufio.NewScanner(os.Stdin)
 for scanner.Scan() {
-    linha := scanner.Text()
-    // transforme linha
-    fmt.Println(resultado)
+	linha := scanner.Text()
+	// transforme linha
+	fmt.Println(resultado)
 }
 if err := scanner.Err(); err != nil {
-    // trate (para stderr + exit != 0)
+	// trate (para stderr + exit != 0)
 }
 ```
 

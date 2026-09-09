@@ -10,27 +10,28 @@ O pacote `strings` é o kit de ferramentas para manipular texto: procurar, conta
   title={"string-functions.go"}
   code={`package main
 
-import (
-    "fmt"
-    s "strings"
-)
+	import (
+		"fmt"
+		s "strings"
+	)
 
-var p = fmt.Println
+	var p = fmt.Println
 
-func main() {
-    p("Contains:  ", s.Contains("test", "es"))
-    p("Count:     ", s.Count("test", "t"))
-    p("HasPrefix: ", s.HasPrefix("test", "te"))
-    p("HasSuffix: ", s.HasSuffix("test", "st"))
-    p("Index:     ", s.Index("test", "e"))
-    p("Join:      ", s.Join([]string{"a", "b"}, "-"))
-    p("Repeat:    ", s.Repeat("a", 5))
-    p("Replace:   ", s.Replace("foo", "o", "0", -1))
-    p("Replace:   ", s.Replace("foo", "o", "0", 1))
-    p("Split:     ", s.Split("a-b-c-d-e", "-"))
-    p("ToLower:   ", s.ToLower("TEST"))
-    p("ToUpper:   ", s.ToUpper("test"))
-}`}
+	func main() {
+		p("Contains:  ", s.Contains("test", "es"))
+		p("Count:     ", s.Count("test", "t"))
+		p("HasPrefix: ", s.HasPrefix("test", "te"))
+		p("HasSuffix: ", s.HasSuffix("test", "st"))
+		p("Index:     ", s.Index("test", "e"))
+		p("Join:      ", s.Join([]string{"a", "b"}, "-"))
+		p("Repeat:    ", s.Repeat("a", 5))
+		p("Replace:   ", s.Replace("foo", "o", "0", -1))
+		p("Replace:   ", s.Replace("foo", "o", "0", 1))
+		p("Split:     ", s.Split("a-b-c-d-e", "-"))
+		p("ToLower:   ", s.ToLower("TEST"))
+		p("ToUpper:   ", s.ToUpper("test"))
+	}
+`}
   sections={[
     {text: "`s \"strings\"` cria um apelido curto para o pacote — comum em exemplos para caber mais na tela. Em código real, use o nome completo; legibilidade primeiro."},
     {text: "`var p = fmt.Println` — outra abreviação de exemplo. Repare: `Contains` responde \"a string contém a substring?\", `Index` dá a posição, `HasPrefix`/`HasSuffix` checam bordas."},
@@ -48,7 +49,7 @@ Toda função de `strings` devolve uma **string nova** (ou um slice/índice): na
 ```go
 var b strings.Builder
 for _, palavra := range lista {
-    b.WriteString(palavra)
+	b.WriteString(palavra)
 }
 resultado := b.String() // sem recriar a string inteira a cada iteração
 ```

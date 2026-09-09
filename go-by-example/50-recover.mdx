@@ -10,20 +10,21 @@ Um panic derruba a goroutine — a menos que algo o **intercepte**. O **`recover
   title={"recover.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func mayPanic() {
-    panic("a problem")
-}
-func main() {
-    defer func() {
-        if r := recover(); r != nil {
-            fmt.Println("Recovered. Error:\n", r)
-        }
-    }()
-    mayPanic()
-    fmt.Println("After mayPanic()")
-}`}
+	func mayPanic() {
+		panic("a problem")
+	}
+	func main() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("Recovered. Error:\n", r)
+			}
+		}()
+		mayPanic()
+		fmt.Println("After mayPanic()")
+	}
+`}
   sections={[
     {text: "`mayPanic` entra em panic — uma falha \"inesperada\" que, sem recuperação, mataria o programa."},
     {text: "`defer func(){...}()` — o `recover` **só funciona dentro de uma função adiada**. É o defer que garante que ele rode no momento do panic."},
@@ -38,14 +39,14 @@ func main() {
 `recover` brilha na **fronteira**: você não deixa o panic escapar, converte-o em `error` e devolve. O truque usa retorno nomeado + `defer`:
 
 ```go
-func executar() (err error) {           // retorno nomeado
-    defer func() {
-        if r := recover(); r != nil {
-            err = fmt.Errorf("falha interna: %v", r) // vira error
-        }
-    }()
-    // código que pode panica (bug, índice, nil...)
-    return nil
+func executar() (err error) { // retorno nomeado
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("falha interna: %v", r) // vira error
+		}
+	}()
+	// código que pode panica (bug, índice, nil...)
+	return nil
 }
 ```
 

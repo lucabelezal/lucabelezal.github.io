@@ -10,25 +10,26 @@ Toda função que chama a si mesma é **recursiva** — e a recursão é a ferra
   title={"recursion.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func fact(n int) int {
-    if n == 0 {
-        return 1
-    }
-    return n * fact(n-1)
-}
-func main() {
-    fmt.Println(fact(7))
-    var fib func(n int) int
-    fib = func(n int) int {
-        if n < 2 {
-            return n
-        }
-        return fib(n-1) + fib(n-2)
-    }
-    fmt.Println(fib(7))
-}`}
+	func fact(n int) int {
+		if n == 0 {
+			return 1
+		}
+		return n * fact(n-1)
+	}
+	func main() {
+		fmt.Println(fact(7))
+		var fib func(n int) int
+		fib = func(n int) int {
+			if n < 2 {
+				return n
+			}
+			return fib(n-1) + fib(n-2)
+		}
+		fmt.Println(fib(7))
+	}
+`}
   sections={[
     {text: "`fact(n)` chama a si mesma com `n-1` até atingir o **caso base** `n == 0`, que devolve 1 e encerra a cadeia. Cada chamada espera o resultado da menor."},
     {text: "`fact(7)`: 7! = 5040 — calculado por 7 chamadas empilhadas."},

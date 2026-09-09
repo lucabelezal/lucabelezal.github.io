@@ -10,14 +10,15 @@ Goroutines rodam em paralelo; **channels** as fazem conversar. Um channel é um 
   title={"channels.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func main() {
-    messages := make(chan string)
-    go func() { messages <- "ping" }()
-    msg := <-messages
-    fmt.Println(msg)
-}`}
+	func main() {
+		messages := make(chan string)
+		go func() { messages <- "ping" }()
+		msg := <-messages
+		fmt.Println(msg)
+	}
+`}
   sections={[
     {text: "`make(chan string)` cria um channel **não-bufferizado** que transporta strings. O tipo do channel é o tipo do valor que ele carrega."},
     {text: "`messages <- \"ping\"` **envia** o valor pelo channel — aqui dentro de uma goroutine, porque o envio bloqueia até alguém receber."},

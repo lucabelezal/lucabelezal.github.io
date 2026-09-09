@@ -10,38 +10,39 @@ Go nasceu com testes na veia: o pacote `testing` é da biblioteca padrão, `go t
   title={"price_test.go"}
   code={`package price
 
-import "testing"
+	import "testing"
 
-func Calculate(quantity, unitPrice int) int {
-    return quantity * unitPrice
-}
+	func Calculate(quantity, unitPrice int) int {
+		return quantity * unitPrice
+	}
 
-func TestCalculate(t *testing.T) {
-    tests := []struct {
-        name      string
-        quantity  int
-        unitPrice int
-        want      int
-    }{
-        {name: "single item", quantity: 1, unitPrice: 25, want: 25},
-        {name: "multiple items", quantity: 3, unitPrice: 25, want: 75},
-    }
+	func TestCalculate(t *testing.T) {
+		tests := []struct {
+			name      string
+			quantity  int
+			unitPrice int
+			want      int
+		}{
+			{name: "single item", quantity: 1, unitPrice: 25, want: 25},
+			{name: "multiple items", quantity: 3, unitPrice: 25, want: 75},
+		}
 
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            got := Calculate(tt.quantity, tt.unitPrice)
-            if got != tt.want {
-                t.Fatalf("Calculate() = %d, want %d", got, tt.want)
-            }
-        })
-    }
-}
+		for _, tt := range tests {
+			t.Run(tt.name, func(t *testing.T) {
+				got := Calculate(tt.quantity, tt.unitPrice)
+				if got != tt.want {
+					t.Fatalf("Calculate() = %d, want %d", got, tt.want)
+				}
+			})
+		}
+	}
 
-func BenchmarkCalculate(b *testing.B) {
-    for b.Loop() {
-        Calculate(3, 25)
-    }
-}`}
+	func BenchmarkCalculate(b *testing.B) {
+		for b.Loop() {
+			Calculate(3, 25)
+		}
+	}
+`}
   sections={[
     {text: "`func TestCalculate(t *testing.T)` — todo teste é uma função `TestXxx` que recebe `*testing.T`. Em projeto real, `Calculate` ficaria num arquivo de produção e este no `_test.go` correspondente."},
     {text: "A **tabela** concentra os cenários: entrada + `want`. O `name` dá um rótulo estável a cada comportamento — a saída do teste vira legível."},

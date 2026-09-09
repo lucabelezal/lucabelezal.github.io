@@ -10,27 +10,28 @@ Falar com uma API, baixar uma página, chamar um serviço: todo programa de rede
   title={"http-client.go"}
   code={`package main
 
-import (
-    "bufio"
-    "fmt"
-    "net/http"
-)
+	import (
+		"bufio"
+		"fmt"
+		"net/http"
+	)
 
-func main() {
-    resp, err := http.Get("https://gobyexample.com")
-    if err != nil {
-        panic(err)
-    }
-    defer resp.Body.Close()
-    fmt.Println("Response status:", resp.Status)
-    scanner := bufio.NewScanner(resp.Body)
-    for i := 0; scanner.Scan() && i < 5; i++ {
-        fmt.Println(scanner.Text())
-    }
-    if err := scanner.Err(); err != nil {
-        panic(err)
-    }
-}`}
+	func main() {
+		resp, err := http.Get("https://gobyexample.com")
+		if err != nil {
+			panic(err)
+		}
+		defer resp.Body.Close()
+		fmt.Println("Response status:", resp.Status)
+		scanner := bufio.NewScanner(resp.Body)
+		for i := 0; scanner.Scan() && i < 5; i++ {
+			fmt.Println(scanner.Text())
+		}
+		if err := scanner.Err(); err != nil {
+			panic(err)
+		}
+	}
+`}
   sections={[
     {text: "`http.Get(url)` dispara um GET e devolve `(resp, err)`. O `err` cobre falhas de rede/URL; um status 404 **não** é erro — vem na `resp`."},
     {text: "`defer resp.Body.Close()` — o body é um `io.ReadCloser`; fechar evita vazar a conexão."},

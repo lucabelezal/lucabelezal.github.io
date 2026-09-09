@@ -10,23 +10,24 @@ O SO se comunica com processos por **sinais**: `Ctrl+C` envia `SIGINT`, `kill` e
   title={"signals.go"}
   code={`package main
 
-import (
-    "context"
-    "fmt"
-    "os/signal"
-    "syscall"
-)
+	import (
+		"context"
+		"fmt"
+		"os/signal"
+		"syscall"
+	)
 
-func main() {
-    ctx, stop := signal.NotifyContext(
-        context.Background(), syscall.SIGINT, syscall.SIGTERM)
-    defer stop()
-    fmt.Println("awaiting signal")
-    <-ctx.Done()
-    fmt.Println()
-    fmt.Println(context.Cause(ctx))
-    fmt.Println("exiting")
-}`}
+	func main() {
+		ctx, stop := signal.NotifyContext(
+			context.Background(), syscall.SIGINT, syscall.SIGTERM)
+		defer stop()
+		fmt.Println("awaiting signal")
+		<-ctx.Done()
+		fmt.Println()
+		fmt.Println(context.Cause(ctx))
+		fmt.Println("exiting")
+	}
+`}
   sections={[
     {text: "`signal.NotifyContext(ctx, SIGINT, SIGTERM)` cria um context que é **cancelado quando um desses sinais chega**. `stop()` (no `defer`) restaura o comportamento padrão dos sinais."},
     {text: "`<-ctx.Done()` bloqueia até o sinal. Enquanto isso, o programa poderia estar servindo requests — o `Done` é o gancho para começar o shutdown."},
@@ -41,19 +42,19 @@ No mundo real, o sinal não encerra o programa direto — ele dispara o **shutdo
 
 ```go
 func main() {
-    ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-    defer stop()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-    srv := &http.Server{Addr: ":8090", Handler: mux}
+	srv := &http.Server{Addr: ":8090", Handler: mux}
 
-    go func() {
-        <-ctx.Done()                       // sinal chegou
-        ctxShutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-        defer cancel()
-        srv.Shutdown(ctxShutdown)          // para de aceitar e espera requests (página [Servidor HTTP](http-server))
-    }()
+	go func() {
+		<-ctx.Done() // sinal chegou
+		ctxShutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		srv.Shutdown(ctxShutdown) // para de aceitar e espera requests (página [Servidor HTTP](http-server))
+	}()
 
-    log.Fatal(srv.ListenAndServe())
+	log.Fatal(srv.ListenAndServe())
 }
 ```
 

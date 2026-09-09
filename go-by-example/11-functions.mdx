@@ -10,20 +10,21 @@ Se você reparar em código Go real, vai notar uma coisa: **tudo é feito com fu
   title={"functions.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func plus(a int, b int) int {
-    return a + b
-}
-func plusPlus(a, b, c int) int {
-    return a + b + c
-}
-func main() {
-    res := plus(1, 2)
-    fmt.Println("1+2 =", res)
-    res = plusPlus(1, 2, 3)
-    fmt.Println("1+2+3 =", res)
-}`}
+	func plus(a int, b int) int {
+		return a + b
+	}
+	func plusPlus(a, b, c int) int {
+		return a + b + c
+	}
+	func main() {
+		res := plus(1, 2)
+		fmt.Println("1+2 =", res)
+		res = plusPlus(1, 2, 3)
+		fmt.Println("1+2+3 =", res)
+	}
+`}
   sections={[
     {text: "A anatomia de uma função: palavra `func`, nome, parâmetros tipados entre parênteses e o tipo de retorno **no fim**. `func plus(a int, b int) int` recebe dois `int`s e devolve um `int`."},
     {text: "O `return` é explícito e obrigatório quando a função declara retorno. Go não devolve a última expressão automaticamente como algumas linguagens fazem."},
@@ -58,21 +59,22 @@ Passar uma função para outra é o padrão de **callback**: você entrega o "o 
   title={"callback.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func transformar(nums []int, fn func(int) int) []int {
-    resultado := make([]int, len(nums))
-    for i, n := range nums {
-        resultado[i] = fn(n)
-    }
-    return resultado
-}
+	func transformar(nums []int, fn func(int) int) []int {
+		resultado := make([]int, len(nums))
+		for i, n := range nums {
+			resultado[i] = fn(n)
+		}
+		return resultado
+	}
 
-func main() {
-    dobro := func(n int) int { return n * 2 }
-    numeros := []int{1, 2, 3}
-    fmt.Println(transformar(numeros, dobro))
-}`}
+	func main() {
+		dobro := func(n int) int { return n * 2 }
+		numeros := []int{1, 2, 3}
+		fmt.Println(transformar(numeros, dobro))
+	}
+`}
   sections={[
     {text: "`transformar` recebe um slice e uma função `fn func(int) int`. Ela não sabe o que `fn` faz — só sabe a forma: recebe `int`, devolve `int`. Quem decide o comportamento é quem chama."},
     {text: "`dobro` é uma função anônima guardada numa variável. O corpo `{ return n * 2 }` é o comportamento que vamos injetar."},
@@ -97,12 +99,12 @@ Com uma função exportada que segue a convenção de nome `NewTipo`:
 
 ```go
 type Conta struct {
-    titular string
-    saldo   float64
+	titular string
+	saldo   float64
 }
 
 func NewConta(titular string, saldoInicial float64) Conta {
-    return Conta{titular: titular, saldo: saldoInicial}
+	return Conta{titular: titular, saldo: saldoInicial}
 }
 ```
 

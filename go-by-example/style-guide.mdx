@@ -95,14 +95,14 @@ Onde Uber e Google colidem sem vencedor claro de manutenção, a seção corresp
 ```go title="linha-longa.go"
 // Errado: condição longa quebrada em duas linhas — o leitor perde o `if`.
 if user.Status == StatusActive && user.LastSeen.After(threshold) &&
-    user.IsAdmin {
-    grant(user)
+	user.IsAdmin {
+	grant(user)
 }
 
 // Certo: extrai a intenção em um nome; a condição volta a uma linha.
 canBypass := user.Status == StatusActive && user.IsAdmin
 if canBypass {
-    grant(user)
+	grant(user)
 }
 ```
 
@@ -119,8 +119,8 @@ const defaultTimeout = 5 * time.Second
 
 // Certo: mesmo domínio, mesmo bloco.
 const (
-    maxRetries     = 3
-    defaultTimeout = 5 * time.Second
+	maxRetries     = 3
+	defaultTimeout = 5 * time.Second
 )
 ```
 
@@ -185,12 +185,12 @@ const (
 ```go title="variavel.go"
 // Errado: o nome repete o tipo e a origem.
 for _, userPointer := range users {
-    processUser(userPointer)
+	processUser(userPointer)
 }
 
 // Certo: o nome diz o papel.
 for _, u := range users {
-    process(u)
+	process(u)
 }
 ```
 
@@ -276,11 +276,11 @@ var httpClient = &http.Client{Timeout: 10 * time.Second}
 
 // Certo: dependência do construtor.
 func New(opts ...Option) *Client {
-    c := &Client{http: &http.Client{Timeout: 10 * time.Second}}
-    for _, o := range opts {
-        o.apply(c)
-    }
-    return c
+	c := &Client{http: &http.Client{Timeout: 10 * time.Second}}
+	for _, o := range opts {
+		o.apply(c)
+	}
+	return c
 }
 ```
 
@@ -328,9 +328,9 @@ func New(opts ...Option) *Client {
 ```go title="wrap.go"
 s, err := store.New()
 if err != nil {
-    // Errado: "failed to create new store: ..."
-    // Certo:    "new store: ..."
-    return fmt.Errorf("new store: %w", err)
+	// Errado: "failed to create new store: ..."
+	// Certo:    "new store: ..."
+	return fmt.Errorf("new store: %w", err)
 }
 ```
 
@@ -385,27 +385,27 @@ func Find(list []int, want int) (index int, ok bool)
 ```go title="flow.go"
 // Errado: happy path indentado, erro tratado por último.
 for _, v := range data {
-    if v.F1 != 1 {
-        log.Printf("v inválido: %v", v)
-        continue
-    }
-    if err := process(v); err == nil {
-        send(v)
-    } else {
-        return err
-    }
+	if v.F1 != 1 {
+		log.Printf("v inválido: %v", v)
+		continue
+	}
+	if err := process(v); err == nil {
+		send(v)
+	} else {
+		return err
+	}
 }
 
 // Certo: erros primeiro, fluxo desce reto.
 for _, v := range data {
-    if v.F1 != 1 {
-        log.Printf("v inválido: %v", v)
-        continue
-    }
-    if err := process(v); err != nil {
-        return err
-    }
-    send(v)
+	if v.F1 != 1 {
+		log.Printf("v inválido: %v", v)
+		continue
+	}
+	if err := process(v); err != nil {
+		return err
+	}
+	send(v)
 }
 ```
 
@@ -439,19 +439,19 @@ for _, v := range data {
 
 ```go title="copy.go"
 func (d *Driver) SetTrips(trips []Trip) {
-    d.trips = make([]Trip, len(trips))
-    copy(d.trips, trips)
+	d.trips = make([]Trip, len(trips))
+	copy(d.trips, trips)
 }
 
 func (s *Stats) Snapshot() map[string]int {
-    s.mu.Lock()
-    defer s.mu.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-    out := make(map[string]int, len(s.counters))
-    for k, v := range s.counters {
-        out[k] = v
-    }
-    return out // nunca devolve s.counters direto
+	out := make(map[string]int, len(s.counters))
+	for k, v := range s.counters {
+		out[k] = v
+	}
+	return out // nunca devolve s.counters direto
 }
 ```
 
@@ -488,14 +488,14 @@ func (s *Stats) Snapshot() map[string]int {
 ```go title="mutex.go"
 // Certo.
 type Counter struct {
-    mu sync.Mutex
-    n  int
+	mu sync.Mutex
+	n  int
 }
 
 // Errado: Lock/Unlock viram métodos públicos de Counter.
 type Counter struct {
-    sync.Mutex
-    n int
+	sync.Mutex
+	n int
 }
 ```
 
@@ -513,8 +513,8 @@ type Counter struct {
 
 ```go title="tags.go"
 type Stock struct {
-    Price int    `json:"price"`
-    Name  string `json:"name"`
+	Price int    `json:"price"`
+	Name  string `json:"name"`
 }
 ```
 
@@ -538,10 +538,11 @@ type Stock struct {
 type Operation int
 
 const (
-    Add Operation = iota + 1
-    Subtract
-    Multiply
+	Add Operation = iota + 1
+	Subtract
+	Multiply
 )
+
 // Add=1, Subtract=2, Multiply=3 — 0 = não definido.
 ```
 
@@ -582,19 +583,19 @@ const (
 ```go title="panic.go"
 // Errado: panic para erro que o chamador deveria decidir.
 func connect() {
-    conn, err := dial()
-    if err != nil {
-        panic(err)
-    }
+	conn, err := dial()
+	if err != nil {
+		panic(err)
+	}
 }
 
 // Certo: erro sobe.
 func connect() (*Conn, error) {
-    conn, err := dial()
-    if err != nil {
-        return nil, fmt.Errorf("dial: %w", err)
-    }
-    return conn, nil
+	conn, err := dial()
+	if err != nil {
+		return nil, fmt.Errorf("dial: %w", err)
+	}
+	return conn, nil
 }
 ```
 
@@ -624,14 +625,14 @@ func connect() (*Conn, error) {
 
 ```go title="main.go"
 func main() {
-    if err := run(); err != nil {
-        log.Fatal(err)
-    }
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
 }
 
 func run() error {
-    // ... lógica real, retorna erro
-    return nil
+	// ... lógica real, retorna erro
+	return nil
 }
 ```
 
@@ -646,17 +647,17 @@ stop := make(chan struct{})
 done := make(chan struct{})
 
 go func() {
-    defer close(done)
-    ticker := time.NewTicker(delay)
-    defer ticker.Stop()
-    for {
-        select {
-        case <-ticker.C:
-            flush()
-        case <-stop:
-            return
-        }
-    }
+	defer close(done)
+	ticker := time.NewTicker(delay)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			flush()
+		case <-stop:
+			return
+		}
+	}
 }()
 
 // Em outro ponto:
@@ -737,18 +738,18 @@ func NewService(st Storer) *Service { ... } // retorna struct
 
 ```go title="atomic.go"
 type foo struct {
-    running atomic.Bool
+	running atomic.Bool
 }
 
 func (f *foo) start() {
-    if f.running.Swap(true) {
-        return // já está rodando
-    }
-    // inicia...
+	if f.running.Swap(true) {
+		return // já está rodando
+	}
+	// inicia...
 }
 
 func (f *foo) isRunning() bool {
-    return f.running.Load() // nunca f.running cru
+	return f.running.Load() // nunca f.running cru
 }
 ```
 
@@ -763,7 +764,7 @@ p.Lock()
 defer p.Unlock()
 
 if p.count < 10 {
-    return p.count // unlock garantido
+	return p.count // unlock garantido
 }
 p.count++
 return p.count
@@ -781,16 +782,16 @@ return p.count
 
 ```go title="teste.go"
 func TestSplitHostPort(t *testing.T) {
-    host, port, err := net.SplitHostPort("192.0.2.0:8000")
-    if err != nil {
-        t.Fatalf("SplitHostPort erro inesperado: %v", err)
-    }
-    if want := "192.0.2.0"; host != want {
-        t.Errorf("SplitHostPort host = %q, want %q", host, want)
-    }
-    if want := "8000"; port != want {
-        t.Errorf("SplitHostPort port = %q, want %q", port, want)
-    }
+	host, port, err := net.SplitHostPort("192.0.2.0:8000")
+	if err != nil {
+		t.Fatalf("SplitHostPort erro inesperado: %v", err)
+	}
+	if want := "192.0.2.0"; host != want {
+		t.Errorf("SplitHostPort host = %q, want %q", host, want)
+	}
+	if want := "8000"; port != want {
+		t.Errorf("SplitHostPort port = %q, want %q", port, want)
+	}
 }
 ```
 
@@ -802,27 +803,27 @@ func TestSplitHostPort(t *testing.T) {
 
 ```go title="tabela.go"
 tests := []struct {
-    give     string
-    wantHost string
-    wantPort string
+	give     string
+	wantHost string
+	wantPort string
 }{
-    {give: "192.0.2.0:8000", wantHost: "192.0.2.0", wantPort: "8000"},
-    {give: "1:8", wantHost: "1", wantPort: "8"},
+	{give: "192.0.2.0:8000", wantHost: "192.0.2.0", wantPort: "8000"},
+	{give: "1:8", wantHost: "1", wantPort: "8"},
 }
 
 for _, tt := range tests {
-    t.Run(tt.give, func(t *testing.T) {
-        host, port, err := net.SplitHostPort(tt.give)
-        if err != nil {
-            t.Fatalf("erro inesperado: %v", err)
-        }
-        if host != tt.wantHost {
-            t.Errorf("host = %q, want %q", host, tt.wantHost)
-        }
-        if port != tt.wantPort {
-            t.Errorf("port = %q, want %q", port, tt.wantPort)
-        }
-    })
+	t.Run(tt.give, func(t *testing.T) {
+		host, port, err := net.SplitHostPort(tt.give)
+		if err != nil {
+			t.Fatalf("erro inesperado: %v", err)
+		}
+		if host != tt.wantHost {
+			t.Errorf("host = %q, want %q", host, tt.wantHost)
+		}
+		if port != tt.wantPort {
+			t.Errorf("port = %q, want %q", port, tt.wantPort)
+		}
+	})
 }
 ```
 
@@ -932,7 +933,7 @@ db.Open(addr, db.WithLogger(log), db.WithCache(false))
 
 ```go title="time.go"
 func poll(delay time.Duration) { // caller: poll(10 * time.Second)
-    // ...
+	// ...
 }
 
 // Errado: int sem unidade.

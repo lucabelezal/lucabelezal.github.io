@@ -10,11 +10,12 @@ A primeira missão de quem aprende Go: fazer o programa falar. `Olá Mundo` pare
   title={"hello-world.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func main() {
-    fmt.Println("hello world")
-}`}
+	func main() {
+		fmt.Println("hello world")
+	}
+`}
   sections={[
     {text: "`package main` diz que este arquivo pertence ao package `main`. Em Go, esse nome tem um papel especial: quando o package se chama `main`, o compilador gera um **executável**, não uma biblioteca para ser importada."},
     {text: "`func main()` é o ponto de entrada. `go run` procura essa função e começa a execução por ela. Se o package `main` não tiver `main`, não existe \"de onde começar\" e nada é gerado."},

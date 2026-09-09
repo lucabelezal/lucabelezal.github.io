@@ -10,19 +10,20 @@ Como garantir que um arquivo baixado não foi corrompido (ou adulterado)? Compar
   title={"sha256-hashes.go"}
   code={`package main
 
-import (
-    "crypto/sha256"
-    "fmt"
-)
+	import (
+		"crypto/sha256"
+		"fmt"
+	)
 
-func main() {
-    s := "sha256 this string"
-    h := sha256.New()
-    h.Write([]byte(s))
-    bs := h.Sum(nil)
-    fmt.Println(s)
-    fmt.Printf("%x\n", bs)
-}`}
+	func main() {
+		s := "sha256 this string"
+		h := sha256.New()
+		h.Write([]byte(s))
+		bs := h.Sum(nil)
+		fmt.Println(s)
+		fmt.Printf("%x\n", bs)
+	}
+`}
   sections={[
     {text: "`sha256.New()` cria o hasher — um `hash.Hash`, que é um `io.Writer` especial."},
     {text: "`h.Write([]byte(s))` despeja os bytes. Strings viram bytes com `[]byte(s)` (conversão copia)."},
@@ -39,7 +40,7 @@ Em vez de `hash(dados)` de uma vez, o `hash.Hash` recebe bytes em **pedaços** (
 f, _ := os.Open("arquivo.iso")
 defer f.Close()
 h := sha256.New()
-io.Copy(h, f)   // hasheia o arquivo inteiro em streaming
+io.Copy(h, f) // hasheia o arquivo inteiro em streaming
 fmt.Printf("%x\n", h.Sum(nil))
 ```
 

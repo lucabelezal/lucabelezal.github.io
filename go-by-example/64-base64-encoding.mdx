@@ -10,23 +10,24 @@ JSON e URLs não aceitam bytes arbitrários — um `\x00` ou um `ÿ` quebra o te
   title={"base64-encoding.go"}
   code={`package main
 
-import (
-    b64 "encoding/base64"
-    "fmt"
-)
+	import (
+		b64 "encoding/base64"
+		"fmt"
+	)
 
-func main() {
-    data := "abc123!?$*&()'-=@~"
-    sEnc := b64.StdEncoding.EncodeToString([]byte(data))
-    fmt.Println(sEnc)
-    sDec, _ := b64.StdEncoding.DecodeString(sEnc)
-    fmt.Println(string(sDec))
-    fmt.Println()
-    uEnc := b64.URLEncoding.EncodeToString([]byte(data))
-    fmt.Println(uEnc)
-    uDec, _ := b64.URLEncoding.DecodeString(uEnc)
-    fmt.Println(string(uDec))
-}`}
+	func main() {
+		data := "abc123!?$*&()'-=@~"
+		sEnc := b64.StdEncoding.EncodeToString([]byte(data))
+		fmt.Println(sEnc)
+		sDec, _ := b64.StdEncoding.DecodeString(sEnc)
+		fmt.Println(string(sDec))
+		fmt.Println()
+		uEnc := b64.URLEncoding.EncodeToString([]byte(data))
+		fmt.Println(uEnc)
+		uDec, _ := b64.URLEncoding.DecodeString(uEnc)
+		fmt.Println(string(uDec))
+	}
+`}
   sections={[
     {text: "`b64` é o apelido do pacote `encoding/base64` (atalho comum — como `s \"strings\"`)."},
     {text: "`StdEncoding.EncodeToString` codifica bytes em base64 **padrão**. O `[]byte` é obrigatório — base64 trabalha com bytes, não strings."},

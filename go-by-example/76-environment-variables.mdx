@@ -10,22 +10,23 @@ Flags mudam por invocação; **variáveis de ambiente** mudam por contexto — `
   title={"environment-variables.go"}
   code={`package main
 
-import (
-    "fmt"
-    "os"
-    "strings"
-)
+	import (
+		"fmt"
+		"os"
+		"strings"
+	)
 
-func main() {
-    os.Setenv("FOO", "1")
-    fmt.Println("FOO:", os.Getenv("FOO"))
-    fmt.Println("BAR:", os.Getenv("BAR"))
-    fmt.Println()
-    for _, e := range os.Environ() {
-        pair := strings.SplitN(e, "=", 2)
-        fmt.Println(pair[0])
-    }
-}`}
+	func main() {
+		os.Setenv("FOO", "1")
+		fmt.Println("FOO:", os.Getenv("FOO"))
+		fmt.Println("BAR:", os.Getenv("BAR"))
+		fmt.Println()
+		for _, e := range os.Environ() {
+			pair := strings.SplitN(e, "=", 2)
+			fmt.Println(pair[0])
+		}
+	}
+`}
   sections={[
     {text: "`os.Setenv(\"FOO\", \"1\")` define uma variável **no processo atual** (não afeta o shell nem outros processos). Útil para config em memória/testes."},
     {text: "`os.Getenv(\"FOO\")` lê. Se não existe, devolve string **vazia** — aqui `BAR` não existe e imprime vazio."},
@@ -40,9 +41,9 @@ func main() {
 
 ```go
 if v, ok := os.LookupEnv("PORT"); ok {
-    // PORT foi definida no ambiente
+	// PORT foi definida no ambiente
 } else {
-    port = "8080" // default
+	port = "8080" // default
 }
 ```
 

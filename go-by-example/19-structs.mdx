@@ -10,39 +10,40 @@ Modelar um paciente com `nome1, idade1, peso1, nome2, idade2, peso2`... funciona
   title={"structs.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-type person struct {
-    name string
-    age  int
-}
+	type person struct {
+		name string
+		age  int
+	}
 
-func newPerson(name string) *person {
-    p := person{name: name}
-    p.age = 42
-    return &p
-}
-func main() {
-    fmt.Println(person{"Bob", 20})
-    fmt.Println(person{name: "Alice", age: 30})
-    fmt.Println(person{name: "Fred"})
-    fmt.Println(&person{name: "Ann", age: 40})
-    fmt.Println(newPerson("Jon"))
-    s := person{name: "Sean", age: 50}
-    fmt.Println(s.name)
-    sp := &s
-    fmt.Println(sp.age)
-    sp.age = 51
-    fmt.Println(sp.age)
-    dog := struct {
-        name   string
-        isGood bool
-    }{
-        "Rex",
-        true,
-    }
-    fmt.Println(dog)
-}`}
+	func newPerson(name string) *person {
+		p := person{name: name}
+		p.age = 42
+		return &p
+	}
+	func main() {
+		fmt.Println(person{"Bob", 20})
+		fmt.Println(person{name: "Alice", age: 30})
+		fmt.Println(person{name: "Fred"})
+		fmt.Println(&person{name: "Ann", age: 40})
+		fmt.Println(newPerson("Jon"))
+		s := person{name: "Sean", age: 50}
+		fmt.Println(s.name)
+		sp := &s
+		fmt.Println(sp.age)
+		sp.age = 51
+		fmt.Println(sp.age)
+		dog := struct {
+			name   string
+			isGood bool
+		}{
+			"Rex",
+			true,
+		}
+		fmt.Println(dog)
+	}
+`}
   sections={[
     {text: "`type person struct { ... }` é a **planta**: descreve os campos (`name string`, `age int`). A definição em si não ocupa memória — é o molde que diz ao compilador o formato do dado."},
     {text: "`newPerson` é a função construtora: cria um `person`, preenche o `name` recebido, fixa `age = 42` e devolve um **ponteiro** para ele. Por que uma função e não um literal direto? Veremos abaixo."},
@@ -69,13 +70,13 @@ Depois de definido, `person` vale tanto quanto `int` ou `string`: você cria var
 
 ```go
 type Endereco struct {
-    Rua    string
-    Cidade string
+	Rua    string
+	Cidade string
 }
 
 type Usuario struct {
-    Nome     string
-    Endereco Endereco
+	Nome     string
+	Endereco Endereco
 }
 
 u := Usuario{Nome: "Ana", Endereco: Endereco{Rua: "Av. Paulista", Cidade: "SP"}}
@@ -104,9 +105,9 @@ Go não tem palavra-chave de construtor. `person{...}` monta o valor direto, mas
 
 ```go
 func newPerson(name string) *person {
-    p := person{name: name}
-    p.age = 42 // regra: idade padrão
-    return &p
+	p := person{name: name}
+	p.age = 42 // regra: idade padrão
+	return &p
 }
 ```
 
@@ -116,7 +117,7 @@ Se amanhã a regra mudar (idade padrão vira 18, `name` precisa ser validado), v
 
 ```go
 sp := &s
-sp.age = 51      // equivale a (*sp).age = 51
+sp.age = 51 // equivale a (*sp).age = 51
 ```
 
 O compilador desreferencia sozinho. É por isso que funções que **modificam** um struct recebem `*T`: dentro delas, `campo.X = ...` já mexe no original (relembre a regra de [Ponteiros](pointers)).

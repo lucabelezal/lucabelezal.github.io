@@ -9,26 +9,27 @@ Agendar algo para **daqui a X** é um timer. O `time.NewTimer(d)` cria um timer 
   title={"timers.go"}
   code={`package main
 
-import (
-    "fmt"
-    "time"
-)
+	import (
+		"fmt"
+		"time"
+	)
 
-func main() {
-    timer1 := time.NewTimer(2 * time.Second)
-    <-timer1.C
-    fmt.Println("Timer 1 fired")
-    timer2 := time.NewTimer(time.Second)
-    go func() {
-        <-timer2.C
-        fmt.Println("Timer 2 fired")
-    }()
-    stop2 := timer2.Stop()
-    if stop2 {
-        fmt.Println("Timer 2 stopped")
-    }
-    time.Sleep(2 * time.Second)
-}`}
+	func main() {
+		timer1 := time.NewTimer(2 * time.Second)
+		<-timer1.C
+		fmt.Println("Timer 1 fired")
+		timer2 := time.NewTimer(time.Second)
+		go func() {
+			<-timer2.C
+			fmt.Println("Timer 2 fired")
+		}()
+		stop2 := timer2.Stop()
+		if stop2 {
+			fmt.Println("Timer 2 stopped")
+		}
+		time.Sleep(2 * time.Second)
+	}
+`}
   sections={[
     {text: "`time.NewTimer(2s)` cria um evento futuro; `timer1.C` é o channel que recebe quando disparar."},
     {text: "`<-timer1.C` bloqueia até os 2s — o timer disparou e o valor chegou."},

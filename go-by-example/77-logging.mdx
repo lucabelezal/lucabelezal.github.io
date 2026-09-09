@@ -10,33 +10,34 @@ Programa que roda em produção precisa **contar o que faz** — e logs são o �
   title={"logging.go"}
   code={`package main
 
-import (
-    "bytes"
-    "fmt"
-    "log"
-    "log/slog"
-    "os"
-)
+	import (
+		"bytes"
+		"fmt"
+		"log"
+		"log/slog"
+		"os"
+	)
 
-func main() {
-    log.Println("standard logger")
-    log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-    log.Println("with micro")
-    log.SetFlags(log.LstdFlags | log.Lshortfile)
-    log.Println("with file/line")
-    mylog := log.New(os.Stdout, "my:", log.LstdFlags)
-    mylog.Println("from mylog")
-    mylog.SetPrefix("ohmy:")
-    mylog.Println("from mylog")
-    var buf bytes.Buffer
-    buflog := log.New(&buf, "buf:", log.LstdFlags)
-    buflog.Println("hello")
-    fmt.Print("from buflog:", buf.String())
-    jsonHandler := slog.NewJSONHandler(os.Stderr, nil)
-    myslog := slog.New(jsonHandler)
-    myslog.Info("hi there")
-    myslog.Info("hello again", "key", "val", "age", 25)
-}`}
+	func main() {
+		log.Println("standard logger")
+		log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+		log.Println("with micro")
+		log.SetFlags(log.LstdFlags | log.Lshortfile)
+		log.Println("with file/line")
+		mylog := log.New(os.Stdout, "my:", log.LstdFlags)
+		mylog.Println("from mylog")
+		mylog.SetPrefix("ohmy:")
+		mylog.Println("from mylog")
+		var buf bytes.Buffer
+		buflog := log.New(&buf, "buf:", log.LstdFlags)
+		buflog.Println("hello")
+		fmt.Print("from buflog:", buf.String())
+		jsonHandler := slog.NewJSONHandler(os.Stderr, nil)
+		myslog := slog.New(jsonHandler)
+		myslog.Info("hi there")
+		myslog.Info("hello again", "key", "val", "age", 25)
+	}
+`}
   sections={[
     {text: "`log.Println` usa o **logger padrão**, já configurado para `os.Stderr` com data/hora. É o \"printf para diagnóstico\" do Go."},
     {text: "`log.SetFlags` controla o formato: `Lmicroseconds` adiciona fração; `Lshortfile` o arquivo:linha de onde o log veio."},
@@ -69,7 +70,7 @@ O padrão moderno de um serviço Go:
 
 ```go
 logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-slog.SetDefault(logger)          // slog.Info(...) passa a usar o seu
+slog.SetDefault(logger) // slog.Info(...) passa a usar o seu
 logger.Info("servidor iniciou", "porta", 8080)
 logger.Error("falha ao salvar", "err", err)
 ```

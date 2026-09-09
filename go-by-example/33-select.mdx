@@ -9,31 +9,32 @@ Uma goroutine esperando em **vários** canais? O `select` é o `switch` dos chan
   title={"select.go"}
   code={`package main
 
-import (
-    "fmt"
-    "time"
-)
+	import (
+		"fmt"
+		"time"
+	)
 
-func main() {
-    c1 := make(chan string)
-    c2 := make(chan string)
-    go func() {
-        time.Sleep(1 * time.Second)
-        c1 <- "one"
-    }()
-    go func() {
-        time.Sleep(2 * time.Second)
-        c2 <- "two"
-    }()
-    for range 2 {
-        select {
-        case msg1 := <-c1:
-            fmt.Println("received", msg1)
-        case msg2 := <-c2:
-            fmt.Println("received", msg2)
-        }
-    }
-}`}
+	func main() {
+		c1 := make(chan string)
+		c2 := make(chan string)
+		go func() {
+			time.Sleep(1 * time.Second)
+			c1 <- "one"
+		}()
+		go func() {
+			time.Sleep(2 * time.Second)
+			c2 <- "two"
+		}()
+		for range 2 {
+			select {
+			case msg1 := <-c1:
+				fmt.Println("received", msg1)
+			case msg2 := <-c2:
+				fmt.Println("received", msg2)
+			}
+		}
+	}
+`}
   sections={[
     {text: "Dois canais que receberão após 1s e 2s — simulando duas chamadas externas concorrentes."},
     {text: "`select { case msg1 := <-c1: ... case msg2 := <-c2: ... }` bloqueia até um dos receives estar pronto."},

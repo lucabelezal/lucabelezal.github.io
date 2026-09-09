@@ -10,34 +10,35 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
   title={"sorting-by-functions.go"}
   code={`package main
 
-import (
-    "cmp"
-    "fmt"
-    "slices"
-)
+	import (
+		"cmp"
+		"fmt"
+		"slices"
+	)
 
-func main() {
-    fruits := []string{"peach", "banana", "kiwi"}
-    lenCmp := func(a, b string) int {
-        return cmp.Compare(len(a), len(b))
-    }
-    slices.SortFunc(fruits, lenCmp)
-    fmt.Println(fruits)
-    type Person struct {
-        name string
-        age  int
-    }
-    people := []Person{
-        Person{name: "Jax", age: 37},
-        Person{name: "TJ", age: 25},
-        Person{name: "Alex", age: 72},
-    }
-    slices.SortFunc(people,
-        func(a, b Person) int {
-            return cmp.Compare(a.age, b.age)
-        })
-    fmt.Println(people)
-}`}
+	func main() {
+		fruits := []string{"peach", "banana", "kiwi"}
+		lenCmp := func(a, b string) int {
+			return cmp.Compare(len(a), len(b))
+		}
+		slices.SortFunc(fruits, lenCmp)
+		fmt.Println(fruits)
+		type Person struct {
+			name string
+			age  int
+		}
+		people := []Person{
+			Person{name: "Jax", age: 37},
+			Person{name: "TJ", age: 25},
+			Person{name: "Alex", age: 72},
+		}
+		slices.SortFunc(people,
+			func(a, b Person) int {
+				return cmp.Compare(a.age, b.age)
+			})
+		fmt.Println(people)
+	}
+`}
   sections={[
     {text: "`lenCmp` é o comparador: recebe dois elementos e devolve um `int` — negativo se `a` vem antes, positivo se depois, zero se iguais."},
     {text: "`cmp.Compare(x, y)` faz esse trabalho para tipos `cmp.Ordered`: devolve -1/0/1 conforme a ordem. Aqui comparamos `len(a)` com `len(b)` — ordenar **por tamanho**."},
@@ -50,7 +51,8 @@ func main() {
 ## A assinatura do comparador
 
 ```go
-func(a, b T) int  // <0 → a vem antes; >0 → a vem depois; 0 → iguais
+func(a, b T) int // <0 → a vem antes; >0 → a vem depois; 0 → iguais
+
 ```
 
 Você nunca chama o comparador — o `SortFunc` chama. E não precisa decorar regra de sinal: `cmp.Compare` produz o int certo para `cmp.Ordered`. Para ordem **decrescente**, inverta: `cmp.Compare(b, a)`.
@@ -59,10 +61,10 @@ O comparador também é onde entra a lógica que o `Sort` natural não tem:
 
 ```go
 slices.SortFunc(pessoas, func(a, b Pessoa) int {
-    if c := cmp.Compare(a.idade, b.idade); c != 0 {
-        return c          // primário: idade
-    }
-    return cmp.Compare(a.nome, b.nome) // desempate: nome
+	if c := cmp.Compare(a.idade, b.idade); c != 0 {
+		return c // primário: idade
+	}
+	return cmp.Compare(a.nome, b.nome) // desempate: nome
 })
 ```
 

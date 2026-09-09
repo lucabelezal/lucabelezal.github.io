@@ -10,21 +10,22 @@ Ordenar é uma das operações mais comuns — e uma das que você **não** deve
   title={"sorting.go"}
   code={`package main
 
-import (
-    "fmt"
-    "slices"
-)
+	import (
+		"fmt"
+		"slices"
+	)
 
-func main() {
-    strs := []string{"c", "a", "b"}
-    slices.Sort(strs)
-    fmt.Println("Strings:", strs)
-    ints := []int{7, 2, 4}
-    slices.Sort(ints)
-    fmt.Println("Ints:   ", ints)
-    s := slices.IsSorted(ints)
-    fmt.Println("Sorted: ", s)
-}`}
+	func main() {
+		strs := []string{"c", "a", "b"}
+		slices.Sort(strs)
+		fmt.Println("Strings:", strs)
+		ints := []int{7, 2, 4}
+		slices.Sort(ints)
+		fmt.Println("Ints:   ", ints)
+		s := slices.IsSorted(ints)
+		fmt.Println("Sorted: ", s)
+	}
+`}
   sections={[
     {text: "`slices.Sort(strs)` ordena strings **lexicograficamente** (ordem do dicionário), no lugar — o slice original é modificado."},
     {text: "Para `int`s, a ordem natural crescente. Uma função só para os dois, graças aos generics — o `Sort` aceita qualquer `[]E` em que `E` é `cmp.Ordered`."},

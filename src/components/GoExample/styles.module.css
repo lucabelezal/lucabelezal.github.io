@@ -51,7 +51,7 @@
 .code :global(.prism-code) {
   font-size: 14px !important;
   line-height: 1.7 !important;
-  tab-size: 4;
+  tab-size: 8;
 }
 
 .codeEmpty {

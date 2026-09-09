@@ -10,41 +10,42 @@ import CodeExplanation from '@site/src/components/CodeExplanation';
   title={"spawning-processes.go"}
   code={`package main
 
-import (
-    "errors"
-    "fmt"
-    "io"
-    "os/exec"
-)
+	import (
+		"errors"
+		"fmt"
+		"io"
+		"os/exec"
+	)
 
-func main() {
-    dateCmd := exec.Command("date")
-    dateOut, err := dateCmd.Output()
-    if err != nil {
-        panic(err)
-    }
-    fmt.Print(string(dateOut))
-    _, invalidErr := exec.Command("date", "-x").Output()
-    if invalidErr != nil {
-        if e, ok := errors.AsType[*exec.Error](invalidErr); ok {
-            fmt.Println("failed executing:", e)
-        } else if e, ok := errors.AsType[*exec.ExitError](invalidErr); ok {
-            exitCode := e.ExitCode()
-            fmt.Println("command exit rc =", exitCode)
-        } else {
-            panic(invalidErr)
-        }
-    }
-    grepCmd := exec.Command("grep", "hello")
-    grepIn, _ := grepCmd.StdinPipe()
-    grepOut, _ := grepCmd.StdoutPipe()
-    grepCmd.Start()
-    grepIn.Write([]byte("hello grep\\ngoodbye grep"))
-    grepIn.Close()
-    grepBytes, _ := io.ReadAll(grepOut)
-    grepCmd.Wait()
-    fmt.Print(string(grepBytes))
-}`}
+	func main() {
+		dateCmd := exec.Command("date")
+		dateOut, err := dateCmd.Output()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Print(string(dateOut))
+		_, invalidErr := exec.Command("date", "-x").Output()
+		if invalidErr != nil {
+			if e, ok := errors.AsType[*exec.Error](invalidErr); ok {
+				fmt.Println("failed executing:", e)
+			} else if e, ok := errors.AsType[*exec.ExitError](invalidErr); ok {
+				exitCode := e.ExitCode()
+				fmt.Println("command exit rc =", exitCode)
+			} else {
+				panic(invalidErr)
+			}
+		}
+		grepCmd := exec.Command("grep", "hello")
+		grepIn, _ := grepCmd.StdinPipe()
+		grepOut, _ := grepCmd.StdoutPipe()
+		grepCmd.Start()
+		grepIn.Write([]byte("hello grep\\ngoodbye grep"))
+		grepIn.Close()
+		grepBytes, _ := io.ReadAll(grepOut)
+		grepCmd.Wait()
+		fmt.Print(string(grepBytes))
+	}
+`}
   sections={[
     {text: "`exec.Command(\"date\")` prepara o processo (não roda ainda). `.Output()` roda e captura o **stdout** — o jeito simples para comando que só imprime."},
     {text: "`date -x` não existe: o erro diz o que aconteceu. `*exec.Error` = falha ao executar (programa não achado); `*exec.ExitError` = rodou mas saiu com código **diferente de zero** (aqui, rc 1). `AsType` separa os casos (página [Erros Customizados](custom-errors))."},

@@ -10,28 +10,29 @@ Quando uma função precisa **mudar** um valor que vive fora dela, um valor copi
   title={"pointers.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func zeroval(ival int) {
-    ival = 0
-}
-func zeroptr(iptr *int) {
-    *iptr = 0
-}
-func main() {
-    i := 1
-    fmt.Println("initial:", i)
-    zeroval(i)
-    fmt.Println("zeroval:", i)
-    zeroptr(&i)
-    fmt.Println("zeroptr:", i)
-    fmt.Println("pointer:", &i)
-    p := new(int)
-    *p = 42
-    fmt.Println("value at *p:", *p)
-    zeroptr(p)
-    fmt.Println("value at *p:", *p)
-}`}
+	func zeroval(ival int) {
+		ival = 0
+	}
+	func zeroptr(iptr *int) {
+		*iptr = 0
+	}
+	func main() {
+		i := 1
+		fmt.Println("initial:", i)
+		zeroval(i)
+		fmt.Println("zeroval:", i)
+		zeroptr(&i)
+		fmt.Println("zeroptr:", i)
+		fmt.Println("pointer:", &i)
+		p := new(int)
+		*p = 42
+		fmt.Println("value at *p:", *p)
+		zeroptr(p)
+		fmt.Println("value at *p:", *p)
+	}
+`}
   sections={[
     {text: "`zeroval` recebe um `int` — uma **cópia**. Mudar `ival` dentro da função altera só a cópia; o `i` do chamador fica intacto."},
     {text: "`zeroptr` recebe um `*int`, ponteiro para `int`. O `*iptr` **desreferencia**: lê (ou escreve) o valor que está no endereço apontado. Atribuir `*iptr = 0` muda o `i` original."},
@@ -62,25 +63,26 @@ O exemplo clássico é a troca de valores:
   title={"troca.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func trocaSemPonteiro(a, b int) {
-    a, b = b, a
-}
+	func trocaSemPonteiro(a, b int) {
+		a, b = b, a
+	}
 
-func troca(a, b *int) {
-    *a, *b = *b, *a
-}
+	func troca(a, b *int) {
+		*a, *b = *b, *a
+	}
 
-func main() {
-    x, y := 1, 2
+	func main() {
+		x, y := 1, 2
 
-    trocaSemPonteiro(x, y)
-    fmt.Println("sem ponteiro:", x, y)
+		trocaSemPonteiro(x, y)
+		fmt.Println("sem ponteiro:", x, y)
 
-    troca(&x, &y)
-    fmt.Println("com ponteiro:", x, y)
-}`}
+		troca(&x, &y)
+		fmt.Println("com ponteiro:", x, y)
+	}
+`}
   sections={[
     {text: "`trocaSemPonteiro` troca as **cópias** locais. A troca acontece dentro da função e some no `return` — o chamador não vê nada."},
     {text: "`troca` recebe dois ponteiros. `*a, *b = *b, *a` troca os valores **nos endereços**: escreve em `*a` o valor de `*b` e vice-versa."},
@@ -109,7 +111,7 @@ Não use quando:
 Dereferenciar um ponteiro `nil` derruba o programa em runtime:
 
 ```go
-var u *Usuario // nil
+var u *Usuario      // nil
 fmt.Println(u.Nome) // panic: runtime error: invalid memory address or nil pointer dereference
 ```
 
@@ -117,7 +119,7 @@ Quando o ponteiro pode vir `nil` (de uma busca, de um JSON, de uma função que 
 
 ```go
 if u != nil {
-    fmt.Println(u.Nome)
+	fmt.Println(u.Nome)
 }
 ```
 
@@ -128,7 +130,7 @@ Esse *panic* e a arte de tratá-lo são explorados em [Panic](panic) e [Erros](e
 Duas formas de obter um ponteiro:
 
 ```go
-p := new(int)             // *int apontando para um int zerado
+p := new(int)              // *int apontando para um int zerado
 u := &Usuario{Nome: "Ana"} // *Usuario, já inicializado — o idiomático
 ```
 

@@ -10,35 +10,36 @@ Repetir trabalho é o coração da programação. Diferente de muitas linguagens
   title={"for.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func main() {
-    i := 1
-    for i <= 3 {
-        fmt.Println(i)
-        i = i + 1
-    }
+	func main() {
+		i := 1
+		for i <= 3 {
+			fmt.Println(i)
+			i = i + 1
+		}
 
-    for j := 0; j < 3; j++ {
-        fmt.Println(j)
-    }
+		for j := 0; j < 3; j++ {
+			fmt.Println(j)
+		}
 
-    for i := range 3 {
-        fmt.Println("range", i)
-    }
+		for i := range 3 {
+			fmt.Println("range", i)
+		}
 
-    for {
-        fmt.Println("loop")
-        break
-    }
+		for {
+			fmt.Println("loop")
+			break
+		}
 
-    for n := range 6 {
-        if n%2 == 0 {
-            continue
-        }
-        fmt.Println(n)
-    }
-}`}
+		for n := range 6 {
+			if n%2 == 0 {
+				continue
+			}
+			fmt.Println(n)
+		}
+	}
+`}
   sections={[
     {text: "`for i <= 3` — só uma condição, sem inicialização nem pós-ação. É o equivalente ao `while` de outras linguagens: repete enquanto a condição for verdadeira. Quem atualiza `i` somos nós, dentro do corpo."},
     {text: "`for j := 0; j < 3; j++` — o laço clássico com inicialização, condição e pós-ação na própria linha. O `j` declarado aqui existe apenas dentro do laço."},

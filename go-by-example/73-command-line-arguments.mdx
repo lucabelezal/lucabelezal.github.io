@@ -10,19 +10,20 @@ A forma mais crua de parametrizar um programa é pelos **argumentos posicionais*
   title={"command-line-arguments.go"}
   code={`package main
 
-import (
-    "fmt"
-    "os"
-)
+	import (
+		"fmt"
+		"os"
+	)
 
-func main() {
-    argsWithProg := os.Args
-    argsWithoutProg := os.Args[1:]
-    arg := os.Args[3]
-    fmt.Println(argsWithProg)
-    fmt.Println(argsWithoutProg)
-    fmt.Println(arg)
-}`}
+	func main() {
+		argsWithProg := os.Args
+		argsWithoutProg := os.Args[1:]
+		arg := os.Args[3]
+		fmt.Println(argsWithProg)
+		fmt.Println(argsWithoutProg)
+		fmt.Println(arg)
+	}
+`}
   sections={[
     {text: "`os.Args` é o slice completo. `os.Args[0]` é o **caminho do programa** — ele não é um argumento seu."},
     {text: "`os.Args[1:]` são os argumentos de verdade — o idioma para \"tudo menos o programa\"."},

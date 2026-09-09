@@ -10,15 +10,16 @@ O channel da página anterior não guarda valor: o envio só completa quando um 
   title={"channel-buffering.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-func main() {
-    messages := make(chan string, 2)
-    messages <- "buffered"
-    messages <- "channel"
-    fmt.Println(<-messages)
-    fmt.Println(<-messages)
-}`}
+	func main() {
+		messages := make(chan string, 2)
+		messages <- "buffered"
+		messages <- "channel"
+		fmt.Println(<-messages)
+		fmt.Println(<-messages)
+	}
+`}
   sections={[
     {text: "`make(chan string, 2)` — channel com buffer para **2** strings."},
     {text: "Dois envios sem receptor concorrente: funcionam porque cabem no buffer. Um terceiro enviaria e **bloquearia** até alguém receber."},

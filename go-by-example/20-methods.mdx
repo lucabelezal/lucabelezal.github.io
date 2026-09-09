@@ -10,26 +10,27 @@ Structs agrupam **dados**; **métodos** dão **comportamento** a eles. Um métod
   title={"methods.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-type rect struct {
-    width, height int
-}
+	type rect struct {
+		width, height int
+	}
 
-func (r *rect) area() int {
-    return r.width * r.height
-}
-func (r rect) perim() int {
-    return 2*r.width + 2*r.height
-}
-func main() {
-    r := rect{width: 10, height: 5}
-    fmt.Println("area: ", r.area())
-    fmt.Println("perim:", r.perim())
-    rp := &r
-    fmt.Println("area: ", rp.area())
-    fmt.Println("perim:", rp.perim())
-}`}
+	func (r *rect) area() int {
+		return r.width * r.height
+	}
+	func (r rect) perim() int {
+		return 2*r.width + 2*r.height
+	}
+	func main() {
+		r := rect{width: 10, height: 5}
+		fmt.Println("area: ", r.area())
+		fmt.Println("perim:", r.perim())
+		rp := &r
+		fmt.Println("area: ", rp.area())
+		fmt.Println("perim:", rp.perim())
+	}
+`}
   sections={[
     {text: "`func (r *rect) area()` — o receiver é `r *rect` (ponteiro). O método `area` só lê os campos, mas foi declarado com ponteiro."},
     {text: "`func (r rect) perim()` — o receiver é `r rect` (valor). Aqui o struct é copiado para o método."},
@@ -51,30 +52,31 @@ Um método com receiver por **valor** recebe uma **cópia**; um método com rece
   title={"reset.go"}
   code={`package main
 
-import "fmt"
+	import "fmt"
 
-type Creature struct {
-    Species string
-}
+	type Creature struct {
+		Species string
+	}
 
-func (c Creature) ResetPorValor() {
-    c.Species = ""
-}
+	func (c Creature) ResetPorValor() {
+		c.Species = ""
+	}
 
-func (c *Creature) ResetPorPonteiro() {
-    c.Species = ""
-}
+	func (c *Creature) ResetPorPonteiro() {
+		c.Species = ""
+	}
 
-func main() {
-    c := Creature{Species: "shark"}
-    fmt.Printf("1) %+v\n", c)
+	func main() {
+		c := Creature{Species: "shark"}
+		fmt.Printf("1) %+v\n", c)
 
-    c.ResetPorValor()
-    fmt.Printf("2) %+v  (value receiver: nada mudou)\n", c)
+		c.ResetPorValor()
+		fmt.Printf("2) %+v  (value receiver: nada mudou)\n", c)
 
-    c.ResetPorPonteiro()
-    fmt.Printf("3) %+v  (pointer receiver: mudou)\n", c)
-}`}
+		c.ResetPorPonteiro()
+		fmt.Printf("3) %+v  (pointer receiver: mudou)\n", c)
+	}
+`}
   sections={[
     {text: "`ResetPorValor` com receiver `c Creature`: muda a **cópia** local. O `Species` da instância original permanece `shark`."},
     {text: "`ResetPorPonteiro` com receiver `c *Creature`: altera o **original**, porque `c` é o endereço da instância."},

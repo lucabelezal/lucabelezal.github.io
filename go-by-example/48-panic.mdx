@@ -10,19 +10,20 @@ A maioria das falhas em Go é **valor** (`error`) e segue o fluxo normal. Mas ex
   title={"panic.go"}
   code={`package main
 
-import (
-    "os"
-    "path/filepath"
-)
+	import (
+		"os"
+		"path/filepath"
+	)
 
-func main() {
-    panic("a problem")
-    path := filepath.Join(os.TempDir(), "file")
-    _, err := os.Create(path)
-    if err != nil {
-        panic(err)
-    }
-}`}
+	func main() {
+		panic("a problem")
+		path := filepath.Join(os.TempDir(), "file")
+		_, err := os.Create(path)
+		if err != nil {
+			panic(err)
+		}
+	}
+`}
   sections={[
     {text: "`panic(\"a problem\")` para a execução imediatamente. Tudo abaixo de `main` (o `os.Create` etc.) nunca roda."},
     {text: "Uso comum: abortar quando uma função devolve um erro que não sabemos tratar — ex.: falha ao criar arquivo num setup que não pode falhar."},
