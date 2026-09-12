@@ -75,12 +75,13 @@ type scattered struct {
 	NumLikes uint8
 }
 
-fmt.Println("aligned:", reflect.TypeOf(aligned{}).Size(),
-	"scattered:", reflect.TypeOf(scattered{}).Size())
+fmt.Println("aligned:", reflect.TypeOf(aligned{}).Size())
+fmt.Println("scattered:", reflect.TypeOf(scattered{}).Size())
 ```
 
 ```bash title="Terminal"
-aligned: 4 scattered: 6
+aligned: 4
+scattered: 6
 ```
 
 **Regra prática.** Ordene campos do maior para o menor quando a struct vive em volume (centenas de milhares em lista). Nos demais casos, ordene por legibilidade — padding só dói em escala.

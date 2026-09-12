@@ -75,12 +75,13 @@ type scattered struct {
 	NumLikes uint8
 }
 
-fmt.Println("aligned:", reflect.TypeOf(aligned{}).Size(),
-	"scattered:", reflect.TypeOf(scattered{}).Size())
+fmt.Println("aligned:", reflect.TypeOf(aligned{}).Size())
+fmt.Println("scattered:", reflect.TypeOf(scattered{}).Size())
 ```
 
 ```bash title="Terminal"
-aligned: 4 scattered: 6
+aligned: 4
+scattered: 6
 ```
 
 **Rule of thumb.** Order fields largest-first when the struct lives at volume (hundreds of thousands in a list). Otherwise, order for readability — padding only hurts at scale.
