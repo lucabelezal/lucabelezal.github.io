@@ -1,0 +1,244 @@
+---
+slug: go-structs-methods
+title: "Structs and methods in Go: grouped values, receivers, and composition"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-12T14:00:00
+description: "Structs in Go have value semantics: assigning copies every field. Understand value vs pointer receivers, method sets, memory layout, and embedding."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+import SeriesNav from '@site/src/components/blog/SeriesNav';
+
+In the previous post, a pointer was a value identifying a variable. Now the program grows: related data must travel together — a client has a name and a plan, a car has a brand and a color. Structs group those values. And they group them **as values**: assigning a struct copies every field.
+
+That sentence decides almost everything in this post: when a method mutates or not, when a pointer is required, why field order changes size, and why `Client` doesn't "inherit" from `Person`. Second post of the **Go Inside Out** series (02/04).
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- structs as values: assignment and pass-by-value copy every field
+- value receivers vs pointer receivers — and why the method "doesn't stick"
+- method sets: what `T` and `*T` see (foundation for interfaces in the next post)
+- memory layout: field order, padding, and measuring with `reflect`
+- embedding vs inheritance: composition with field and method promotion
+- why `context.Context` is passed by value on purpose
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Pointers in Go](/go-ponteiros): `&`, `*`, value semantics, escape analysis
+- Basic Go: functions, types, `fmt.Println` (Go 1.26 in the examples)
+
+</Prerequisites>
+
+## 1. Context
+
+A struct groups variables of different types under one name:
+
+```go title="main.go" showLineNumbers
+type car struct {
+	brand   string
+	model   string
+	doors   int
+	mileage int
+}
+
+func main() {
+	myCar := car{brand: "Toyota", model: "Camry", doors: 4}
+	fmt.Println(myCar.brand) // Toyota, mileage is 0 (zero value)
+}
+```
+
+Unfilled fields get the type's zero value — an "incomplete" struct stays valid, no constructor required. And in memory, fields sit in a contiguous block, one after another, in declaration order. Russ Cox shows that looking at this layout is the path to correct intuition about cost ([Go Data Structures](https://research.swtch.com/godata)).
+
+Declaration order has a physical consequence: the compiler aligns fields, inserting padding (wasted space) when needed. Same fields, different orders, different sizes:
+
+![Diagram: same struct, different orders, 4 vs 6 bytes](/img/diagramas/go-structs-layout-en.svg)
+
+```go title="main.go" showLineNumbers
+type aligned struct {
+	Reach    uint16
+	NumPosts uint8
+	NumLikes uint8
+}
+
+type scattered struct {
+	NumPosts uint8
+	Reach    uint16
+	NumLikes uint8
+}
+
+fmt.Println("aligned:", reflect.TypeOf(aligned{}).Size(),
+	"scattered:", reflect.TypeOf(scattered{}).Size())
+```
+
+```bash title="Terminal"
+aligned: 4 scattered: 6
+```
+
+**Rule of thumb.** Order fields largest-first when the struct lives at volume (hundreds of thousands in a list). Otherwise, order for readability — padding only hurts at scale.
+
+## 2. The problem
+
+You define a method to paint the car:
+
+```go title="main.go" showLineNumbers
+func (c car) paintValue(color string) { c.color = color }
+
+func main() {
+	c := car{color: "white"}
+	c.paintValue("blue")
+	fmt.Println("value receiver:", c.color)
+}
+```
+
+```bash title="Terminal"
+value receiver: white
+```
+
+The car stays white. No error, no warning — the method ran, mutated **a copy**, and discarded it. It's Go newcomers' most common silent bug: the receiver `(c car)` is a parameter like any other, and parameters pass by value (previous post). The method didn't "fail"; it painted a car nobody else sees.
+
+## 3. Mental model
+
+**Struct is a value.** Assigning (`c2 := c`), passing to a function, and receiving in a value-receiver method copy every field. Mutating the original requires the address — a pointer to the struct, as in the previous post.
+
+**Pointer receivers mutate; value receivers don't:**
+
+![Diagram: value receiver paints the copy, pointer receiver reaches the original](/img/diagramas/go-structs-receiver-en.svg)
+
+**Method sets: `T` and `*T` see different sets.** `T`'s method set holds only `T`-receiver methods; `*T`'s holds both `T`- and `*T`-receiver methods ([Go Wiki, Method Sets](https://go.dev/wiki/MethodSets)). Keep this: in the next post, that difference decides whether a type satisfies an interface.
+
+**Embedding is composition, not inheritance.** A `Client` embedding `Person` creates no hierarchy — it creates a field named after the type, with **promotion**: `cl.Name` is shorthand for `cl.Person.Name`. Go has no subclassing; it has borrowed implementation ([Effective Go, Embedding](https://go.dev/doc/effective_go#embedding)):
+
+![Diagram: Client composes Person, promoted fields](/img/diagramas/go-structs-embedding-en.svg)
+
+> **Definition (proposed).** Embedding is an embedded field named after its type, with field and method promotion to the outer type. Nothing is inherited; everything is composed and reachable by shortcut.
+
+**Rule of thumb.** `cl.Name` working doesn't mean `Client` is a `Person`. It means `Client` has a `Person` — and the compiler saves your typing.
+
+## 4. Implementation
+
+Complete, runnable code with real outputs (Go 1.26, darwin/arm64).
+
+### Pointer receiver: same call, different result
+
+```go title="main.go" showLineNumbers
+func (c *car) paintPtr(color string) { c.color = color }
+
+func main() {
+	c := car{color: "white"}
+	// highlight-next-line
+	c.paintPtr("blue")
+	fmt.Println("pointer receiver:", c.color)
+}
+```
+
+```bash title="Terminal"
+pointer receiver: blue
+```
+
+Note: the call `c.paintPtr("blue")` looks identical to the value-receiver one. Go derives `&c` automatically because `c` is addressable. The difference is only in the signature — and it decides whether the method receives the struct or its address.
+
+### Embedding in practice: shortcut and full path
+
+```go title="main.go" showLineNumbers
+type Person struct{ Name string }
+
+type Client struct {
+	Person
+	Plan string
+}
+
+func main() {
+	cl := Client{Person: Person{Name: "Ada"}, Plan: "pro"}
+	fmt.Println("promoted:", cl.Name, "| explicit:", cl.Person.Name)
+}
+```
+
+```bash title="Terminal"
+promoted: Ada | explicit: Ada
+```
+
+Same value, two paths. The promoted one is convenience; the explicit one shows the real structure. On name collisions (own field and embedded field sharing a name), the explicit path resolves ambiguity — one more reason to know promotion is a shortcut, not a merge.
+
+### `context.Context` is passed by value — on purpose
+
+After two posts arguing for pointers-to-mutate, the counterpoint: `ctx` appears as the first parameter of every backend function, always by value:
+
+```go title="main.go" showLineNumbers
+func handle(ctx context.Context) string {
+	deadline, ok := ctx.Deadline()
+	return fmt.Sprintf("hasDeadline=%v user=%v", ok, ctx.Value("user"))
+}
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	ctx = context.WithValue(ctx, "user", "ada")
+	fmt.Println("ctx:", handle(ctx))
+}
+```
+
+```bash title="Terminal"
+ctx: hasDeadline=true user=ada
+```
+
+Why not `*context.Context`? Because `Context` is an **interface** — the copied value carries the same internal pointer to the data. Copying the interface is cheap and shares everything; a pointer to an interface would be indirection with no gain. The convention (first parameter, named `ctx`) exists to signal: context flows through the call, it isn't stored in structs. Value semantics working in your favor: cheap copy, implicit sharing, no possible mutation.
+
+**Rule of thumb.** Mutation → pointer. Cheap shared reads (interfaces, slices, maps) → value. `ctx` is the canonical example of the second case.
+
+## 5. Failures and trade-offs
+
+**Mixed receivers: the deferred trap.** Nothing stops `func (c car)` on one method and `func (c *car)` on another — it compiles. The price arrives in the next post: `car` and `*car` have different method sets, and one of them may not satisfy the interface you swore to implement. Confusing error ("does not implement X") with its cause here. Convention: pick one receiver per type and keep it. Pointer when some method mutates; value when none mutates and the struct is small.
+
+**Copying locks: `go vet` catches it.** A struct holding a `sync.Mutex` copied by value duplicates the mutex — undefined behavior. The vet tool flags it immediately:
+
+```bash title="Terminal"
+lock.go:10:12: use passes lock by value: Counter contains sync.Mutex
+```
+
+`go vet ./...` in CI turns that silent bug into a build error. Structs with locks, `NoCopy`, or shared internal state → always pass by pointer.
+
+**"Inheritance".** Saying `Client` inherits from `Person` imports a wrong mental model (hierarchy, override, `super`) into a language that has none of it. The correct vocabulary — compose, embed, promote — predicts real behavior in collisions and method sets.
+
+**Padding in hot structs.** Section 1 showed 4 vs 6 bytes. With hundreds of thousands of structs in a list, field order becomes gigabytes ([classic report](https://www.boot.dev/blog/golang)). Measure with `reflect.TypeOf(x).Size()` before reordering on a hunch.
+
+### Sources and authority level
+
+| Topic | Primary source |
+|---|---|
+| Structs, embedded fields | [Go specification](https://go.dev/ref/spec#Struct_types) |
+| Embedding and composition | [Effective Go](https://go.dev/doc/effective_go#embedding) |
+| Method sets `T` vs `*T` | [Go Wiki, Method Sets](https://go.dev/wiki/MethodSets) |
+| Value representation | [Russ Cox, Go Data Structures](https://research.swtch.com/godata) |
+| Structs, layout, empty struct | [Lane Wagner, Structs in Go](https://www.boot.dev/blog/golang) |
+
+<Summary>
+
+- struct is a value: assignment, arguments, and value receivers copy every field
+- mutating methods use pointer receivers; Go derives `&c` on its own for addressable values
+- `*T` sees more methods than `T` — the foundation of next post's interfaces
+- field order changes size; measure before optimizing
+- embedding is composition with promotion, not inheritance; `ctx` passes by value because interfaces already share
+
+</Summary>
+
+<NextSteps href="/go-ponteiros" title="Pointers in Go">
+
+Interfaces (next post) combine everything so far: method sets decide who satisfies what. Until then, re-read Post 1 through struct eyes — pointers-as-values is the key to receivers.
+
+</NextSteps>
+
+<SkillsGained skills={["Structs", "Value semantics", "Receivers", "Method sets", "Embedding", "context.Context"]} />
+
+<SeriesNav
+  seriesName="Go Inside Out — 02/04"
+  prev={{title: "Pointers in Go", href: "/go-ponteiros"}}
+/>

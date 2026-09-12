@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 250" role="img" aria-label="Diagram: field order changes struct size">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .pad{fill:#57606a;fill-opacity:0.25;stroke:#57606a;stroke-width:1.5;stroke-dasharray:5 4}
+    .lbl{fill:#57606a}
+    .goodtext{fill:#238636;font-weight:bold}
+    .badtext{fill:#b35900;font-weight:bold}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .pad{stroke:#8b949e}
+      .lbl{fill:#8b949e}
+      .goodtext{fill:#3fb950}
+      .badtext{fill:#d29922}
+    }
+  </style>
+  <text x="20" y="80" font-size="14" class="lbl">aligned</text>
+  <rect x="130" y="40" width="150" height="70" rx="8" class="box"/>
+  <text x="144" y="68" font-size="14" font-weight="bold">Reach</text>
+  <text x="144" y="92" font-size="13" class="lbl">uint16</text>
+  <rect x="280" y="40" width="75" height="70" rx="8" class="box"/>
+  <text x="288" y="68" font-size="12" font-weight="bold">Posts</text>
+  <text x="288" y="92" font-size="13" class="lbl">u8</text>
+  <rect x="355" y="40" width="75" height="70" rx="8" class="box"/>
+  <text x="363" y="68" font-size="12" font-weight="bold">Likes</text>
+  <text x="363" y="92" font-size="13" class="lbl">u8</text>
+  <text x="445" y="82" font-size="15" class="goodtext">= 4 bytes</text>
+  <text x="20" y="195" font-size="14" class="lbl">scattered</text>
+  <rect x="130" y="155" width="75" height="70" rx="8" class="box"/>
+  <text x="138" y="183" font-size="12" font-weight="bold">Posts</text>
+  <text x="138" y="207" font-size="13" class="lbl">u8</text>
+  <rect x="205" y="155" width="75" height="70" rx="8" class="pad"/>
+  <text x="218" y="195" font-size="13" class="lbl">pad</text>
+  <rect x="280" y="155" width="150" height="70" rx="8" class="box"/>
+  <text x="294" y="183" font-size="14" font-weight="bold">Reach</text>
+  <text x="294" y="207" font-size="13" class="lbl">uint16</text>
+  <rect x="430" y="155" width="75" height="70" rx="8" class="box"/>
+  <text x="438" y="183" font-size="12" font-weight="bold">Likes</text>
+  <text x="438" y="207" font-size="13" class="lbl">u8</text>
+  <rect x="505" y="155" width="75" height="70" rx="8" class="pad"/>
+  <text x="518" y="195" font-size="13" class="lbl">pad</text>
+  <text x="130" y="245" font-size="15" class="badtext">= 6 bytes (2 of padding)</text>
+</svg>

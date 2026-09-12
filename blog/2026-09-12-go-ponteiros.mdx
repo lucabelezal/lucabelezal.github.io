@@ -12,6 +12,7 @@ import Prerequisites from '@site/src/components/blog/Prerequisites';
 import Summary from '@site/src/components/blog/Summary';
 import NextSteps from '@site/src/components/blog/NextSteps';
 import SkillsGained from '@site/src/components/blog/SkillsGained';
+import SeriesNav from '@site/src/components/blog/SeriesNav';
 
 Toda função em Go recebe uma **cópia** dos argumentos — inclusive quando o argumento é um ponteiro. Quem entende essa frase domina 90% dos ponteiros em Go; quem não entende passa anos decorando quando usar `&` e `*` sem saber por quê.
 
@@ -282,3 +283,8 @@ Você sabe alcançar e mutar valores com ponteiros. O próximo passo é decidir 
 </NextSteps>
 
 <SkillsGained skills={["Ponteiros", "Modelo de memória Go", "Stack vs heap", "Escape analysis", "Benchmarks"]} />
+
+<SeriesNav
+  seriesName="Go por dentro — 01/04"
+  next={{title: "Structs e methods em Go", href: "/go-structs-methods"}}
+/>

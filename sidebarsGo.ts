@@ -102,6 +102,13 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'link',
+          label: 'Structs e methods em Go',
+          href: '/go-structs-methods',
+          description: 'Semântica de valor, receivers, layout e composição.',
+          customProps: {date: '12 set 2026'},
+        },
+        {
+          type: 'link',
           label: 'Ponteiros em Go',
           href: '/go-ponteiros',
           description: 'Valores, endereços e memória: quando (não) usar ponteiros.',

@@ -12,6 +12,7 @@ import Prerequisites from '@site/src/components/blog/Prerequisites';
 import Summary from '@site/src/components/blog/Summary';
 import NextSteps from '@site/src/components/blog/NextSteps';
 import SkillsGained from '@site/src/components/blog/SkillsGained';
+import SeriesNav from '@site/src/components/blog/SeriesNav';
 
 Toda función en Go recibe una **copia** de sus argumentos — incluso cuando el argumento es un puntero. Quien entiende esa frase domina el 90% de los punteros en Go; quien no la entiende pasa años memorizando cuándo usar `&` y `*` sin saber por qué.
 
@@ -282,3 +283,8 @@ Ya sabes alcanzar y mutar valores con punteros. El próximo paso es decidir qué
 </NextSteps>
 
 <SkillsGained skills={["Punteros", "Modelo de memoria Go", "Stack vs heap", "Escape analysis", "Benchmarks"]} />
+
+<SeriesNav
+  seriesName="Go por dentro — 01/04"
+  next={{title: "Structs y métodos en Go", href: "/go-structs-methods"}}
+/>

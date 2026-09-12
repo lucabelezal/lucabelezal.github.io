@@ -1,0 +1,244 @@
+---
+slug: go-structs-methods
+title: "Structs y métodos en Go: valores agrupados, receivers y composición"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-12T14:00:00
+description: "Struct en Go tiene semántica de valor: asignar copia todos los campos. Entiende value vs pointer receiver, method sets, layout de memoria y embedding."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+import SeriesNav from '@site/src/components/blog/SeriesNav';
+
+En el post anterior, un puntero era un valor que identifica una variable. Ahora el programa crece: los datos relacionados deben viajar juntos — un cliente tiene nombre y plan, un coche tiene marca y color. La struct agrupa esos valores. Y los agrupa **como valor**: asignar una struct copia todos los campos.
+
+Esa frase decide casi todo en este post: cuándo el método muta o no, cuándo el puntero es obligatorio, por qué el orden de los campos cambia el tamaño y por qué `Client` no "hereda" de `Person`. Segundo post de la serie **Go por dentro** (02/04).
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- struct como valor: asignación y pasaje por valor copian todos los campos
+- value receiver vs pointer receiver — y por qué el método "no pega"
+- method sets: qué ven `T` y `*T` (base para interfaces del próximo post)
+- layout de memoria: orden de campos, padding y cómo medir con `reflect`
+- embedding vs herencia: composición con promoción de campos y métodos
+- por qué `context.Context` se pasa por valor a propósito
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Punteros en Go](/go-ponteiros): `&`, `*`, semántica de valor, escape analysis
+- Go básico: funciones, tipos, `fmt.Println` (Go 1.26 en los ejemplos)
+
+</Prerequisites>
+
+## 1. Contexto
+
+Una struct agrupa variables de tipos distintos bajo un nombre:
+
+```go title="main.go" showLineNumbers
+type car struct {
+	brand   string
+	model   string
+	doors   int
+	mileage int
+}
+
+func main() {
+	myCar := car{brand: "Toyota", model: "Camry", doors: 4}
+	fmt.Println(myCar.brand) // Toyota, mileage vale 0 (zero value)
+}
+```
+
+Los campos sin completar reciben el zero value del tipo — una struct "incompleta" sigue válida, sin constructor obligatorio. Y en memoria, los campos quedan en bloque contiguo, uno tras otro, en el orden declarado. Russ Cox muestra que mirar ese layout es el camino a la intuición correcta sobre costo ([Go Data Structures](https://research.swtch.com/godata)).
+
+El orden declarado tiene consecuencia física: el compilador alinea campos, insertando padding (espacio desperdiciado) cuando hace falta. Mismos campos, órdenes distintos, tamaños distintos:
+
+![Diagrama: misma struct, órdenes distintos, tamaños 4 vs 6 bytes](/img/diagramas/go-structs-layout.svg)
+
+```go title="main.go" showLineNumbers
+type aligned struct {
+	Reach    uint16
+	NumPosts uint8
+	NumLikes uint8
+}
+
+type scattered struct {
+	NumPosts uint8
+	Reach    uint16
+	NumLikes uint8
+}
+
+fmt.Println("aligned:", reflect.TypeOf(aligned{}).Size(),
+	"scattered:", reflect.TypeOf(scattered{}).Size())
+```
+
+```bash title="Terminal"
+aligned: 4 scattered: 6
+```
+
+**Regla práctica.** Ordena campos de mayor a menor cuando la struct vive en volumen (cientos de miles en lista). En el resto, ordena por legibilidad — el padding solo duele en escala.
+
+## 2. El problema
+
+Defines un método para pintar el coche:
+
+```go title="main.go" showLineNumbers
+func (c car) paintValue(color string) { c.color = color }
+
+func main() {
+	c := car{color: "white"}
+	c.paintValue("blue")
+	fmt.Println("value receiver:", c.color)
+}
+```
+
+```bash title="Terminal"
+value receiver: white
+```
+
+El coche sigue blanco. Sin error, sin aviso — el método corrió, mutó **una copia** y la descartó. Es el bug silencioso más común de quien llega a Go: el receiver `(c car)` es un parámetro como otro, y los parámetros se pasan por valor (post anterior). El método no "falló"; pintó un coche que nadie más ve.
+
+## 3. Modelo mental
+
+**Struct es valor.** Asignar (`c2 := c`), pasar a función y recibir en método con value receiver copian todos los campos. Mutar el original exige la dirección — puntero a struct, como en el post anterior.
+
+**Receiver puntero muta; receiver valor, no:**
+
+![Diagrama: receiver valor pinta la copia, receiver puntero alcanza el original](/img/diagramas/go-structs-receiver-es.svg)
+
+**Method sets: `T` y `*T` ven conjuntos distintos.** El conjunto de métodos de `T` contiene solo métodos con receiver `T`; el de `*T` contiene los de receiver `T` **y** `*T` ([Go Wiki, Method Sets](https://go.dev/wiki/MethodSets)). Guarda esto: en el próximo post, esa diferencia decide si un tipo satisface una interface.
+
+**Embedding es composición, no herencia.** Un `Client` embebiendo `Person` no crea jerarquía — crea un campo cuyo nombre es el tipo, con **promoción**: `cl.Name` es atajo para `cl.Person.Name`. Go no tiene subclassing; tiene implementación prestada ([Effective Go, Embedding](https://go.dev/doc/effective_go#embedding)):
+
+![Diagrama: Client compone Person, campos promovidos](/img/diagramas/go-structs-embedding-es.svg)
+
+> **Definición (propuesta).** Embedding es un campo embebido cuyo nombre es el tipo, con promoción de campos y métodos al tipo externo. Nada se hereda; todo se compone y se accede por atajo.
+
+**Regla práctica.** Que `cl.Name` funcione no significa que `Client` sea un `Person`. Significa que `Client` tiene un `Person` — y el compilador te ahorra teclear.
+
+## 4. Implementación
+
+Código completo, ejecutable, salidas reales (Go 1.26, darwin/arm64).
+
+### Receiver puntero: misma llamada, otro resultado
+
+```go title="main.go" showLineNumbers
+func (c *car) paintPtr(color string) { c.color = color }
+
+func main() {
+	c := car{color: "white"}
+	// highlight-next-line
+	c.paintPtr("blue")
+	fmt.Println("pointer receiver:", c.color)
+}
+```
+
+```bash title="Terminal"
+pointer receiver: blue
+```
+
+Nota: la llamada `c.paintPtr("blue")` es idéntica en forma a la del value receiver. Go deriva `&c` automáticamente porque `c` es direccionable. La diferencia está solo en la firma — y ella decide si el método recibe la struct o su dirección.
+
+### Embedding en la práctica: atajo y ruta completa
+
+```go title="main.go" showLineNumbers
+type Person struct{ Name string }
+
+type Client struct {
+	Person
+	Plan string
+}
+
+func main() {
+	cl := Client{Person: Person{Name: "Ada"}, Plan: "pro"}
+	fmt.Println("promoted:", cl.Name, "| explicit:", cl.Person.Name)
+}
+```
+
+```bash title="Terminal"
+promoted: Ada | explicit: Ada
+```
+
+Mismo valor, dos rutas. La promovida es conveniencia; la explícita muestra la estructura real. Con colisión de nombres (campo propio y embebido con igual nombre), la ruta explícita resuelve la ambigüedad — un motivo más para saber que promoción es atajo, no fusión.
+
+### `context.Context` se pasa por valor — a propósito
+
+Tras dos posts defendiendo puntero para mutar, el contrapunto: `ctx` aparece como primer parámetro en toda función backend, siempre por valor:
+
+```go title="main.go" showLineNumbers
+func handle(ctx context.Context) string {
+	deadline, ok := ctx.Deadline()
+	return fmt.Sprintf("hasDeadline=%v user=%v", ok, ctx.Value("user"))
+}
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	ctx = context.WithValue(ctx, "user", "ada")
+	fmt.Println("ctx:", handle(ctx))
+}
+```
+
+```bash title="Terminal"
+ctx: hasDeadline=true user=ada
+```
+
+¿Por qué no `*context.Context`? Porque `Context` es **interface** — el valor copiado carga el mismo puntero interno a los datos. Copiar la interface es barato y comparte todo; puntero a interface sería indirección sin ganancia. La convención (primer parámetro, nombre `ctx`) existe para señalar: el contexto atraviesa la llamada, no se guarda en structs. Es la semántica de valor a tu favor: copia barata, compartición implícita, sin mutación posible.
+
+**Regla práctica.** Mutación → puntero. Lectura compartida barata (interfaces, slices, maps) → valor. `ctx` es el ejemplo canónico del segundo caso.
+
+## 5. Fallas y trade-offs
+
+**Receivers mixtos: la trampa diferida.** Nada impide `func (c car)` en un método y `func (c *car)` en otro — compila. El precio llega en el próximo post: `car` y `*car` tienen method sets distintos, y uno puede no satisfacer la interface que juraste implementar. Error confuso ("does not implement X") con causa aquí. Convención: elige un receiver por tipo y manténlo. Puntero cuando algún método muta; valor cuando ninguno muta y la struct es pequeña.
+
+**Copiar locks: `go vet` lo detecta.** Una struct con `sync.Mutex` copiada por valor duplica el mutex — comportamiento indefinido. La herramienta lo acusa al instante:
+
+```bash title="Terminal"
+lock.go:10:12: use passes lock by value: Counter contains sync.Mutex
+```
+
+`go vet ./...` en CI convierte ese bug silencioso en error de build. Structs con locks, `NoCopy` o estado interno compartido → siempre por puntero.
+
+**"Herencia".** Decir que `Client` hereda de `Person` importa un modelo mental errado (jerarquía, override, `super`) a un lenguaje que no tiene nada de eso. El vocabulario correcto — componer, embeber, promover — predice el comportamiento real en colisiones y method sets.
+
+**Padding en structs calientes.** La sección 1 mostró 4 vs 6 bytes. Con cientos de miles de structs en lista, el orden de campos se vuelve gigabytes ([reporte clásico](https://www.boot.dev/blog/golang)). Mide con `reflect.TypeOf(x).Size()` antes de reordenar por intuición.
+
+### Fuentes y nivel de autoridad
+
+| Tema | Fuente principal |
+|---|---|
+| Structs, campos embebidos | [Especificación de Go](https://go.dev/ref/spec#Struct_types) |
+| Embedding y composición | [Effective Go](https://go.dev/doc/effective_go#embedding) |
+| Method sets `T` vs `*T` | [Go Wiki, Method Sets](https://go.dev/wiki/MethodSets) |
+| Representación de valores | [Russ Cox, Go Data Structures](https://research.swtch.com/godata) |
+| Structs, layout, empty struct | [Lane Wagner, Structs in Go](https://www.boot.dev/blog/golang) |
+
+<Summary>
+
+- struct es valor: asignación, argumentos y value receivers copian todos los campos
+- los métodos que mutan usan pointer receivers; Go deriva `&c` solo en valor direccionable
+- `*T` ve más métodos que `T` — base de las interfaces del próximo post
+- el orden de campos cambia el tamaño; mide antes de optimizar
+- embedding es composición con promoción, no herencia; `ctx` se pasa por valor porque las interfaces ya comparten
+
+</Summary>
+
+<NextSteps href="/go-ponteiros" title="Punteros en Go">
+
+Las interfaces (próximo post) combinan todo hasta aquí: los method sets deciden quién satisface qué. Hasta entonces, relee el Post 1 con ojos de structs — puntero como valor es la clave de los receivers.
+
+</NextSteps>
+
+<SkillsGained skills={["Structs", "Semántica de valor", "Receivers", "Method sets", "Embedding", "context.Context"]} />
+
+<SeriesNav
+  seriesName="Go por dentro — 02/04"
+  prev={{title: "Punteros en Go", href: "/go-ponteiros"}}
+/>

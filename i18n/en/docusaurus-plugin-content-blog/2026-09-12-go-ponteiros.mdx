@@ -12,6 +12,7 @@ import Prerequisites from '@site/src/components/blog/Prerequisites';
 import Summary from '@site/src/components/blog/Summary';
 import NextSteps from '@site/src/components/blog/NextSteps';
 import SkillsGained from '@site/src/components/blog/SkillsGained';
+import SeriesNav from '@site/src/components/blog/SeriesNav';
 
 Every function in Go receives a **copy** of its arguments — even when the argument is a pointer. Whoever understands that sentence masters 90% of pointers in Go; whoever doesn't spends years memorizing when to use `&` and `*` without knowing why.
 
@@ -282,3 +283,8 @@ You know how to reach and mutate values with pointers. The next step is deciding
 </NextSteps>
 
 <SkillsGained skills={["Pointers", "Go memory model", "Stack vs heap", "Escape analysis", "Benchmarks"]} />
+
+<SeriesNav
+  seriesName="Go Inside Out — 01/04"
+  next={{title: "Structs and methods in Go", href: "/go-structs-methods"}}
+/>

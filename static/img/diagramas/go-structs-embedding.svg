@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 280" role="img" aria-label="Diagrama: Client compõe Person, cl.Name é atalho promovido">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .inner{fill:none;stroke:#0969da;stroke-width:1.5}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#238636;stroke-width:2;fill:none}
+    .head{fill:#238636;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .inner{stroke:#58a6ff}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#3fb950}
+      .head{fill:#3fb950}
+    }
+  </style>
+  <defs>
+    <marker id="ah5" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <rect x="30" y="30" width="250" height="220" rx="10" class="box"/>
+  <text x="50" y="62" font-size="17" font-weight="bold">Client</text>
+  <rect x="50" y="78" width="210" height="80" rx="8" class="inner"/>
+  <text x="64" y="106" font-size="14" font-weight="bold">Person</text>
+  <text x="64" y="132" font-size="14">Name = Ada</text>
+  <text x="50" y="196" font-size="14">Plan = pro</text>
+  <text x="330" y="110" font-size="15" font-weight="bold">cl.Name</text>
+  <line x1="325" y1="118" x2="285" y2="118" class="arrow" marker-end="url(#ah5)"/>
+  <text x="360" y="140" font-size="13" class="lbl">atalho promovido</text>
+  <text x="330" y="196" font-size="15">cl.Person.Name</text>
+  <text x="360" y="218" font-size="13" class="lbl">caminho completo</text>
+</svg>
