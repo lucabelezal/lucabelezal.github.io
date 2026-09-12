@@ -4,7 +4,7 @@ title: "HTTP APIs in Go: stdlib, middleware, and JSON without frameworks"
 authors: [lucabelezal]
 tags: [go, backend, sistemas-distribuidos]
 date: 2026-09-13T15:00:00
-description: "Stdlib net/http with method routing, request_id middleware, JSON, and logs: a complete API validated with real curl — no frameworks."
+description: "Stdlib net/http, step by step: minimal server, method routing, middleware, JSON, and logs — validated with real curl, no frameworks."
 ---
 
 import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
@@ -13,7 +13,7 @@ import Summary from '@site/src/components/blog/Summary';
 import NextSteps from '@site/src/components/blog/NextSteps';
 import SkillsGained from '@site/src/components/blog/SkillsGained';
 
-Since Go 1.22, `net/http` routes by method (`"GET /health"`), and with chained middleware + `encoding/json` + `slog` you build complete APIs without frameworks. This post uses everything in the series: `ctx` with timeouts ([concurrency](/go-concorrencia)), `request_id` loggers ([errors](/go-erros-logs)), graceful shutdown, and contract tests.
+An HTTP API in Go needs four things: listening on a port, routing paths to functions, reading/writing JSON, and logging with identity. The stdlib has delivered all four since Go 1.22 — no framework. Let's build in that order, one layer at a time, each running before the next.
 
 Standalone post, validated with real `curl`. Real outputs, Go 1.26.
 
@@ -21,55 +21,65 @@ Standalone post, validated with real `curl`. Real outputs, Go 1.26.
 
 <WhatYouWillLearn>
 
+- minimal server: 10 lines that respond
 - stdlib method routing (Go 1.22+): `"GET /health"`
-- chained middleware: `request_id`, durations, logs
+- handlers: the `func(w, r)` signature unpacked
 - JSON: decode with honest 400s, encode with Content-Type
-- `ctx` per handler + server timeouts
-- contracts testable with `curl` (then `httptest`)
+- chained middleware: `request_id`, durations, logs
 
 </WhatYouWillLearn>
 
 <Prerequisites>
 
-- [Concurrency](/go-concorrencia): `ctx`, shutdown, real `main`
-- [Errors and logs](/go-erros-logs): `slog`, `request_id`, edge
+- Basic Go: functions, packages, `go run`
+- [Errors and logs](/go-erros-logs): `slog` (used at the end)
 
 </Prerequisites>
 
 ## 1. Context
 
-Frameworks solve what the stdlib has solved since 1.22: routing by method and pattern, serving with timeouts, draining shutdown. What frameworks still deliver — validation, DI, docs — gets evaluated later, with measured pain. Start stdlib: fewer layers to debug, break-free upgrades, unsurprising binaries.
+Frameworks solve what the stdlib has solved since 1.22: routing by method and pattern, serving with timeouts, draining shutdown. Start stdlib: fewer layers to debug, break-free upgrades. Frameworks enter when it genuinely hurts (complex validation, generated OpenAPI) — not before.
 
 ![Diagram: request crosses middleware, handler, JSON back](/img/diagramas/go-http-cadeia.svg)
 
 ## 2. The problem
 
-APIs without request_ids: three requests fail together and logs can't tell which is which. Without timeouts: slow handlers hold connections forever (free Slowloris). Without Content-Type: clients guess bodies. Without shutdown: deploys kill mid-flight requests. Each has taken down real production — none needs a framework to fix.
+APIs without request_ids: three requests fail together and logs can't tell which is which. Without timeouts: slow handlers hold connections forever. Without Content-Type: clients guess bodies. Each has taken down real production — none needs a framework.
 
-## 3. Mental model
-
-**Middleware is a typed onion.** `func mw(log, next) http.Handler`: each layer takes the request, does its part (ids, timers, auth), and calls inward. Order matters: request_id first (everything below logs with it), recovery outside everything.
-
-**Handlers return, never decide infra.** Handlers parse, call services, write JSON + status. Timeouts come from `ctx`; shutdown from `main`; logs from middleware. Fat handlers with `log.Fatal` inside are the classic bug.
-
-**Contract before code.** Method + path + status + body: `GET /health → 200 {"status":"ok"}`, `POST /double {"n":21} → 200 {"result":42}`, invalid JSON → 400 text. Written contracts become tests (curl today, `httptest` tomorrow).
-
-**Rule of thumb.** Stdlib until it genuinely hurts; thin ordered middleware; every handler with `ctx`, every server with timeouts + shutdown (the concurrency post's real `main`).
-
-## 4. Implementation
+## 3. Step 1 — the smallest responding server
 
 ```go title="main.go" showLineNumbers
-func mw(log *slog.Logger, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := fmt.Sprintf("req-%d", time.Now().UnixNano()%100000)
-		ctx := context.WithValue(r.Context(), reqKey, id)
-		l := log.With(slog.String("request_id", id))
-		start := time.Now()
-		next.ServeHTTP(w, r.WithContext(ctx))
-		l.Info("done", slog.String("method", r.Method), slog.String("path", r.URL.Path), slog.Duration("ms", time.Since(start)))
-	})
-}
+package main
 
+import "net/http"
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ok"))
+	})
+	http.ListenAndServe("127.0.0.1:18098", mux)
+}
+```
+
+Three pieces, nothing else:
+
+- **`http.NewServeMux()`** — the router: a path → function table.
+- **`HandleFunc("GET /health", func...)`** — registers a route. The leading `"GET "` (Go 1.22+) splits by method: same path, different methods, different functions.
+- **The handler function** — always `func(w http.ResponseWriter, r *http.Request)`: `w` is where the response leaves, `r` is what arrived.
+
+```bash title="Terminal"
+$ curl http://127.0.0.1:18098/health
+ok
+```
+
+Server live. Everything else in this post is layers over these 10 lines.
+
+## 4. Step 2 — real JSON
+
+Plain text isn't an API. Swap the response for JSON and add a POST route reading JSON:
+
+```go title="main.go" showLineNumbers
 mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -85,30 +95,53 @@ mux.HandleFunc("POST /double", func(w http.ResponseWriter, r *http.Request) {
 })
 ```
 
+Two rules avoiding classic bugs:
+
+1. **Content-Type before the first `Encode`.** After the first byte leaves, headers lock — clients without Content-Type guess bodies (and proxies rewrite).
+2. **Invalid JSON = honest 400**, not 500. 400 says "your request is wrong"; 500 says "I broke". Mixing them corrupts alerts and dashboards.
+
 ```bash title="Terminal"
+$ curl http://127.0.0.1:18098/health
 {"status":"ok"}
+$ curl -X POST http://127.0.0.1:18098/double -d '{"n":21}'
 {"result":42}
+$ curl -X POST http://127.0.0.1:18098/double -d 'xxx'
 json inválido
 ```
 
-And in server logs, each request with its identity:
+## 5. Step 3 — middleware: which request is which
+
+With two routes, logs already blur together. Middleware fixes it: a function wrapping the router, stamping `request_id` and timing:
+
+```go title="main.go" showLineNumbers
+func mw(log *slog.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := fmt.Sprintf("req-%d", time.Now().UnixNano()%100000)
+		ctx := context.WithValue(r.Context(), reqKey, id)
+		l := log.With(slog.String("request_id", id))
+		start := time.Now()
+		next.ServeHTTP(w, r.WithContext(ctx))
+		l.Info("done", slog.String("method", r.Method), slog.String("path", r.URL.Path), slog.Duration("ms", time.Since(start)))
+	})
+}
+```
+
+Read inside out: generates `id`, hangs it on `ctx` (handlers below read it with no extra parameter), derives a logger with the id, notes the clock, **calls the next layer**, logs method + path + duration. Middleware is an onion: request_id first (everything below logs with it), recovery outside everything.
 
 ```bash title="Terminal"
 {"level":"INFO","msg":"done","request_id":"req-69000","method":"GET","path":"/health",...}
 {"level":"INFO","msg":"done","request_id":"req-20000","method":"POST","path":"/double",...}
 ```
 
-Three `curl`s validate the contract; `request_id` stitches logs to requests. Natural next step: the same cases in `httptest` under CI (the testing post's pattern).
+Three requests, three identities — logs now answer "which one failed".
 
-## 5. Failures and trade-offs
+## 6. Failures and trade-offs
 
-**Frameworks on day one.** Chi/Gin/Fiber before the first pain: layers to debug, breaking upgrades, convention lock-in. Adopt when the stdlib proves limits (complex validation, generated OpenAPI, stateful websockets).
+**Frameworks on day one.** Chi/Gin/Fiber before the first pain: layers to debug, breaking upgrades, convention lock-in. Adopt when the stdlib proves limits.
 
-**No server timeouts.** Handlers with `ctx` don't save connections without `ReadTimeout`/`WriteTimeout` on `http.Server`: Slowloris holds workers for free. Timeouts on both ends, always.
+**No server timeouts.** Handlers with `ctx` don't save connections without `ReadTimeout`/`WriteTimeout` on `http.Server`: Slowloris holds workers for free. Timeouts on both ends + graceful shutdown (the concurrency post's real `main`).
 
 **`request_id` generated in handlers.** Too late: earlier middlewares already logged without it. Generate at the edge (first middleware), propagate via `ctx`.
-
-**JSON without Content-Type.** Clients trusting bodies break on rewriting proxies. Headers always, before the first `Encode` (after writing, headers lock).
 
 ### Sources and authority level
 
@@ -120,9 +153,9 @@ Three `curl`s validate the contract; `request_id` stitches logs to requests. Nat
 
 <Summary>
 
-- stdlib routes by method since 1.22; frameworks only with measured pain
-- middleware: request_id first, timers, recovery outside
-- explicit contracts (status + body) validated with curl, then httptest
+- minimal server: mux + `HandleFunc("GET /x")` + `(w, r)` handler
+- JSON with Content-Type before Encode; invalid = 400, not 500
+- middleware: request_id at the edge, timers, recovery outside
 - servers always with timeouts + shutdown; handlers always with ctx
 
 </Summary>

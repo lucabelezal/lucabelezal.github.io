@@ -4,7 +4,7 @@ title: "API HTTP em Go: stdlib, middleware e JSON sem framework"
 authors: [lucabelezal]
 tags: [go, backend, sistemas-distribuidos]
 date: 2026-09-13T15:00:00
-description: "net/http da stdlib com roteamento por método, middleware de request_id, JSON e logs: API completa validada com curl — sem framework."
+description: "net/http da stdlib, passo a passo: servidor mínimo, roteamento por método, middleware, JSON e logs — validado com curl, sem framework."
 ---
 
 import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
@@ -13,7 +13,7 @@ import Summary from '@site/src/components/blog/Summary';
 import NextSteps from '@site/src/components/blog/NextSteps';
 import SkillsGained from '@site/src/components/blog/SkillsGained';
 
-Desde Go 1.22, `net/http` roteia por método (`"GET /health"`), e com middleware em cadeia + `encoding/json` + `slog` você monta API completa sem framework. Este post usa tudo da série: `ctx` com timeout ([concorrência](/go-concorrencia)), logger com `request_id` ([erros](/go-erros-logs)), shutdown gracioso e testes de contrato.
+Uma API HTTP em Go precisa de quatro coisas: ouvir numa porta, rotear path para função, ler/escrever JSON e logar com identidade. A stdlib entrega as quatro desde Go 1.22 — sem framework. Vamos construir nessa ordem, uma camada por vez, cada uma rodando antes da próxima.
 
 Post avulso, validado com `curl` de verdade. Saídas reais, Go 1.26.
 
@@ -21,55 +21,65 @@ Post avulso, validado com `curl` de verdade. Saídas reais, Go 1.26.
 
 <WhatYouWillLearn>
 
+- servidor mínimo: 10 linhas que respondem
 - roteamento stdlib por método (Go 1.22+): `"GET /health"`
-- middleware em cadeia: `request_id`, duração, logs
+- handler: a assinatura `func(w, r)` destrinchada
 - JSON: decode com erro 400 honesto, encode com Content-Type
-- `ctx` por handler + timeouts de servidor
-- contrato testável com `curl` (e depois, com `httptest`)
+- middleware em cadeia: `request_id`, duração, logs
 
 </WhatYouWillLearn>
 
 <Prerequisites>
 
-- [Concorrência](/go-concorrencia): `ctx`, shutdown, `main` real
-- [Erros e logs](/go-erros-logs): `slog`, `request_id`, borda
+- Go básico: funções, pacotes, `go run`
+- [Erros e logs](/go-erros-logs): `slog` (usado no fim)
 
 </Prerequisites>
 
 ## 1. Contexto
 
-Framework resolve o que a stdlib já resolve desde 1.22: rotear por método e padrão, servir com timeouts, encerrar com drenagem. O que framework ainda entrega — validação, DI, docs — se avalia depois, com dor medida. Comece stdlib: menos camada para debugar, upgrade sem breaking, binário sem surpresa.
+Framework resolve o que a stdlib já resolve desde 1.22: rotear por método e padrão, servir com timeouts, encerrar com drenagem. Comece stdlib: menos camada para debugar, upgrade sem breaking. Framework entra quando doer de verdade (validação complexa, OpenAPI gerado) — não antes.
 
 ![Diagrama: request atravessa middleware, handler, JSON de volta](/img/diagramas/go-http-cadeia.svg)
 
 ## 2. O problema
 
-API sem request_id: três requests falham juntos e o log não diz qual é qual. Sem timeout: handler lento prende conexão para sempre (Slowloris de brinde). Sem Content-Type: cliente adivinha o corpo. Sem shutdown: deploy mata request no meio. Cada um desses já derrubou produção real — e nenhum precisa de framework para resolver.
+API sem request_id: três requests falham juntos e o log não diz qual é qual. Sem timeout: handler lento prende conexão para sempre. Sem Content-Type: cliente adivinha o corpo. Cada um desses já derrubou produção — e nenhum precisa de framework.
 
-## 3. Modelo mental
-
-**Middleware é cebola tipada.** `func mw(log, next) http.Handler`: cada camada recebe request, faz o seu (id, timer, auth) e chama a próxima. Ordem importa: request_id primeiro (tudo abaixo loga com ele), recovery por fora de tudo.
-
-**Handler devolve, não decide infra.** Handler parseia, chama serviço, escreve JSON + status. Timeout vem do `ctx`; shutdown, do `main`; log, do middleware. Handler gordo com `log.Fatal` dentro é o bug clássico.
-
-**Contrato antes de código.** Método + path + status + corpo: `GET /health → 200 {"status":"ok"}`, `POST /double {"n":21} → 200 {"result":42}`, JSON inválido → 400 texto. Contrato escrito vira teste (curl hoje, `httptest` amanhã).
-
-**Regra prática.** Stdlib até doer de verdade; middleware fino e ordenado; todo handler com `ctx` e todo servidor com timeout + shutdown (a `main` real do post de concorrência).
-
-## 4. Implementação
+## 3. Passo 1 — o menor servidor que responde
 
 ```go title="main.go" showLineNumbers
-func mw(log *slog.Logger, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		id := fmt.Sprintf("req-%d", time.Now().UnixNano()%100000)
-		ctx := context.WithValue(r.Context(), reqKey, id)
-		l := log.With(slog.String("request_id", id))
-		start := time.Now()
-		next.ServeHTTP(w, r.WithContext(ctx))
-		l.Info("done", slog.String("method", r.Method), slog.String("path", r.URL.Path), slog.Duration("ms", time.Since(start)))
-	})
-}
+package main
 
+import "net/http"
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ok"))
+	})
+	http.ListenAndServe("127.0.0.1:18098", mux)
+}
+```
+
+Três peças, nada mais:
+
+- **`http.NewServeMux()`** — o roteador: tabela de path → função.
+- **`HandleFunc("GET /health", func...)`** — registra rota. O `"GET "` na frente (Go 1.22+) separa por método: mesmo path, métodos diferentes, funções diferentes.
+- **A função handler** — sempre `func(w http.ResponseWriter, r *http.Request)`: `w` é por onde a resposta sai, `r` é o que chegou.
+
+```bash title="Terminal"
+$ curl http://127.0.0.1:18098/health
+ok
+```
+
+Servidor no ar. Todo o resto deste post é camada sobre esses 10 linhas.
+
+## 4. Passo 2 — JSON de verdade
+
+Texto puro não é API. Trocamos a resposta por JSON e adicionamos uma rota POST que lê JSON:
+
+```go title="main.go" showLineNumbers
 mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -85,30 +95,53 @@ mux.HandleFunc("POST /double", func(w http.ResponseWriter, r *http.Request) {
 })
 ```
 
+Duas regras que evitam bugs clássicos:
+
+1. **Content-Type antes do primeiro `Encode`.** Depois que o primeiro byte sai, o header trava — cliente sem Content-Type adivinha o corpo (e proxy reescreve).
+2. **JSON inválido = 400 honesto**, não 500. 400 diz "sua requisição está errada"; 500 diz "eu quebrei". Confundir os dois corrompe alerta e dashboard.
+
 ```bash title="Terminal"
+$ curl http://127.0.0.1:18098/health
 {"status":"ok"}
+$ curl -X POST http://127.0.0.1:18098/double -d '{"n":21}'
 {"result":42}
+$ curl -X POST http://127.0.0.1:18098/double -d 'xxx'
 json inválido
 ```
 
-E no log do servidor, cada request com sua identidade:
+## 5. Passo 3 — middleware: quem é cada request
+
+Com duas rotas, o log já mistura tudo. Middleware resolve: uma função que embrulha o roteador, carimba `request_id` e mede duração:
+
+```go title="main.go" showLineNumbers
+func mw(log *slog.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := fmt.Sprintf("req-%d", time.Now().UnixNano()%100000)
+		ctx := context.WithValue(r.Context(), reqKey, id)
+		l := log.With(slog.String("request_id", id))
+		start := time.Now()
+		next.ServeHTTP(w, r.WithContext(ctx))
+		l.Info("done", slog.String("method", r.Method), slog.String("path", r.URL.Path), slog.Duration("ms", time.Since(start)))
+	})
+}
+```
+
+Leia de dentro para fora: gera `id`, pendura no `ctx` (handlers abaixo leem sem parâmetro extra), deriva logger com o id, anota o relógio, **chama a próxima camada**, loga método + path + duração. Middleware é cebola: request_id primeiro (tudo abaixo loga com ele), recovery por fora de tudo.
 
 ```bash title="Terminal"
 {"level":"INFO","msg":"done","request_id":"req-69000","method":"GET","path":"/health",...}
 {"level":"INFO","msg":"done","request_id":"req-20000","method":"POST","path":"/double",...}
 ```
 
-Três `curl` validam o contrato; o `request_id` costura log e request. Próximo passo natural: mesmos casos em `httptest` no CI (padrão do post de testes).
+Três requests, três identidades — o log agora responde "qual falhou".
 
-## 5. Falhas e trade-offs
+## 6. Falhas e trade-offs
 
-**Framework no dia um.** Chi/Gin/Fiber antes da primeira dor: camada para debugar, upgrade com breaking, lock-in de convenção. Adote quando stdlib provar limite (validação complexa, OpenAPI gerado, websockets com estado).
+**Framework no dia um.** Chi/Gin/Fiber antes da primeira dor: camada para debugar, upgrade com breaking, lock-in de convenção. Adote quando a stdlib provar limite.
 
-**Sem timeout no servidor.** Handler com `ctx` não salva conexão sem `ReadTimeout`/`WriteTimeout` no `http.Server`: Slowloris ocupa workers de graça. Timeouts nas duas pontas, sempre.
+**Sem timeout no servidor.** Handler com `ctx` não salva conexão sem `ReadTimeout`/`WriteTimeout` no `http.Server`: Slowloris ocupa workers de graça. Timeouts nas duas pontas + shutdown gracioso (a `main` real do post de [concorrência](/go-concorrencia)).
 
 **`request_id` gerado no handler.** Tarde demais: middlewares anteriores já logaram sem ele. Gere na borda (primeiro middleware), propague via `ctx`.
-
-**JSON sem Content-Type.** Cliente que confia no corpo quebra em proxy que reescreve. Header sempre, antes do primeiro `Encode` (depois de escrever, header trava).
 
 ### Fontes e nível de autoridade
 
@@ -120,9 +153,9 @@ Três `curl` validam o contrato; o `request_id` costura log e request. Próximo 
 
 <Summary>
 
-- stdlib roteia por método desde 1.22; framework só com dor medida
-- middleware: request_id primeiro, timer, recovery por fora
-- contrato explícito (status + corpo) validado com curl, depois httptest
+- servidor mínimo: mux + `HandleFunc("GET /x")` + handler `(w, r)`
+- JSON com Content-Type antes do Encode; inválido = 400, não 500
+- middleware: request_id na borda, timer, recovery por fora
 - servidor sempre com timeout + shutdown; handler sempre com ctx
 
 </Summary>
