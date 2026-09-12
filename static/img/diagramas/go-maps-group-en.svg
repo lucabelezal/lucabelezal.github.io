@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 300" role="img" aria-label="Diagram: group with control bytes and slots">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .live{fill:none;stroke:#0969da;stroke-width:2}
+    .emp{fill:none;stroke:#57606a;stroke-width:1.5;stroke-dasharray:5 4}
+    .del{fill:none;stroke:#b35900;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:1.5;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .live{stroke:#58a6ff}
+      .emp{stroke:#8b949e}
+      .del{stroke:#d29922}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah11" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <text x="30" y="40" font-size="14" class="lbl">control bytes (H2 · empty · deleted)</text>
+  <rect x="30" y="55" width="70" height="50" class="live"/>
+  <text x="48" y="87" font-size="14">2A</text>
+  <rect x="100" y="55" width="70" height="50" class="live"/>
+  <text x="118" y="87" font-size="14">11</text>
+  <rect x="170" y="55" width="70" height="50" class="emp"/>
+  <text x="182" y="87" font-size="13" class="lbl">80</text>
+  <rect x="240" y="55" width="70" height="50" class="del"/>
+  <text x="254" y="87" font-size="14">FE</text>
+  <rect x="310" y="55" width="70" height="50" class="live"/>
+  <text x="328" y="87" font-size="14">2A</text>
+  <rect x="380" y="55" width="70" height="50" class="emp"/>
+  <text x="392" y="87" font-size="13" class="lbl">80</text>
+  <rect x="450" y="55" width="70" height="50" class="emp"/>
+  <text x="462" y="87" font-size="13" class="lbl">80</text>
+  <rect x="520" y="55" width="70" height="50" class="emp"/>
+  <text x="532" y="87" font-size="13" class="lbl">80</text>
+  <text x="30" y="140" font-size="14" class="lbl">slots (key · value)</text>
+  <rect x="30" y="155" width="70" height="56" class="live"/>
+  <text x="40" y="189" font-size="13">cow:4</text>
+  <rect x="100" y="155" width="70" height="56" class="live"/>
+  <text x="110" y="189" font-size="13">dog:1</text>
+  <rect x="170" y="155" width="70" height="56" class="emp"/>
+  <rect x="240" y="155" width="70" height="56" class="del"/>
+  <text x="252" y="189" font-size="13" class="lbl">✝</text>
+  <rect x="310" y="155" width="70" height="56" class="live"/>
+  <text x="318" y="189" font-size="13">ant:9</text>
+  <rect x="380" y="155" width="70" height="56" class="emp"/>
+  <rect x="450" y="155" width="70" height="56" class="emp"/>
+  <rect x="520" y="155" width="70" height="56" class="emp"/>
+  <line x1="345" y1="105" x2="345" y2="150" class="arrow" marker-end="url(#ah11)"/>
+  <text x="30" y="248" font-size="13" class="lbl">H2 compares all 8 at once → only candidates read full keys</text>
+  <text x="30" y="272" font-size="13" class="lbl">80 (empty) stops lookup · FE (tombstone) keeps probing</text>
+</svg>

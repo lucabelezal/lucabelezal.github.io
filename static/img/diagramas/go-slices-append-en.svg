@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 330" role="img" aria-label="Diagram: append at full capacity reallocates the array">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .cell{fill:none;stroke:#0969da;stroke-width:2}
+    .empty{fill:none;stroke:#57606a;stroke-width:1.5;stroke-dasharray:5 4}
+    .lbl{fill:#57606a}
+    .goodtext{fill:#238636;font-weight:bold}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .cell{stroke:#58a6ff}
+      .empty{stroke:#8b949e}
+      .lbl{fill:#8b949e}
+      .goodtext{fill:#3fb950}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah10" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <text x="25" y="40" font-size="14" class="lbl">before · len == cap · append(s, 4)</text>
+  <rect x="25" y="55" width="170" height="70" rx="8" class="box"/>
+  <text x="39" y="84" font-size="13">s: len 3 cap 3</text>
+  <text x="39" y="108" font-size="13" class="lbl">ptr ──→</text>
+  <line x1="150" y1="103" x2="225" y2="103" class="arrow" marker-end="url(#ah10)"/>
+  <rect x="230" y="55" width="52" height="52" class="cell"/>
+  <text x="244" y="87" font-size="14">1</text>
+  <rect x="282" y="55" width="52" height="52" class="cell"/>
+  <text x="296" y="87" font-size="14">2</text>
+  <rect x="334" y="55" width="52" height="52" class="cell"/>
+  <text x="348" y="87" font-size="14">3</text>
+  <line x1="330" y1="140" x2="330" y2="180" class="arrow" marker-end="url(#ah10)"/>
+  <text x="25" y="210" font-size="14" class="lbl">after · new array · old freed (GC)</text>
+  <rect x="25" y="225" width="170" height="70" rx="8" class="box"/>
+  <text x="39" y="254" font-size="13">s: len 4 cap 6</text>
+  <text x="39" y="278" font-size="13" class="lbl">ptr′ ──→</text>
+  <line x1="150" y1="273" x2="225" y2="273" class="arrow" marker-end="url(#ah10)"/>
+  <rect x="230" y="225" width="52" height="52" class="cell"/>
+  <text x="244" y="257" font-size="14">1</text>
+  <rect x="282" y="225" width="52" height="52" class="cell"/>
+  <text x="296" y="257" font-size="14">2</text>
+  <rect x="334" y="225" width="52" height="52" class="cell"/>
+  <text x="348" y="257" font-size="14">3</text>
+  <rect x="386" y="225" width="52" height="52" class="cell"/>
+  <text x="400" y="257" font-size="14" class="goodtext">4</text>
+  <rect x="438" y="225" width="52" height="52" class="empty"/>
+  <rect x="490" y="225" width="52" height="52" class="empty"/>
+  <text x="548" y="257" font-size="14" class="goodtext">cap 6</text>
+</svg>

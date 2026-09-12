@@ -102,6 +102,34 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'link',
+          label: 'Concorrência em Go',
+          href: '/go-concorrencia',
+          description: 'Goroutines, channels e race detector.',
+          customProps: {date: '12 set 2026'},
+        },
+        {
+          type: 'link',
+          label: 'Maps em Go',
+          href: '/go-maps',
+          description: 'Swiss Tables: grupos, probing e crescimento.',
+          customProps: {date: '12 set 2026'},
+        },
+        {
+          type: 'link',
+          label: 'Slices em Go',
+          href: '/go-slices',
+          description: 'Header, backing array, append e aliasing.',
+          customProps: {date: '12 set 2026'},
+        },
+        {
+          type: 'link',
+          label: 'Interfaces em Go',
+          href: '/go-interfaces',
+          description: 'Comportamento sem herança: nil tipado e design por contrato.',
+          customProps: {date: '12 set 2026'},
+        },
+        {
+          type: 'link',
           label: 'Visibilidade e packages em Go',
           href: '/go-visibilidade-pacotes',
           description: 'Maiúscula exporta: pacotes, construtores e callbacks.',

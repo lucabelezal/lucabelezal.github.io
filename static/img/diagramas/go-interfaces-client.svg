@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 360" role="img" aria-label="Diagrama: cliente precisa da interface, implementações a satisfazem">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .goodbox{stroke:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah8" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <rect x="230" y="15" width="200" height="75" rx="10" class="box"/>
+  <text x="252" y="48" font-size="16" font-weight="bold">CLIENTE</text>
+  <text x="252" y="72" font-size="14" class="lbl">checkout</text>
+  <line x1="330" y1="95" x2="330" y2="140" class="arrow" marker-end="url(#ah8)"/>
+  <text x="345" y="122" font-size="13" class="lbl">precisa de</text>
+  <rect x="230" y="145" width="200" height="75" rx="10" class="box"/>
+  <text x="252" y="178" font-size="16" font-weight="bold">INTERFACE</text>
+  <text x="252" y="202" font-size="14" class="lbl">Pay</text>
+  <line x1="330" y1="225" x2="330" y2="270" class="arrow" marker-end="url(#ah8)"/>
+  <text x="345" y="252" font-size="13" class="lbl">satisfeita por</text>
+  <rect x="180" y="275" width="300" height="65" rx="10" class="goodbox"/>
+  <text x="202" y="302" font-size="15" font-weight="bold">IMPLEMENTAÇÃO</text>
+  <text x="202" y="324" font-size="13" class="lbl">Stripe · Pix · Fake</text>
+</svg>

@@ -1,0 +1,182 @@
+---
+slug: go-interfaces
+title: "Interfaces em Go: comportamento sem herança"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-12T20:00:00
+description: "Interface em Go é conjunto de métodos com satisfação implícita: sem implements, sem hierarquia. Entenda method sets, valores de interface, nil tipado e interfaces pequenas, com código executável."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+import SeriesNav from '@site/src/components/blog/SeriesNav';
+
+Nos posts anteriores, tipos ganharam métodos — e `T` e `*T` passaram a enxergar conjuntos diferentes. Interfaces são o que acontece quando você dá nome a um desses conjuntos: um tipo satisfaz a interface simplesmente por ter os métodos. Sem `implements`, sem herança, sem registro.
+
+Rob Pike chama interfaces de traço distintivo e poderoso do Go, com efeito profundo no design de bibliotecas ([Simplicity is Complicated, dotGo 2015](https://go.dev/talks/2015/simplicity-is-complicated.slide)). E deixa o provérbio que resume este post: *the bigger the interface, the weaker the abstraction* ([Go Proverbs](https://go-proverbs.github.io/)). Terceiro post da série **Go por dentro** (03/04).
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- o problema que interfaces resolvem: dependência de concreto vs comportamento
+- satisfação implícita: sem `implements`, o method set decide
+- valor de interface como par (tipo, valor) — e por que isso explica o nil tipado
+- `T` vs `*T` na satisfação: a armadilha dos receivers mistos se fecha aqui
+- interfaces pequenas e o desenho pelo cliente (Fowler)
+- embedding de interfaces e type sets (o segundo sentido de `interface`)
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Structs e methods](/go-structs-methods): receivers, method sets `T` vs `*T`, embedding
+- [Ponteiros](/go-ponteiros): nil e panic de dereference
+
+</Prerequisites>
+
+## 1. Contexto
+
+Todo programa tem um ponto onde um comportamento precisa variar: pagar com Stripe hoje, Pix amanhã; logar em arquivo em produção, em memória no teste. Sem interfaces, o código cita o concreto:
+
+```go title="checkout.go"
+func Checkout(g *StripeGateway, v Venda) error {
+	return g.Pay(v.Total) // amarrado ao concreto: sem Stripe, sem teste
+}
+```
+
+Trocar o gateway ou testar sem rede exige cirurgia. A interface quebra o acoplamento nomeando **o comportamento que o cliente precisa**, não quem o fornece. Martin Fowler formula pelo lado do cliente: a interface requerida é aquilo que o cliente necessita do fornecedor para a colaboração funcionar ([Required Interface](https://martinfowler.com/bliki/RequiredInterface.html)):
+
+![Diagrama: cliente precisa da interface, implementações a satisfazem](/img/diagramas/go-interfaces-client.svg)
+
+## 2. O problema
+
+Sem esse corte, cada novo gateway multiplica `if provedor == X` pelo código, e cada teste precisa de credencial real. O problema não é "falta de abstração" em geral — é dependência de **tipo concreto** onde só **comportamento** importa. Interface resolve exatamente isso, e nada além disso: ela não cria extensibilidade mágica, só troca "quem" por "o quê".
+
+## 3. Modelo mental
+
+**Interface é conjunto de métodos.** `type Speaker interface{ Speak() string }` define: pertence quem tem `Speak() string`. O compilador verifica; nenhum `implements` é declarado, nenhum registro existe. (Desde Go 1.18, interface também define *type set* — conjunto de tipos — usado como constraint de generics. Mesmo mecanismo, segundo uso; este post foca no primeiro.)
+
+**Satisfação é implícita — o method set decide:**
+
+![Diagrama: Dog satisfaz Speaker por ter Speak; Cat não](/img/diagramas/go-interfaces-method-set.svg)
+
+**Valor de interface é um par (tipo, valor).** Rob Pike resume: a variável guarda o valor concreto mais seu descritor de tipo ([Laws of Reflection](https://go.dev/blog/laws-of-reflection)). Russ Cox detalha a implementação com figuras ([Go Data Structures: Interfaces](https://research.swtch.com/interfaces)). Consequência direta: interface só é `nil` quando **tipo e valor** são nil.
+
+![Diagrama: interface com tipo *Dog e valor nil não é nil](/img/diagramas/go-interfaces-value.svg)
+
+**`T` vs `*T` vale aqui também.** Se `Speak` tem receiver `*Dog`, só `*Dog` satisfaz `Speaker` — `Dog` (valor) não. É a armadilha dos receivers mistos do Post 2 se fechando: a escolha de receiver, feita lá, decide satisfação aqui.
+
+**Regra prática.** Desenhe a interface pelo cliente (o que ele chama), não pelo fornecedor (o que ele tem). Se a interface tem mais de 2–3 métodos, desconfie: provérbio de Pike.
+
+## 4. Implementação
+
+Código executável, saídas reais (Go 1.26, darwin/arm64).
+
+### Satisfação e nil de verdade
+
+```go title="main.go" showLineNumbers
+type Speaker interface{ Speak() string }
+
+type Dog struct{ Name string }
+
+func (d Dog) Speak() string { return "au, sou " + d.Name }
+
+func main() {
+	var s Speaker
+	fmt.Println("nil interface, == nil?", s == nil)
+
+	var d *Dog
+	i := Speaker(d)
+	fmt.Println("typed nil: ptr nil?", d == nil, "| iface nil?", i == nil)
+}
+```
+
+```bash title="Terminal"
+nil interface, == nil? true
+typed nil: ptr nil? true | iface nil? false
+```
+
+`Dog` nunca declarou implementar nada — tem o método, pertence ao conjunto. E o par `(tipo=*Dog, valor=nil)` tem tipo, logo não é `nil`: o `== nil` compara o par inteiro, não o valor dentro dele.
+
+### Contrato pelo cliente: testável sem rede
+
+```go title="checkout.go" showLineNumbers
+type PaymentGateway interface {
+	Pay(amount Money) error
+}
+
+func Checkout(g PaymentGateway, v Venda) error {
+	return g.Pay(v.Total)
+}
+```
+
+`Checkout` depende do comportamento `Pay`. Stripe, Pix e um `FakeGateway` de teste satisfazem sem conhecer `Checkout` — e `Checkout` nunca ouviu falar deles. Dependência invertida sem framework: o cliente declara o que precisa, cada fornecedor se encaixa por ter os métodos.
+
+### Embedding de interfaces: composição de contratos
+
+```go title="io.go"
+type Reader interface{ Read(p []byte) (n int, err error) }
+type Writer interface{ Write(p []byte) (n int, err error) }
+
+type ReadWriter interface {
+	Reader
+	Writer
+}
+```
+
+`ReadWriter` é a união dos method sets — embedding aplicado a contratos. A biblioteca padrão inteira (`io`, `http`, `fmt`) é construída assim: contratos mínimos combinados, nunca hierarquias.
+
+## 5. Falhas e trade-offs
+
+**Nil tipado: o panic que o `== nil` não pegou.** Converta `(*Dog)(nil)` para `Speaker` e chame o método com receiver ponteiro:
+
+```bash title="Terminal"
+panic: runtime error: invalid memory address or nil pointer dereference
+```
+
+A guarda `if s == nil` passou (a interface tem tipo!), e o método dereferenciou o valor nil — o panic do Post 1, agora fantasiado de interface. Defesa: construa valores válidos nas bordas (construtores `New` do post de visibilidade) ou use a forma `v, ok` em assertions; nunca confie que "veio de interface, logo é seguro".
+
+**`any` como muleta.** `interface{}` (alias `any`) satisfaz tudo e diz nada — o próprio Pike avisa: *interface{} says nothing*. Parâmetro `any` transfere a checagem de tipo do compilador para o runtime (type switch/assertion). Use em serialização, formatação e fronteiras dinâmicas; em lógica de negócio, nomeie o comportamento.
+
+**Interfaces grandes.** Cada método a mais multiplica implementações e mocks, e estreita o conjunto de tipos que satisfazem. Comece com um método; cresça por embedding quando dois clientes precisarem da combinação.
+
+**Receiver errado, erro confuso.** `does not implement Speaker (method Speak has pointer receiver)` quase sempre significa: o método existe, mas no `*T` — e você passou `T`. Volte ao Post 2, unifique receivers, o erro some.
+
+### Fontes e nível de autoridade
+
+| Assunto | Fonte principal |
+|---|---|
+| Tipos interface, method sets | [Especificação do Go](https://go.dev/ref/spec#Interface_types) |
+| Par (tipo, valor), reflection | [Rob Pike, Laws of Reflection](https://go.dev/blog/laws-of-reflection) |
+| Interfaces como traço distintivo | [Rob Pike, Simplicity is Complicated](https://go.dev/talks/2015/simplicity-is-complicated.slide) |
+| Interfaces pequenas | [Rob Pike, Go Proverbs](https://go-proverbs.github.io/) |
+| Implementação (itable, figuras) | [Russ Cox, Go Data Structures: Interfaces](https://research.swtch.com/interfaces) |
+| Method sets `T` vs `*T` | [Go Wiki, Method Sets](https://go.dev/wiki/MethodSets) |
+| Interface pelo cliente | [Martin Fowler, Required Interface](https://martinfowler.com/bliki/RequiredInterface.html) |
+
+<Summary>
+
+- interface é conjunto de métodos; pertencer é ter os métodos, sem `implements`
+- valor de interface = par (tipo, valor); com tipo, não é nil — daí o nil tipado
+- receiver decide satisfação: `*T` vs `T` herdado do Post 2
+- desenhe pelo cliente, pequena, componha por embedding; `any` só na fronteira dinâmica
+
+</Summary>
+
+<NextSteps href="/go-structs-methods" title="Structs e methods em Go">
+
+Interfaces cobram method sets — e method sets nascem nos receivers. Releia o Post 2 com esse olhar; o próximo (e último) da série, slices, mostra o ponteiro que você não vê.
+
+</NextSteps>
+
+<SkillsGained skills={["Interfaces", "Method sets", "Nil tipado", "Design por contrato", "Type sets"]} />
+
+<SeriesNav
+  seriesName="Go por dentro — 03/04"
+  prev={{title: "Structs e methods em Go", href: "/go-structs-methods"}}
+  next={{title: "Slices em Go", href: "/go-slices"}}
+/>

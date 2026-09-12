@@ -3,6 +3,30 @@ import styles from './styles.module.css';
 
 const contents = [
   {
+    title: 'Concorrência em Go',
+    description: 'Goroutines, channels, WaitGroup e race detector com saídas reais.',
+    href: '/go-concorrencia',
+    date: '12 set 2026',
+  },
+  {
+    title: 'Maps em Go',
+    description: 'Swiss Tables por dentro: grupos, control bytes e o fim dos buckets.',
+    href: '/go-maps',
+    date: '12 set 2026',
+  },
+  {
+    title: 'Slices em Go',
+    description: 'O ponteiro que você não vê: header, backing array, append e aliasing.',
+    href: '/go-slices',
+    date: '12 set 2026',
+  },
+  {
+    title: 'Interfaces em Go',
+    description: 'Comportamento sem herança: method sets, nil tipado e interfaces pequenas.',
+    href: '/go-interfaces',
+    date: '12 set 2026',
+  },
+  {
     title: 'Visibilidade e packages em Go',
     description: 'Maiúscula exporta: pacotes, construtores, structs aninhadas e callbacks.',
     href: '/go-visibilidade-pacotes',

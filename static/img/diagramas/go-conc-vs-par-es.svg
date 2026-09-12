@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 272" role="img" aria-label="Diagrama: concurrencia intercalada, paralelismo simultáneo">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .a{fill:none;stroke:#0969da;stroke-width:2}
+    .b{fill:none;stroke:#b35900;stroke-width:2}
+    .lbl{fill:#57606a}
+    .tick{stroke:#57606a;stroke-width:1.5;stroke-dasharray:5 4}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .a{stroke:#58a6ff}
+      .b{stroke:#d29922}
+      .lbl{fill:#8b949e}
+      .tick{stroke:#8b949e}
+    }
+  </style>
+  <text x="25" y="75" font-size="14" class="lbl">concurrencia</text>
+  <text x="25" y="95" font-size="13" class="lbl">1 núcleo</text>
+  <rect x="160" y="50" width="120" height="55" class="a"/>
+  <text x="212" y="84" font-size="14">A</text>
+  <rect x="280" y="50" width="100" height="55" class="b"/>
+  <text x="322" y="84" font-size="14">B</text>
+  <rect x="380" y="50" width="80" height="55" class="a"/>
+  <text x="412" y="84" font-size="14">A</text>
+  <rect x="460" y="50" width="100" height="55" class="b"/>
+  <text x="502" y="84" font-size="14">B</text>
+  <rect x="560" y="50" width="60" height="55" class="a"/>
+  <text x="582" y="84" font-size="14">A</text>
+  <text x="25" y="180" font-size="14" class="lbl">paralelismo</text>
+  <text x="25" y="200" font-size="13" class="lbl">2 núcleos</text>
+  <rect x="160" y="150" width="460" height="40" class="a"/>
+  <text x="382" y="176" font-size="14">A</text>
+  <rect x="160" y="200" width="460" height="40" class="b"/>
+  <text x="382" y="226" font-size="14">B</text>
+  <line x1="330" y1="140" x2="330" y2="242" class="tick"/>
+  <text x="342" y="264" font-size="12" class="lbl">mismo instante</text>
+</svg>

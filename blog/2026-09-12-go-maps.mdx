@@ -1,0 +1,127 @@
+---
+slug: go-maps
+title: "Maps em Go: Swiss Tables por dentro"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-12T23:00:00
+description: "Desde o Go 1.24, maps usam Swiss Tables: grupos de 8 slots, control bytes, probing triangular e diretório. Entenda o runtime atual — e o que mudou dos buckets antigos."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+Até o Go 1.23, map era buckets com até 8 pares e correntes de overflow. O Go 1.24 trocou o runtime por Swiss Tables — grupos de 8 slots com control bytes comparados em conjunto, probing triangular, diretório e tabelas de no máximo 1024 slots ([Go Blog](https://go.dev/blog/swisstable)).
+
+Este post é extra (fora da série Go por dentro): o mapa no nível da API você já usa; aqui vai o runtime atual, o que mudou e por quê — com a ressalva honesta de que detalhe de runtime muda entre versões.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- map como ponteiro para `Map`: `len` O(1), seed aleatória por mapa
+- grupo: 8 slots + control word; H1 escolhe onde começar, H2 filtra candidatos
+- estados empty vs deleted (tombstone) e por que a busca para num e continua no outro
+- tabela, probing triangular, diretório, load 7/8
+- o que mudou desde os buckets com overflow (pré-1.24)
+- `comma-ok`, `delete` e ordem de iteração na prática
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go básico: maps, `make`, `delete`, `len` (Go 1.26 nos exemplos)
+- [Slices](/go-slices): backing array e crescimento ajudam na intuição
+
+</Prerequisites>
+
+## 1. Contexto
+
+`m := make(map[string]int)` cria mais que "um dicionário": a variável guarda um **ponteiro** para a estrutura interna `Map` (campos `used`, `seed`, diretório...). Copiar a variável copia o ponteiro — dois nomes, um mapa. E `len(m)` é O(1) porque lê o contador `used`, não percorre nada.
+
+Cada mapa nasce com um `seed` aleatório: o hash mistura chave + seed, então as mesmas chaves se distribuem diferente em mapas diferentes. Ordem de iteração? Consequência direta: **não confie nela** — varia entre execuções por construção.
+
+## 2. O problema
+
+Com buckets antigos, colisão virava corrente de overflow: cada elo, um load de ponteiro dependente antes de escanear 8 slots. Crescimento dobrava o array inteiro e evacuava incrementalmente, mantendo dois arrays vivos. Funcionava — mas pagava pointer chasing em toda colisão longa e rebuilds globais no crescimento. O Go 1.24 redesenhou para: comparar 8 candidatos de uma vez, procurar espaço no mesmo array contíguo e rebuildar só a tabela afetada.
+
+## 3. Modelo mental
+
+**Grupo: 8 slots + 8 control bytes.** A unidade mínima. Cada control byte descreve o slot abaixo: bit alto 0 = vivo (7 bits guardam H2, pedaço do hash); `10000000` = empty; `11111110` = deleted (tombstone):
+
+![Diagrama: grupo com control bytes e slots](/img/diagramas/go-maps-group.svg)
+
+**H1 escolhe onde começar; H2 filtra.** O hash se divide: H1 (57 bits) seleciona grupo de partida (e entrada do diretório, e tabela); H2 (7 bits) é comparado com os 8 control bytes **de uma vez** (SIMD no AMD64) gerando bitmask de candidatos. Só candidatos passam por comparação completa de chave (`==`). Chaves completas quase nunca são lidas à toa.
+
+**Empty para, deleted continua.** Busca sem achar + control empty no grupo = pode parar (a chave não está adiante na sequência). Deleted = outra chave pode ter passado por ali antes de ser removida → continua sondando. Por isso deletar nem sempre marca tombstone: com slot empty no grupo (ou mapa de 1 grupo), o removido vira empty direto.
+
+**Tabela, probing, diretório, load 7/8.** Grupos vivem em tabelas (até 128 grupos = 1024 slots); grupo cheio → próximo pela **sequência triangular de probing** (saltos crescentes evitam clustering do linear). Tabela cheia (carga 7/8 contando vivos + deletados) → dobra grupos ou, no limite, **split**: divide só aquela tabela em duas — as demais ficam intactas. O **diretório** mapeia prefixos de H1 para tabelas (profundidades global/local), permitindo splits independentes.
+
+![Diagrama: buckets com overflow vs tabela com probing](/img/diagramas/go-maps-old-vs-new.svg)
+
+**Regra prática.** Modelo de bolso: hash → H1 acha o grupo, H2 filtra 8 de uma vez, empty para, deleted segue, 7/8 manda crescer. Detalhe além disso, consulte o fonte da sua versão (`runtime/maps`).
+
+## 4. Implementação
+
+A API não mudou — o que muda é o que você pode assumir sobre ela:
+
+```go title="main.go" showLineNumbers
+m := make(map[string]int)
+m["alice"] = 25
+m["bob"] = 30
+fmt.Println("len:", len(m))
+
+v, ok := m["carol"]
+fmt.Println("ausente:", v, ok)
+
+delete(m, "alice")
+fmt.Println("pos-delete:", len(m), m["alice"])
+```
+
+```bash title="Terminal"
+len: 2
+ausente: 0 false
+pos-delete: 1 0
+```
+
+Três regras embutidas: `len` lê contador (O(1)); chave ausente devolve zero value — a forma `v, ok` distingue "vale zero" de "não existe" (mesma lição do nil tipado do Post 3); `delete` em chave inexistente é no-op seguro, e ler depois devolve o zero.
+
+## 5. Falhas e trade-offs
+
+**Iterar esperando ordem.** Seed aleatória + redistribuição = ordem varia. Precisa de ordem? Extraia chaves, ordene com `slices.Sorted(maps.Keys(m))`.
+
+**Concorrência: map não é thread-safe.** Leitura concorrente com escrita = panic (`concurrent map read and map write`); escrita dupla = `fatal error`. Proteja com `sync.Mutex`/`RWMutex`, use `sync.Map` no padrão certo ou particione por goroutine.
+
+**Ensinar buckets em 2026.** Tutoriais pré-1.24 (incluindo guias visuais antigos) descrevem overflow e evacuação incremental como "como Go faz". Hoje é história: cite como nota histórica, ensine Swiss Tables como atual — e marque a versão, porque runtime evolui (layout split-group já é experimento `GOEXPERIMENT=mapsplitgroup`, padrão no branch de dev).
+
+**Premature tuning por internals.** Load 7/8, grupos de 8, probing — tudo é decisão de implementação, não contrato. Otimize por benchmark (como no Post 1), nunca por "li que o grupo tem 8 slots".
+
+### Fontes e nível de autoridade
+
+| Assunto | Fonte principal |
+|---|---|
+| Swiss Tables no Go (passo a passo visual) | [Phuong Le, Go Swiss Table Map](https://victoriametrics.com/blog/go-swiss-table-map/) |
+| Swiss Tables (profundo, oficial) | [Go Blog, Faster Go maps](https://go.dev/blog/swisstable) |
+| Tipos map | [Especificação do Go](https://go.dev/ref/spec#Map_types) |
+| Buckets antigos (nota histórica) | [sazak.io, Visual Guide to Maps](https://sazak.io/articles/visual-guide-to-go-maps-hash-tables-2025-10-26) |
+| Concorrência e `sync.Map` | [Phuong Le, sync.Map hash trie](https://victoriametrics.com/blog/go-sync-map-hash-trie/) |
+
+<Summary>
+
+- map é ponteiro p/ `Map`: `len` O(1), seed própria, ordem não garantida
+- grupo = 8 slots + control bytes; H1 posiciona, H2 filtra em conjunto, SIMD confirma candidatos
+- empty para a busca, deleted (tombstone) continua; carga 7/8 dispara crescimento
+- tabelas ≤1024 slots rebuildam sozinhas; diretório isola splits
+- `v, ok` distingue zero de ausente; maps não são thread-safe
+
+</Summary>
+
+<NextSteps href="/go-slices" title="Slices em Go">
+
+Internals de coleções fecham aqui: slices (header + backing array) e maps (grupos + tabelas). Para voltar à linguagem, releia a série Go por dentro do Post 1.
+
+</NextSteps>
+
+<SkillsGained skills={["Maps", "Swiss Tables", "Hash tables", "Concorrência"]} />

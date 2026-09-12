@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 280" role="img" aria-label="Diagram: Dog satisfies Speaker, Cat does not">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .lbl{fill:#57606a}
+    .good{fill:#238636;font-weight:bold}
+    .bad{fill:#b35900;font-weight:bold}
+    .dash{stroke:#57606a;stroke-width:1.5;fill:none;stroke-dasharray:6 5}
+    .head{fill:#57606a;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .lbl{fill:#8b949e}
+      .good{fill:#3fb950}
+      .bad{fill:#d29922}
+      .dash{stroke:#8b949e}
+      .head{fill:#8b949e}
+    }
+  </style>
+  <defs>
+    <marker id="ah6" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <rect x="30" y="80" width="200" height="120" rx="10" class="box"/>
+  <text x="50" y="118" font-size="17" font-weight="bold">Speaker</text>
+  <text x="50" y="148" font-size="14">Speak() string</text>
+  <text x="50" y="172" font-size="13" class="lbl">interface</text>
+  <rect x="400" y="25" width="230" height="100" rx="10" class="box"/>
+  <text x="420" y="58" font-size="16" font-weight="bold">Dog</text>
+  <text x="420" y="84" font-size="14">Speak() string</text>
+  <text x="420" y="108" font-size="14" class="good">✓ satisfies</text>
+  <rect x="400" y="155" width="230" height="100" rx="10" class="box"/>
+  <text x="420" y="188" font-size="16" font-weight="bold">Cat</text>
+  <text x="420" y="214" font-size="14">Miau() string</text>
+  <text x="420" y="238" font-size="14" class="bad">✗ does not satisfy</text>
+  <line x1="235" y1="110" x2="385" y2="80" class="dash" marker-end="url(#ah6)"/>
+  <line x1="235" y1="160" x2="385" y2="200" class="dash" marker-end="url(#ah6)"/>
+</svg>

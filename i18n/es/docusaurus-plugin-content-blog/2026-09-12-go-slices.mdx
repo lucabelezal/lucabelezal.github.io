@@ -1,0 +1,190 @@
+---
+slug: go-slices
+title: "Slices en Go: el puntero que no ves"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-12T22:00:00
+description: "Un slice es un valor de tres palabras (puntero, tamaño, capacidad) sobre un array. Entiende aliasing, append, crecimiento y nil vs vacío — con código ejecutable y salidas reales."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+import SeriesNav from '@site/src/components/blog/SeriesNav';
+
+Todo lo demás de la serie fue preparación para este post. Punteros (Post 1), semántica de valor (Post 2) y el retiro de "tipo por referencia" convergen en un tipo que todo programa Go usa y casi nadie modela bien: el slice. Un slice **es un valor de tres palabras** — puntero al array, tamaño y capacidad — y cada sorpresa de slices nace de olvidar una de las tres.
+
+Último post de la serie **Go por dentro** (04/04).
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- slice como descriptor: `ptr` + `len` + `cap` sobre un backing array
+- por qué rebanar comparte memoria (aliasing) y cuándo copiar (`copy`, `Clone`)
+- cómo crece `append`: `len == cap` realoca — y no "siempre duplica"
+- nil vs vacío: puntero nil vs array asignado, y el reflejo en JSON
+- la regla de oro: usa siempre el retorno de `append`
+- `slices.Clone/Clip/Grow`: la stdlib moderna en lugar de lo manual
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Punteros en Go](/go-ponteiros): valores, pasaje por valor, escape analysis
+- [Structs y métodos](/go-structs-methods): semántica de valor
+- Go básico (Go 1.26 en los ejemplos, salidas reales)
+
+</Prerequisites>
+
+## 1. Contexto
+
+Los arrays en Go son valores de tamaño fijo — y el tamaño es parte del tipo (`[4]int` ≠ `[5]int`). Asignar copia todo. Para listas que crecen, el lenguaje ofrece el slice: una vista flexible sobre un array, que crece por `append`.
+
+La definición que importa, directo del runtime (`runtime/slice.go`):
+
+```go title="runtime/slice.go"
+type slice struct {
+	array unsafe.Pointer
+	len   int
+	cap   int
+}
+```
+
+Tres palabras. El `array` apunta al primer elemento del backing array; `len` cuenta los elementos visibles; `cap` cuenta hasta dónde se puede ir sin realocar:
+
+![Diagrama: header ptr/len/cap apuntando al backing array](/img/diagramas/go-slices-header.svg)
+
+Andrew Gerrand resume la consecuencia: rebanar no copia datos — crea un nuevo descriptor sobre el mismo array, lo que hace las operaciones tan baratas como manipular índices ([Go Slices: usage and internals](https://go.dev/blog/slices-intro)). Barato, pero compartido: ahí viven los bugs.
+
+> **Definición (propuesta).** Slice es un valor de tres palabras (puntero, tamaño, capacidad) que describe un segmento de array. Copiar el descriptor es barato; los elementos siguen compartidos hasta realocar.
+
+## 2. El problema
+
+Rebanas un array y ajustas un elemento del slice:
+
+```go title="main.go" showLineNumbers
+a := [6]int{12, 43, 55, 35, 1, 99}
+t := a[1:4]
+t[0] = 77
+fmt.Println("shared:", t, "| array:", a)
+```
+
+```bash title="Terminal"
+shared: [77 55 35] | array: [12 77 55 35 1 99]
+```
+
+`a[1]` pasó a 77 sin que nadie tocara `a`. El slice y el array dividen la memoria — escribir por el slice escribe en el array. La peor versión (capítulo "Tricky Slices", Boot.dev): dos `append`s de la misma base con capacidad sobrante se sobrescriben en silencio, porque ninguno realocó. El problema nunca es el `append` en sí — es el **compartir invisible** del backing array.
+
+## 3. Modelo mental
+
+**Rebanar comparte; copiar separa.** `t := a[1:4]` crea descriptor nuevo (ptr a `a[1]`, len 3, cap 5 — la capacidad cuenta desde el inicio del slice hasta el fin del array). `copy(dst, src)` o `slices.Clone` crean array nuevo. Decide por intención: ventana sobre datos vivos → rebana; valor independiente → clona.
+
+**`len` manda; `cap` sugiere.** Solo índices `< len` son accesibles — `s[3]` con len 3 causa panic aun con cap 5. `cap` existe para que `append` sepa cuándo realocar, y para que prealoques con `make([]int, 0, 1000)`.
+
+**Nil vs vacío: puntero nil vs array asignado.** `var s []int` tiene `array == nil` (es nil); `[]int{}` y `make([]int, 0)` apuntan a array de tamaño cero (vacíos, no nil). Misma distinción del Post 1, una capa arriba — y con reflejo en JSON: el slice nil serializa `null`, el vacío `[]`.
+
+**Append devuelve descriptor nuevo — usa el retorno.** `append` puede realocar (nuevo array, nuevo ptr) o no (mismo array, len mayor). En ambos casos el descriptor correcto está en el retorno. `s = append(s, x)` siempre; `append(s, x)` suelto descarta justo lo que cambió.
+
+**Regla práctica.** El slice no es "tipo por referencia" — es valor de tres palabras con puntero dentro. Toda sorpresa desaparece cuando dibujas el header antes de predecir el comportamiento.
+
+## 4. Implementación
+
+### Crecimiento real (Go 1.26, salidas reales)
+
+```go title="main.go" showLineNumbers
+var s []int
+for i := 0; i < 10; i++ {
+	s = append(s, i)
+	fmt.Println("len:", len(s), "cap:", cap(s))
+}
+```
+
+```bash title="Terminal"
+len: 1 cap: 4
+len: 2 cap: 4
+len: 3 cap: 4
+len: 4 cap: 4
+len: 5 cap: 8
+len: 6 cap: 8
+len: 7 cap: 8
+len: 8 cap: 8
+len: 9 cap: 16
+len: 10 cap: 16
+```
+
+Nota el primer salto: 0 → 4, no 0 → 1. El compilador actual asigna un backing especulativo en **stack** antes del loop ([Randall, Allocating on the Stack](https://go.dev/blog/allocation-optimizations)) — tutoriales viejos que muestran 1, 2, 4 describen otro compilador. La fórmula exacta vive en `nextslicecap` del runtime: ~2x en slices pequeños, suavizando hacia ~1,25x en grandes, siempre redondeada a clases de tamaño.
+
+![Diagrama: len lleno dispara nuevo array mayor; descriptor actualizado](/img/diagramas/go-slices-append-es.svg)
+
+### Separando lo compartido: `Clone` y `Clip`
+
+```go title="main.go" showLineNumbers
+u := slices.Clone(t)
+u[0] = 43
+fmt.Println("cloned:", u, "| orig:", t)
+
+full := []int{1, 2, 3, 4, 5}
+w := full[:2]
+fmt.Println("clipped:", slices.Clip(w), len(w), cap(slices.Clip(w)))
+```
+
+```bash title="Terminal"
+cloned: [43 55 35] | orig: [77 55 35]
+clipped: [1 2] 2 2
+```
+
+`Clone` copia elementos a array nuevo (el original respira); `Clip` quita la capacidad no usada (`s[:len(s):len(s)]`), bloqueando el slice contra appends ajenos que escribirían en tu array. El paquete [`slices`](https://pkg.go.dev/slices) (stdlib) jubila buena parte del `copy`/`append` manual: `Grow`, `Concat`, `Compact`, `Delete`.
+
+**Regla práctica.** Función que recibe slice y guarda: clona a la entrada o documenta el compartir. El slice que cruza fronteras de API sin dueño claro se vuelve aliasing a distancia.
+
+## 5. Fallas y trade-offs
+
+**"Append duplica la capacidad".** Falso en general: duplica en pequeño, ~1,25x en grande, clases de tamaño en medio — y Go 1.26 aún anticipa stack. Quien dimensiona protocolos o formatos binarios contando con "duplica" se equivoca. Fuente: el runtime, no tutoriales.
+
+**Append en base compartida.** Dos slices del mismo array con cap sobrante: el append en uno escribe "dentro" del otro. Defensa canónica: full slice expression `s[1:3:3]` limita el cap del rebanado, forzando realocar al primer append — aislamiento por construcción.
+
+**Nil vs vacío en JSON.** `var s []int` → `null`; `[]int{}` → `[]`. APIs que prometen listas y entregan `null` rompen clientes tipados. Decide por contrato: `make`/`Clone` (nunca nil) cuando la respuesta debe ser lista.
+
+**"Tipo por referencia".** La formulación que este post jubila: el slice se pasa por valor como todo en Go — el header se copia en cada llamada (por eso `append` sin usar el retorno "no pega", igual que el `increment` del Post 1). Llamarlo referencia esconde justo el mecanismo que explica los bugs.
+
+### Fuentes y nivel de autoridad
+
+| Tema | Fuente principal |
+|---|---|
+| Slices: uso e internals | [Andrew Gerrand, Go Slices](https://go.dev/blog/slices-intro) |
+| Tipos slice, `make`, `append`, `copy` | [Especificación de Go](https://go.dev/ref/spec#Slice_types) |
+| Crecimiento (`nextslicecap`) | [Runtime de Go, `slice.go`](https://go.dev/src/runtime/slice.go) |
+| Stack especulativa (1.25/1.26) | [Keith Randall, Allocating on the Stack](https://go.dev/blog/allocation-optimizations) |
+| Representación (header de 3 palabras) | [Russ Cox, Go Data Structures](https://research.swtch.com/godata) |
+| Paquete `slices` (stdlib) | [pkg.go.dev/slices](https://pkg.go.dev/slices) |
+| Tour interactivo | [A Tour of Go](https://go.dev/tour/moretypes/13) |
+| Nil vs vacío, copy, retorno de append | [Andrei Boar, Demystifying Golang Slices](https://medium.com/@andreiboar/demystifying-golang-slices-83ffe3550db5) |
+| Crecimiento, 3-index, stack/heap | [Phuong Le, Slices in Go (VictoriaMetrics)](https://victoriametrics.com/blog/go-slice) |
+| Diagramas de memoria, ejercicios | [Ozan Sazak, Visual Guide to Slices](https://sazak.io/articles/visual-guide-to-slices-in-go-2024-03-25) |
+| Arrays, reslicing, `copy` | [Luís Franco, Deep dive on slices](https://ornlu-is.github.io/go_slices) |
+| Tricky appends, `var` vs `new`, range | [Lane Wagner, Slices in Go](https://www.boot.dev/blog/golang) |
+
+<Summary>
+
+- slice = header (ptr, len, cap) + backing array; rebanar comparte, clonar separa
+- `len` limita acceso, `cap` orienta `append`; el crecimiento real se mide, no se memoriza
+- siempre `s = append(s, x)`; `nil ≠ vacío` (incluso en JSON)
+- stdlib `slices` (Clone/Clip/Grow) en lugar de lo manual; full slice `[l:h:max]` aísla por construcción
+
+</Summary>
+
+<NextSteps href="/go-ponteiros" title="Punteros en Go">
+
+Serie completa: punteros → structs → interfaces → slices. Para cerrar el círculo, vuelve al Post 1 — el header del slice es el puntero que aprendiste a dibujar allí.
+
+</NextSteps>
+
+<SkillsGained skills={["Slices", "Backing array", "Append", "Aliasing", "Stdlib slices"]} />
+
+<SeriesNav
+  seriesName="Go por dentro — 04/04"
+  prev={{title: "Interfaces en Go", href: "/go-interfaces"}}
+/>

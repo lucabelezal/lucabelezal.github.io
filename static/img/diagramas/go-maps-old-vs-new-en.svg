@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 300" role="img" aria-label="Diagram: chained overflow buckets vs contiguous probing table">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .old{fill:none;stroke:#57606a;stroke-width:1.5}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .oarrow{stroke:#57606a;stroke-width:1.5;fill:none}
+    .head{fill:#0969da;stroke:none}
+    .ohead{fill:#57606a;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .old{stroke:#8b949e}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+      .oarrow{stroke:#8b949e}
+      .ohead{fill:#8b949e}
+    }
+  </style>
+  <defs>
+    <marker id="ah12" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+    <marker id="ah13" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="ohead"/>
+    </marker>
+  </defs>
+  <text x="30" y="35" font-size="14" class="lbl">pre 1.24 · chained overflow</text>
+  <rect x="30" y="50" width="130" height="70" rx="8" class="old"/>
+  <text x="46" y="80" font-size="14">bucket</text>
+  <text x="46" y="102" font-size="13" class="lbl">8 pairs</text>
+  <line x1="165" y1="85" x2="215" y2="85" class="oarrow" marker-end="url(#ah13)"/>
+  <rect x="220" y="50" width="130" height="70" rx="8" class="old"/>
+  <text x="236" y="80" font-size="14">overflow</text>
+  <text x="236" y="102" font-size="13" class="lbl">+8 · pointer</text>
+  <text x="30" y="150" font-size="13" class="lbl">each link: pointer load before scanning</text>
+  <text x="360" y="35" font-size="14" class="lbl">1.24+ · contiguous table</text>
+  <rect x="360" y="50" width="85" height="70" rx="8" class="box"/>
+  <text x="372" y="80" font-size="13">group</text>
+  <text x="372" y="102" font-size="13" class="lbl">8</text>
+  <rect x="450" y="50" width="85" height="70" rx="8" class="box"/>
+  <text x="462" y="80" font-size="13">group</text>
+  <text x="462" y="102" font-size="13" class="lbl">8</text>
+  <rect x="540" y="50" width="85" height="70" rx="8" class="box"/>
+  <text x="552" y="80" font-size="13">group</text>
+  <text x="552" y="102" font-size="13" class="lbl">8</text>
+  <path d="M 380 135 Q 420 165 480 135" class="arrow" marker-end="url(#ah12)"/>
+  <text x="400" y="185" font-size="13" class="lbl">triangular probing</text>
+  <text x="30" y="230" font-size="13" class="lbl">growth: double whole array + gradual evacuation</text>
+  <text x="30" y="254" font-size="13" class="lbl">↓</text>
+  <text x="360" y="230" font-size="13" class="lbl">growth: rebuild one table (≤1024 slots)</text>
+  <text x="360" y="254" font-size="13" class="lbl">independent splits via directory</text>
+</svg>

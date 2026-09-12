@@ -1,5 +1,25 @@
 [
   {
+    "slug": "go-concorrencia",
+    "title": "Concorrência em Go: goroutines, channels e o detector de race",
+    "date": "2026-09-12T23:30:00"
+  },
+  {
+    "slug": "go-maps",
+    "title": "Maps em Go: Swiss Tables por dentro",
+    "date": "2026-09-12T23:00:00"
+  },
+  {
+    "slug": "go-slices",
+    "title": "Slices em Go: o ponteiro que você não vê",
+    "date": "2026-09-12T22:00:00"
+  },
+  {
+    "slug": "go-interfaces",
+    "title": "Interfaces em Go: comportamento sem herança",
+    "date": "2026-09-12T20:00:00"
+  },
+  {
     "slug": "go-visibilidade-pacotes",
     "title": "Visibilidade e packages em Go: maiúscula, pacotes e callbacks",
     "date": "2026-09-12T18:00:00"

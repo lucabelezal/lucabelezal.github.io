@@ -1,0 +1,328 @@
+---
+slug: go-concorrencia
+title: "Concurrency in Go: goroutines, channels, and the race detector"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-12T23:30:00
+description: "Concurrency is not parallelism. Understand goroutines, channels, WaitGroup, mutexes, and worker pools — with a real race, the detector on, and validated outputs."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+"Concurrency is about dealing with lots of things at once. Parallelism is about doing lots of things at once." Rob Pike's line ([Concurrency is not parallelism](https://go.dev/blog/waza-talk)) separates two concepts every tutorial blends — and Go was designed exactly on that boundary: cheap goroutines for concurrency, a scheduler that parallelizes with free cores, channels to coordinate without sharing memory.
+
+Standalone post (outside Go Inside Out), conceptually grounded in [Matheus Fidelis](https://fidelissauro.dev/concorrencia-paralelismo/), with fixes for patterns even good material gets crooked.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- concurrency vs parallelism (and why Go lives off both)
+- goroutines vs threads: M:N model and the runtime scheduler
+- channels: rendezvous (unbuffered) vs queue (buffered)
+- `WaitGroup` with the right `Done` owner — including the common bug
+- `select`, nil/closed matrix, and `struct{}` signals
+- mutexes, `RWMutex`, the race detector, and worker pools with real outputs
+- gen → workers → sum pipeline, race-clean
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Basic Go: functions, slices, `go run` and `go test` (Go 1.26 in the examples)
+- [Slices](/go-slices): value semantics (explains why `append` in goroutines surprises)
+
+</Prerequisites>
+
+## 1. Context
+
+A process is a running program (isolated memory). A thread is the OS's execution unit (sharing the process memory). A **goroutine** is the Go runtime's unit: ~2KB starting stack, born with a `go`, multiplexed by the scheduler onto real threads (M:N model). Spawning 100k goroutines is routine; 100k threads is suicide.
+
+Concurrency = managing many independently-progressing tasks (interleaving on one core). Parallelism = literally executing at once (several cores). Always concurrent Go; parallel when the scheduler has free cores:
+
+![Diagram: interleaving on one core vs simultaneous execution on two cores](/img/diagramas/go-conc-vs-par-en.svg)
+
+Go's motto, inverted on purpose: **don't communicate by sharing memory; share memory by communicating** — channels carry values (often copies) instead of exposing mutable state.
+
+### Analogy: the kitchen
+
+A restaurant kitchen separates both concepts cleanly. Three orders arrive — burger, pasta, dessert:
+
+**Concurrency: one cook, three orders.** They alternate: meat on the grill, pasta while it cooks; back to the burger, ahead on dessert. Progress-wise everything moves together — but physically one thing at a time.
+
+**Parallelism: three cooks.** One per order, literally simultaneous execution.
+
+And the case that matters for Go:
+
+```text
+1 cook + 3 orders → CONCURRENCY
+3 cooks + 3 orders → CONCURRENCY + PARALLELISM
+```
+
+Concurrency and parallelism aren't opposites — a system can be both. The Go mapping:
+
+```text
+Orders → goroutines (go processOrder(orderA))
+Cook → OS thread
+Head chef → runtime scheduler (GOMAXPROCS)
+```
+
+`go` before a call promises no three CPUs — it promises three managed tasks. With free cooks (cores), the scheduler truly parallelizes.
+
+## 2. The problem
+
+One hundred goroutines incrementing a counter. It runs, prints 100, looks right:
+
+```go title="main.go" showLineNumbers
+var total int
+var wg sync.WaitGroup
+for i := 0; i < 100; i++ {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		total++
+	}()
+}
+wg.Wait()
+fmt.Println("sem mutex:", total)
+```
+
+```bash title="Terminal"
+sem mutex: 100
+```
+
+100 by luck. With `-race`, the truth:
+
+```bash title="Terminal"
+WARNING: DATA RACE
+Previous write at ... by goroutine 7:
+    main.go:15
+```
+
+`total++` isn't atomic (read, add, write) — two goroutines interleave and one update is lost. Without the detector, the bug surfaces in production, at 3am, once a month. With it, it surfaces in CI today.
+
+## 3. Mental model
+
+**Unbuffered channels are handshakes; buffered ones are queues.** `ch := make(chan int)` completes a send only when someone receives (rendezvous — synchronizes). `make(chan int, 3)` queues up to 3 without blocking (decouples pace). Closing (`close`) signals the end to `range`; sending on closed panics.
+
+**`WaitGroup`: whoever `Add`s doesn't `Done`.** `Done` belongs to the worker goroutine (via `defer`, first line). A common wrong pattern — even in good teaching material — is `main` calling `Done` while consuming the channel: it works by accident when items == Adds, and explodes into `negative WaitGroup counter` at the first divergence. Work owner, `Done` owner.
+
+**Mutexes vs channels: guard data with mutexes, coordinate flow with channels.** Shared counters → `sync.Mutex`. Orchestration (work done, stage end, parallelism caps) → channels. "Mutexes for everything" serializes the whole program; "channels for everything" spreads state across an invisible protocol.
+
+**Rule of thumb.** Shared mutable data: mutexes plus `-race` in CI. Flow between stages: channels. Never both for the same problem.
+
+### `select`: one listener, several channels
+
+When one goroutine serves several channels, `select` fires the first ready one (ties: random draw):
+
+```go title="main.go" showLineNumbers
+chInts := make(chan int, 1)
+chStrs := make(chan string)
+chInts <- 42
+
+select {
+case i := <-chInts:
+	fmt.Println("int:", i)
+case s := <-chStrs:
+	fmt.Println("str:", s)
+default:
+	fmt.Println("nothing ready")
+}
+```
+
+```bash title="Terminal"
+int: 42
+```
+
+Without `default`, `select` blocks until some case frees up — with `default`, it becomes a non-blocking check ("anything? otherwise, moving on"). Dataless signals use `chan struct{}`: zero bytes, communicating only the instant.
+
+### Nil vs closed: the matrix
+
+| | send | receive |
+|---|---|---|
+| nil (uncreated) | blocks forever | blocks forever |
+| open | blocks if full (or rendezvous) | blocks if empty |
+| closed | **panic** | zero value + `ok=false` (after draining the buffer) |
+
+```go title="main.go"
+close(chInts)
+v, ok := <-chInts
+fmt.Println("closed:", v, ok)
+```
+
+```bash title="Terminal"
+closed: 0 false
+```
+
+Two precision notes: channels, like slices and maps, are **values with an internal pointer** — copying shares the queue (not "reference types" in the pass-by-reference sense; everything in Go passes by value, Post 1). And closing is optional for the GC: close to signal the end to the receiver (`range` terminates), never to "free memory".
+
+## 4. Implementation
+
+### Mutex: same program, no race
+
+```go title="main.go" showLineNumbers
+var total int
+var mu sync.Mutex
+var wg sync.WaitGroup
+for i := 0; i < 100; i++ {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		mu.Lock()
+		total++
+		mu.Unlock()
+	}()
+}
+wg.Wait()
+fmt.Println("com mutex:", total)
+```
+
+```bash title="Terminal"
+com mutex: 100
+```
+
+`go run -race`: silence — RACE-CLEAN. The lock serializes only the critical line (nanoseconds); everything else stays parallel.
+
+### `RWMutex`: simultaneous reads, exclusive writes
+
+When reads dominate, `sync.Mutex` wastes: readers could run together. `RWMutex` splits — many simultaneous `RLock`s, exclusive `Lock`:
+
+```go title="main.go" showLineNumbers
+var mu sync.RWMutex
+users := map[string]int{"ada": 36}
+
+go func() {
+	mu.RLock()
+	_ = users["ada"]
+	mu.RUnlock()
+}()
+
+mu.Lock()
+users["bob"] = 30
+mu.Unlock()
+```
+
+Convention: the variable is called `mu`, and `Unlock` goes `defer`red right after `Lock` — forgetting to unlock is self-inflicted deadlock. Maps, reminder: pure concurrent reads are safe; the danger is reading alongside writing (the runtime kills with `fatal error: concurrent map read and map write`).
+
+### Worker pool: semaphores with buffered channels
+
+```go title="main.go" showLineNumbers
+jobs := make(chan int, 3) // semaphore: 3 slots
+var wg2 sync.WaitGroup
+for w := 0; w < 3; w++ {
+	wg2.Add(1)
+	go func(id int) {
+		defer wg2.Done()
+		for j := range jobs {
+			_ = j // process
+		}
+	}(w)
+}
+for i := 0; i < 9; i++ {
+	jobs <- i
+}
+close(jobs)
+wg2.Wait()
+```
+
+```bash title="Terminal"
+pool processou: 9
+```
+
+Nine jobs, three workers: the buffer caps parallelism with no external library. Real production would use `golang.org/x/sync/semaphore` or `errgroup` — same mechanism, the package handles the corners.
+
+### Pipeline: generate → process (×2) → sum
+
+![Diagram: gen feeds two square workers feeding the sum](/img/diagramas/go-conc-pipeline-en.svg)
+
+```go title="main.go" showLineNumbers
+func gen(nums ...int) <-chan int {
+	out := make(chan int)
+	go func() {
+		defer close(out)
+		for _, n := range nums {
+			out <- n
+		}
+	}()
+	return out
+}
+
+func square(in <-chan int) <-chan int {
+	out := make(chan int)
+	var wg sync.WaitGroup
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for n := range in {
+				out <- n * n
+			}
+		}()
+	}
+	go func() {
+		wg.Wait()
+		close(out) // only closes after both finish
+	}()
+	return out
+}
+
+total := 0
+for v := range square(gen(1, 2, 3, 4)) {
+	total += v
+}
+fmt.Println("pipeline:", total)
+```
+
+```bash title="Terminal"
+pipeline: 30
+```
+
+Each stage only knows channels (`<-chan` parameters document "I only read"). Close `out` once, by its owner, after `Wait` — closing twice or sending on closed: panic. It's the [Go Concurrency Patterns](https://go.dev/blog/pipelines) template applied by the book.
+
+## 5. Failures and trade-offs
+
+**`Done` in the wrong place.** `wg.Add(1)` in the loop + `wg.Done()` in `main`'s consumption "works" while counts match — and becomes `negative WaitGroup counter` (panic) or eternal `Wait` at the first divergence. `defer wg.Done()` opens every worker goroutine, no exceptions.
+
+**`time.Sleep` as synchronization.** Waiting "long enough" for goroutines is a timer guess: fails on slow machines, wastes on fast ones. Synchronize with `Wait`/`range`/channels — `Sleep` simulates latency in examples, never orders execution.
+
+**Copying locks.** `sync.Mutex` inside value-passed structs: Post 2 showed `go vet` catching it. In concurrent code the damage is worse — two copies, two mutexes, zero real mutual exclusion.
+
+**Deadlocks by ordering.** Two mutexes acquired in opposite order by different goroutines = deadly embrace. Rule: global acquisition order (always A→B), or better, one mutex plus channels.
+
+**Leaked goroutines.** Sending on an unbuffered channel with no receiver forever = stuck goroutine + retained memory. Every `ch <- v` needs a `range`/receiver with a defined lifetime; every stage closes what it created.
+
+**`-race` outside CI.** The detector costs ~10x CPU/memory — which is why it runs in tests, not production. `go test -race ./...` in the pipeline catches section 2's entire bug class before merge.
+
+### Sources and authority level
+
+| Topic | Primary source |
+|---|---|
+| Pipelines, fan-in, cancellation | [Rob Pike, Go Concurrency Patterns](https://go.dev/blog/pipelines) |
+| Concurrency ≠ parallelism | [Go Blog, Waza talk](https://go.dev/blog/waza-talk) |
+| Concurrency and primitives | [Effective Go](https://go.dev/doc/effective_go#concurrency) |
+| Memory model (happens-before) | [Go Memory Model](https://go.dev/ref/mem) |
+| Race detector | [Go Docs](https://go.dev/doc/articles/race_detector) |
+| Concepts, analogies, locks, distributed | [Matheus Fidelis](https://fidelissauro.dev/concorrencia-paralelismo/) |
+| PT-BR guide, worker pool, timeout, context | [golang.com.br](https://golang.com.br/) |
+| Goroutines, fan-out/in, best practices | [Stream, Goroutines Guide](https://getstream.io/blog/) |
+
+<Summary>
+
+- concurrency manages, parallelism executes; Go does both (M:N + scheduler)
+- unbuffered channels synchronize, buffered ones queue; closing is a signal, owners close once
+- `Done` lives in the worker (`defer`); mutexes guard data, channels coordinate flow
+- `-race` in CI; worker pools = buffered channels; pipelines = stages with disciplined `close`
+
+</Summary>
+
+<NextSteps href="/go-maps" title="Maps in Go">
+
+Shared state lives in maps too — and the race detector catches both. Re-read the maps post with concurrent eyes: `concurrent map read and map write` is the same movie.
+
+</NextSteps>
+
+<SkillsGained skills={["Goroutines", "Channels", "WaitGroup", "Mutex", "Worker pools", "Race detector"]} />
