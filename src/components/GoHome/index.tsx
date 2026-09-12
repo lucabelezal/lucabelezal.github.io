@@ -3,6 +3,12 @@ import styles from './styles.module.css';
 
 const contents = [
   {
+    title: 'Ponteiros em Go',
+    description: 'Ponteiro é um valor que identifica uma variável: &, *, nil, escape analysis e quando (não) usar.',
+    href: '/go-ponteiros',
+    date: '12 set 2026',
+  },
+  {
     title: 'Error handling em Go',
     description: 'Quando o if err != nil é decisão e quando vira ruído: tratar, propagar, traduzir, acumular — e o lugar do Result[T].',
     href: '/go-error-handling',

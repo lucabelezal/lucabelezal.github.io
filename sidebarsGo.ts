@@ -102,6 +102,13 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'link',
+          label: 'Ponteiros em Go',
+          href: '/go-ponteiros',
+          description: 'Valores, endereços e memória: quando (não) usar ponteiros.',
+          customProps: {date: '12 set 2026'},
+        },
+        {
+          type: 'link',
           label: 'Error handling em Go',
           href: '/go-error-handling',
           description: 'Quando o if err != nil é decisão e quando vira ruído.',

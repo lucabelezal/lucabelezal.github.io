@@ -1,0 +1,284 @@
+---
+slug: go-ponteiros
+title: "Punteros en Go: valores, direcciones y memoria"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-12T10:00:00
+description: Un puntero en Go es un valor que identifica una variable — no una dirección física, no es magia. Entiende &, *, nil, escape analysis y cuándo (no) usar punteros, con código ejecutable y salidas reales.
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+Toda función en Go recibe una **copia** de sus argumentos — incluso cuando el argumento es un puntero. Quien entiende esa frase domina el 90% de los punteros en Go; quien no la entiende pasa años memorizando cuándo usar `&` y `*` sin saber por qué.
+
+Este es el primer post de la serie **Go por dentro**, sobre cómo el lenguaje representa valores en memoria. Aquí: punteros. Después: structs y métodos, interfaces y slices — cada uno reutilizando el modelo mental construido aquí.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- qué es un valor, una variable y una dirección en Go (sin misticismo de "RAM física")
+- qué producen y consumen realmente `&` y `*`
+- por qué todo en Go se pasa por valor — incluidos los punteros
+- cuándo usar un puntero: mutar un parámetro, nil con significado, rendimiento medido
+- cómo el compilador decide stack vs heap (escape analysis, con salida real de `go build`)
+- los tres mitos que más bugs generan: nil dereference, "los punteros son más rápidos", "return &x va al heap"
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go básico: funciones, variables, `fmt.Println` (Go 1.26 en los ejemplos)
+- JSON básico (solo para un ejemplo de la sección 4)
+- si vienes de otro lenguaje, el mapa [De Swift a Go](/swift-para-go) ayuda
+
+</Prerequisites>
+
+## 1. Contexto
+
+Antes del puntero, tres palabras que Go usa con sentido preciso: **valor**, **variable** y **dirección**.
+
+Un **valor** es un dato: `42`, `"ada"`, `true`. Todo valor tiene un tipo, y todo tipo tiene un **zero value** — lo que recibe una variable cuando la declaras sin inicializar: `0` para números, `""` para strings, `false` para booleanos.
+
+Una **variable** es un nombre que identifica un lugar donde se guarda un valor. `x := 42` crea la variable `x` que identifica un lugar con el valor `42` de tipo `int`.
+
+> **Definición (propuesta).** Dirección, en Go, es la identidad de una variable dentro del espacio de direcciones del proceso — no un "lugar físico de la RAM". El hardware y el sistema operativo traducen ese espacio a memoria física cuando corresponde. La literatura académica distingue explícitamente la memoria física de la abstracción de direcciones que usa el programa ([Cornell, Memory Management and Garbage Collection](https://www.cs.cornell.edu/courses/cs4120/2022sp/notes/gc)).
+
+Esa distinción importa porque deshace la primera confusión común: `&x` no "accede a la dirección física de la memoria". `&x` **produce un valor puntero que identifica la variable `x`**. Un puntero, en Go, es un valor — que puedes guardar en una variable, copiar, comparar y pasar a una función.
+
+La especificación lo formaliza en una línea: un tipo puntero `*T` representa el conjunto de punteros a variables del tipo base `T`, y el valor de un puntero sin inicializar es `nil` ([especificación, Pointer types](https://go.dev/ref/spec#Pointer_types)).
+
+Russ Cox, una de las figuras centrales de Go, defiende que mirar los valores Go en memoria es el camino para construir intuición correcta sobre costo y representación ([Go Data Structures](https://research.swtch.com/godata)). Eso haremos aquí: valor → representación → puntero.
+
+**Regla práctica.** Cada vez que veas `&` o `*`, pregunta "¿qué valor se produce o consume aquí?" — nunca "¿qué truco de memoria es este?".
+
+## 2. El problema
+
+Escribes una función para incrementar un contador:
+
+```go title="main.go" showLineNumbers
+package main
+
+import "fmt"
+
+func increment(x int) {
+	x++
+}
+
+func main() {
+	x := 5
+	increment(x)
+	fmt.Println("por valor:", x)
+}
+```
+
+Salida real (`go run`, Go 1.26):
+
+```bash title="Terminal"
+por valor: 5
+```
+
+La función recibió una **copia** de `x`, incrementó la copia y la descartó. El `x` de `main` sigue siendo `5`. Es el comportamiento estándar de Go para todo: los argumentos se pasan por valor, siempre.
+
+El problema aparece cuando el programa necesita que la función **mute el original** — un contador, un campo de struct, un buffer. Sin puntero, la función no puede alcanzar la variable del llamador. Para eso existen los punteros en Go: no como optimización, no como truco — como **direccionamiento explícito de la variable a mutar**.
+
+## 3. Modelo mental
+
+Tres piezas, un puente entre ellas.
+
+**`&x` produce un puntero.** Si `x` es `int`, `&x` es `*int`: un valor que identifica la variable `x`. Visualmente:
+
+![Diagrama: la variable p (puntero) identifica la variable x](/img/diagramas/go-ponteiros-pointer-address-es.svg)
+
+**`*p` consume un puntero.** Dereferenciar accede (para leer o escribir) a la variable identificada: `*p = 43` cambia `x`; `y := *p` copia el valor de `x` en `y`.
+
+**Un puntero es un valor — luego, se copia.** Cuando pasas `p` a una función, la función recibe una copia del puntero. La copia identifica la misma variable, por eso la función puede mutar el original. Pero no puede cambiar *a dónde* apunta el puntero del llamador — solo tiene la copia.
+
+> **Definición (propuesta).** Un puntero en Go es un valor que identifica una variable. `&` produce ese valor desde una variable; `*` lo usa para alcanzar la variable. El puntero en sí se pasa por valor como cualquier otro valor.
+
+Dos propiedades completan el modelo:
+
+- **El zero value es `nil`.** `var p *int` declara un puntero que no identifica nada. Dereferenciar `nil` causa panic en runtime — la sección 5 lo muestra.
+- **Sin aritmética de punteros.** A diferencia de C, Go no permite sumar al puntero para recorrer memoria. (La excepción deliberada es el paquete `unsafe` — sección 5.)
+
+**Regla práctica.** Si la función no muta el parámetro y `nil` no tiene significado, no uses puntero. En caso de duda, valor.
+
+## 4. Implementación
+
+Código completo, ejecutable, con salidas reales capturadas en Go 1.26 (darwin/arm64). Para correr: guarda como `main.go` y ejecuta `go run main.go`.
+
+### Mutando a través del puntero
+
+```go title="main.go" showLineNumbers
+func incrementPtr(x *int) {
+	// highlight-next-line
+	*x++
+}
+
+func main() {
+	x := 5
+	incrementPtr(&x)
+	fmt.Println("por puntero:", x)
+}
+```
+
+```bash title="Terminal"
+por puntero: 6
+```
+
+![Diagrama: por valor la copia se pierde, por puntero la copia alcanza el original](/img/diagramas/go-ponteiros-copy-vs-pointer-es.svg)
+
+Nota la mecánica: `&x` produce el puntero, la función recibe **una copia de él** y `*x++` usa la copia para alcanzar y mutar el `x` original. La mutación funciona no porque "pasamos por referencia", sino porque copiamos un valor que identifica al original.
+
+### Structs: mutación y factories con `return &obj`
+
+El caso más común de puntero en código real es structs. La función recibe el puntero y muta el campo — nota que `c.Name` no necesita el `(*c).Name` explícito, es azúcar para lo mismo:
+
+```go title="main.go" showLineNumbers
+type Client struct {
+	Name string
+}
+
+func rename(c *Client, name string) {
+	c.Name = name // forma corta de (*c).Name
+}
+
+func newClient(name string) *Client {
+	c := Client{Name: name}
+	return &c
+}
+
+func main() {
+	c := Client{Name: "Lucas"}
+	rename(&c, "Ada")
+	fmt.Println("struct:", c.Name)
+
+	p := newClient("Grace")
+	p.Name = "Hopper"
+	fmt.Println("factory:", p.Name)
+}
+```
+
+```bash title="Terminal"
+struct: Ada
+factory: Hopper
+```
+
+¿Por qué `return &c` no "pierde la referencia"? Dos garantías encadenadas. Primero, el escape analysis detecta que `c` sobrevive al frame de `newClient` y la mueve al heap (la misma salida `moved to heap` de la sección anterior). Segundo, el garbage collector solo libera lo inalcanzable — mientras el llamador guarde el puntero retornado, el objeto está alcanzable y vivo. El stack decide el tiempo de vida del frame; heap + GC deciden el tiempo de vida del objeto. Por eso una factory que retorna puntero es un idioma seguro en Go, no un accidente que "funciona por suerte".
+
+### Nil con significado: presencia vs ausencia en JSON
+
+El segundo uso legítimo del puntero: distinguir "campo ausente" de "campo con zero value". Con `string` es imposible — `""` puede ser valor real o ausencia. Con `*string`, `nil` significa ausencia:
+
+```go title="main.go" showLineNumbers
+type Person struct {
+	Name *string `json:"name"`
+}
+
+func main() {
+	var p Person
+	_ = json.Unmarshal([]byte(`{}`), &p)
+	fmt.Println("campo ausente:", p.Name)
+
+	_ = json.Unmarshal([]byte(`{"name": ""}`), &p)
+	fmt.Println("campo vacío:", *p.Name)
+}
+```
+
+```bash title="Terminal"
+campo ausente: <nil>
+campo vacío:
+```
+
+`<nil>` vs string vacía: el programa sabe lo que dijo el JSON. Este patrón aparece en APIs, configuración y cualquier formato donde "no informado" difiere de "informado como cero".
+
+### Stack vs heap: quien decide es el compilador
+
+¿Dónde vive la variable — stack (barata, liberada con el frame) o heap (cara, gestionada por el GC)? Tú no decides; decide el compilador vía **escape analysis**: si la variable debe sobrevivir al frame actual, escapa al heap.
+
+Dos funciones idénticas excepto por el `return`:
+
+```go title="escape.go" showLineNumbers
+func quedaEnStack() int {
+	x := 40 + 2
+	return x
+}
+
+func escapaAHeap() *int {
+	x := 40 + 2
+	return &x
+}
+```
+
+`go build -gcflags="-m"` muestra la decisión del compilador (salida real, filtrada):
+
+```bash title="Terminal"
+./main.go:9:2: moved to heap: x
+```
+
+Solo el `x` de `escapaAHeap` se movió — el otro queda en stack. Visualmente:
+
+![Diagrama: variable local liberada con el frame vs variable que escapa al heap](/img/diagramas/go-ponteiros-stack-heap-es.svg)
+
+Nota lo que esto desmiente: no es el `&` lo que "manda al heap". Es la **necesidad de supervivencia** detectada por el análisis. Un `&x` local sin escape queda en stack normalmente.
+
+¿Por qué el compilador se esfuerza por evitar el heap? Las asignaciones en stack son considerablemente más baratas (a veces gratuitas) y no cargan al garbage collector, pues se recuperan con el frame ([Keith Randall, Allocating on the Stack, Go Blog, feb 2026](https://go.dev/blog/allocation-optimizations)).
+
+**Regla práctica.** Nunca escribas `&` pensando "esto va al heap", ni evites `&` pensando "esto evita el heap". Escribe el código correcto y verifica con `-gcflags="-m"` cuando la asignación importe.
+
+### El puntero no siempre es más rápido: midiendo
+
+Corrí un benchmark local (Apple M4, Go 1.26) comparando procesar una struct de 10 `int64` por valor vs por puntero:
+
+| Caso | ns/op | B/op | allocs/op |
+|---|---|---|---|
+| Por valor | 0,48 | 0 | 0 |
+| Por puntero | 20,20 | 80 | 1 |
+
+El puntero fue ~40x más lento aquí: la copia en stack es casi gratuita, mientras el puntero forzó asignación en heap. Esto no prueba que los valores sean siempre más rápidos — prueba el punto real: **el rendimiento puntero vs valor se mide, no se presume**. ([Lane Wagner, When to Use Pointers in Go](https://www.boot.dev/blog/golang)).
+
+**Regla práctica.** Motivos legítimos para un puntero, en orden: (1) la función muta el parámetro; (2) `nil` tiene significado; (3) un benchmark muestra que evitar la copia ayuda. Todo lo demás, valor.
+
+## 5. Fallas y trade-offs
+
+**Nil dereference: el panic clásico.** `var p *int` seguido de `*p` tumba el programa con `runtime error: invalid memory address or nil pointer dereference`. El puntero resuelve "cómo alcanzar", pero crea "¿y si no hay nada ahí?". Si `nil` es entrada válida, verifica antes de dereferenciar — el compilador no lo verifica por ti.
+
+**Mito 1: "el puntero es más rápido porque evita la copia".** El benchmark de la sección 4 muestra lo contrario en la práctica: un puntero puede forzar heap y salir más caro que copiar en stack. El puntero resuelve compartición y mutación; el rendimiento es efecto colateral a medir, nunca premisa.
+
+**Mito 2: "`return &x` lo manda al heap".** Simplificación didáctica común, técnicamente errada. Quien decide es el escape analysis, por la supervivencia de la variable — un `&x` local sin escape queda en stack. La frase correcta: "el compilador mueve al heap lo que debe sobrevivir al frame; `return &x` es un caso típico, no una regla".
+
+**`unsafe`: la excepción deliberada.** Go no ofrece cómo fabricar un puntero arbitrario ni liberar memoria manualmente — así evita dangling pointers y categorías enteras de bugs de C ([Russ Cox, Off to the Races](https://research.swtch.com/gorace)). El paquete `unsafe` existe, pero es opt-in explícito: quien lo usa asume los riesgos que el lenguaje elimina por defecto. El puntero en Go resuelve A (mutación, nil significativo) y, gracias a GC + type safety + bounds checking + ausencia de `free()`, no crea B (gestión manual de memoria).
+
+**"Dirección física".** Evita la formulación. `&x` produce un valor que identifica `x` en el espacio de direcciones del proceso; traducir a RAM física es tarea del SO/hardware. Decir "dirección física" enseña un modelo errado que sale caro al llegar a GC, stack móvil y escape analysis.
+
+### Fuentes y nivel de autoridad
+
+| Tema | Fuente principal |
+|---|---|
+| Sintaxis y semántica (`*T`, `nil`) | [Especificación de Go](https://go.dev/ref/spec#Pointer_types) |
+| Valores en memoria, costo, representación | [Russ Cox, Go Data Structures](https://research.swtch.com/godata) |
+| Stack vs heap, por qué evitar el heap | [Keith Randall, Allocating on the Stack](https://go.dev/blog/allocation-optimizations) |
+| Escape analysis, stack, GC, reachability | [Cornell CS 4120, Memory Management and GC](https://www.cs.cornell.edu/courses/cs4120/2022sp/notes/gc) |
+| Seguridad del modelo (sin free, sin dangling) | [Russ Cox, Off to the Races](https://research.swtch.com/gorace) |
+| Cuándo usar, benchmark valor vs puntero | [Lane Wagner, When to Use Pointers in Go](https://www.boot.dev/blog/golang) |
+
+<Summary>
+
+- un puntero es un valor que identifica una variable: `&` lo produce, `*` lo consume, y el puntero en sí se pasa por valor
+- usa puntero para mutar un parámetro, para `nil` con significado o con benchmark en mano — en caso de duda, valor
+- stack vs heap es decisión del compilador (escape analysis), no de la sintaxis; verifica con `go build -gcflags="-m"`
+- `nil` dereferenciado causa panic; `unsafe` es excepción opt-in; "dirección física" es el modelo errado
+
+</Summary>
+
+<NextSteps href="/go-error-handling" title="Manejo de errores en Go">
+
+Ya sabes alcanzar y mutar valores con punteros. El próximo paso es decidir qué hacer cuando algo falla en el camino: no todo `if err != nil` es el mismo fenómeno.
+
+</NextSteps>
+
+<SkillsGained skills={["Punteros", "Modelo de memoria Go", "Stack vs heap", "Escape analysis", "Benchmarks"]} />

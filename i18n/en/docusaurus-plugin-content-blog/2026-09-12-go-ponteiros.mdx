@@ -1,0 +1,284 @@
+---
+slug: go-ponteiros
+title: "Pointers in Go: values, addresses, and memory"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-12T10:00:00
+description: A pointer in Go is a value that identifies a variable — not a physical address, not magic. Understand &, *, nil, escape analysis, and when (not) to use pointers, with runnable code and real outputs.
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+Every function in Go receives a **copy** of its arguments — even when the argument is a pointer. Whoever understands that sentence masters 90% of pointers in Go; whoever doesn't spends years memorizing when to use `&` and `*` without knowing why.
+
+This is the first post of the **Go Inside Out** series, about how the language represents values in memory. Here: pointers. Next: structs and methods, interfaces, and slices — each reusing the mental model built here.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- what a value, a variable, and an address are in Go (no "physical RAM" mysticism)
+- what `&` and `*` actually produce and consume
+- why everything in Go is passed by value — including pointers
+- when to use a pointer: mutating a parameter, meaningful nil, measured performance
+- how the compiler decides stack vs heap (escape analysis, with real `go build` output)
+- the three myths that cause the most bugs: nil dereference, "pointers are faster", "return &x goes to the heap"
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Basic Go: functions, variables, `fmt.Println` (Go 1.26 in the examples)
+- Basic JSON (only for one example in section 4)
+- if you come from another language, the [From Swift to Go](/swift-para-go) map helps
+
+</Prerequisites>
+
+## 1. Context
+
+Before the pointer, three words Go uses with precise meaning: **value**, **variable**, and **address**.
+
+A **value** is data: `42`, `"ada"`, `true`. Every value has a type, and every type has a **zero value** — what a variable holds when you declare it without initializing: `0` for numbers, `""` for strings, `false` for booleans.
+
+A **variable** is a name identifying a place where a value is stored. `x := 42` creates the variable `x` identifying a place holding the value `42` of type `int`.
+
+> **Definition (proposed).** Address, in Go, is the identity of a variable within the process's address space — not a "physical RAM slot". Hardware and the operating system translate that space to physical memory when applicable. Academic literature explicitly distinguishes physical memory from the address abstraction programs use ([Cornell, Memory Management and Garbage Collection](https://www.cs.cornell.edu/courses/cs4120/2022sp/notes/gc)).
+
+That distinction matters because it undoes the first common confusion: `&x` does not "read the physical memory address". `&x` **produces a pointer value that identifies the variable `x`**. A pointer, in Go, is a value — one you can store in a variable, copy, compare, and pass to a function.
+
+The specification says it in one line: a pointer type `*T` denotes the set of pointers to variables of base type `T`, and the value of an uninitialized pointer is `nil` ([specification, Pointer types](https://go.dev/ref/spec#Pointer_types)).
+
+Russ Cox, one of Go's central figures, argues that looking at Go values in memory is the way to build correct intuition about cost and representation ([Go Data Structures](https://research.swtch.com/godata)). That's what we do here: value → representation → pointer.
+
+**Rule of thumb.** Whenever you see `&` or `*`, ask "which value is being produced or consumed here?" — never "what memory trick is this?".
+
+## 2. The problem
+
+You write a function to increment a counter:
+
+```go title="main.go" showLineNumbers
+package main
+
+import "fmt"
+
+func increment(x int) {
+	x++
+}
+
+func main() {
+	x := 5
+	increment(x)
+	fmt.Println("by value:", x)
+}
+```
+
+Real output (`go run`, Go 1.26):
+
+```bash title="Terminal"
+by value: 5
+```
+
+The function received a **copy** of `x`, incremented the copy, and discarded it. `main`'s `x` is still `5`. This is Go's default behavior for everything: arguments are passed by value, always.
+
+The problem appears when the program needs the function to **mutate the original** — a counter, a struct field, a buffer. Without a pointer, the function cannot reach the caller's variable. That is what pointers exist for in Go: not as an optimization, not as a trick — as **explicit addressing of the variable to be mutated**.
+
+## 3. Mental model
+
+Three pieces, one bridge between them.
+
+**`&x` produces a pointer.** If `x` is an `int`, `&x` is a `*int`: a value identifying the variable `x`. Visually:
+
+![Diagram: the variable p (pointer) identifies the variable x](/img/diagramas/go-ponteiros-pointer-address-en.svg)
+
+**`*p` consumes a pointer.** Dereferencing reaches (to read or write) the identified variable: `*p = 43` changes `x`; `y := *p` copies `x`'s value into `y`.
+
+**A pointer is a value — so it gets copied.** When you pass `p` to a function, the function receives a copy of the pointer. The copy identifies the same variable, so the function can mutate the original. But it cannot change *where* the caller's pointer points — it only has the copy.
+
+> **Definition (proposed).** A pointer in Go is a value that identifies a variable. `&` produces that value from a variable; `*` uses it to reach the variable. The pointer itself is passed by value like any other value.
+
+Two properties complete the model:
+
+- **The zero value is `nil`.** `var p *int` declares a pointer identifying nothing. Dereferencing `nil` panics at runtime — section 5 shows it.
+- **No pointer arithmetic.** Unlike C, Go won't let you add to a pointer to walk memory. (The deliberate exception is the `unsafe` package — section 5.)
+
+**Rule of thumb.** If the function doesn't mutate the parameter and `nil` carries no meaning, don't use a pointer. When in doubt, use a value.
+
+## 4. Implementation
+
+Complete, runnable code with real outputs captured on Go 1.26 (darwin/arm64). To run: save as `main.go` and execute `go run main.go`.
+
+### Mutating through the pointer
+
+```go title="main.go" showLineNumbers
+func incrementPtr(x *int) {
+	// highlight-next-line
+	*x++
+}
+
+func main() {
+	x := 5
+	incrementPtr(&x)
+	fmt.Println("by pointer:", x)
+}
+```
+
+```bash title="Terminal"
+by pointer: 6
+```
+
+![Diagram: by value the copy is lost, by pointer the copy reaches the original](/img/diagramas/go-ponteiros-copy-vs-pointer-en.svg)
+
+Note the mechanics: `&x` produces the pointer, the function receives **a copy of it**, and `*x++` uses the copy to reach and mutate the original `x`. Mutation works not because we "passed by reference", but because we copied a value that identifies the original.
+
+### Structs: mutation and factories with `return &obj`
+
+The most common pointer case in real code is structs. The function receives the pointer and mutates the field — note that `c.Name` needs no explicit `(*c).Name`, it's sugar for the same thing:
+
+```go title="main.go" showLineNumbers
+type Client struct {
+	Name string
+}
+
+func rename(c *Client, name string) {
+	c.Name = name // short for (*c).Name
+}
+
+func newClient(name string) *Client {
+	c := Client{Name: name}
+	return &c
+}
+
+func main() {
+	c := Client{Name: "Lucas"}
+	rename(&c, "Ada")
+	fmt.Println("struct:", c.Name)
+
+	p := newClient("Grace")
+	p.Name = "Hopper"
+	fmt.Println("factory:", p.Name)
+}
+```
+
+```bash title="Terminal"
+struct: Ada
+factory: Hopper
+```
+
+Why doesn't `return &c` "lose the reference"? Two chained guarantees. First, escape analysis detects that `c` outlives `newClient`'s frame and moves it to the heap (the same `moved to heap` output as in the previous section). Second, the garbage collector only frees the unreachable — while the caller holds the returned pointer, the object is reachable and alive. The stack decides the frame's lifetime; heap + GC decide the object's lifetime. That's why a factory returning a pointer is a safe Go idiom, not an accident that "works by luck".
+
+### Meaningful nil: presence vs absence in JSON
+
+The second legitimate use of pointers: distinguishing "absent field" from "field with a zero value". With `string` that's impossible — `""` can be a real value or absence. With `*string`, `nil` means absence:
+
+```go title="main.go" showLineNumbers
+type Person struct {
+	Name *string `json:"name"`
+}
+
+func main() {
+	var p Person
+	_ = json.Unmarshal([]byte(`{}`), &p)
+	fmt.Println("absent field:", p.Name)
+
+	_ = json.Unmarshal([]byte(`{"name": ""}`), &p)
+	fmt.Println("empty field:", *p.Name)
+}
+```
+
+```bash title="Terminal"
+absent field: <nil>
+empty field:
+```
+
+`<nil>` vs empty string: the program knows what the JSON said. This pattern shows up in APIs, configuration, and any format where "not provided" differs from "provided as zero".
+
+### Stack vs heap: the compiler decides
+
+Where a variable lives — stack (cheap, freed with the frame) or heap (expensive, GC-managed)? You don't decide; the compiler does via **escape analysis**: if the variable must outlive the current frame, it escapes to the heap.
+
+Two identical functions except for the `return`:
+
+```go title="escape.go" showLineNumbers
+func staysOnStack() int {
+	x := 40 + 2
+	return x
+}
+
+func escapesToHeap() *int {
+	x := 40 + 2
+	return &x
+}
+```
+
+`go build -gcflags="-m"` shows the compiler's decision (real output, filtered):
+
+```bash title="Terminal"
+./main.go:9:2: moved to heap: x
+```
+
+Only `escapesToHeap`'s `x` moved — the other stays on the stack. Visually:
+
+![Diagram: local variable freed with the frame vs variable escaping to the heap](/img/diagramas/go-ponteiros-stack-heap-en.svg)
+
+Note what this disproves: it's not `&` that "sends to the heap". It's the **survival requirement** detected by the analysis. A local `&x` that doesn't escape stays on the stack normally.
+
+Why does the compiler work hard to avoid the heap? Stack allocations are considerably cheaper (sometimes free) and impose no load on the garbage collector, since they're reclaimed with the frame ([Keith Randall, Allocating on the Stack, Go Blog, Feb 2026](https://go.dev/blog/allocation-optimizations)).
+
+**Rule of thumb.** Never write `&` thinking "this goes to the heap", nor avoid `&` thinking "this avoids the heap". Write correct code and check with `-gcflags="-m"` when allocation matters.
+
+### Pointers aren't always faster: measuring
+
+I ran a local benchmark (Apple M4, Go 1.26) comparing processing a ten-`int64` struct by value vs by pointer:
+
+| Case | ns/op | B/op | allocs/op |
+|---|---|---|---|
+| By value | 0.48 | 0 | 0 |
+| By pointer | 20.20 | 80 | 1 |
+
+The pointer was ~40x slower here: the stack copy is nearly free, while the pointer forced a heap allocation. That doesn't prove values are always faster — it proves the real point: **pointer vs value performance is measured, never assumed**. ([Lane Wagner, When to Use Pointers in Go](https://www.boot.dev/blog/golang)).
+
+**Rule of thumb.** Legitimate reasons for a pointer, in order: (1) the function mutates the parameter; (2) `nil` carries meaning; (3) a benchmark shows avoiding the copy helps. Everything else, use a value.
+
+## 5. Failures and trade-offs
+
+**Nil dereference: the classic panic.** `var p *int` followed by `*p` crashes the program with `runtime error: invalid memory address or nil pointer dereference`. Pointers solve "how to reach", but create "what if there's nothing there". If `nil` is valid input, check before dereferencing — the compiler won't check for you.
+
+**Myth 1: "pointers are faster because they avoid copying".** The section 4 benchmark shows the opposite happening in practice: a pointer can force heap allocation and cost more than copying on the stack. Pointers solve sharing and mutation; performance is a side effect to measure, never a premise.
+
+**Myth 2: "`return &x` puts it on the heap".** A common teaching simplification, technically wrong. Escape analysis decides, based on the variable's survival — a non-escaping local `&x` stays on the stack. The correct sentence: "the compiler moves to the heap whatever must outlive the frame; `return &x` is a typical case, not a rule".
+
+**`unsafe`: the deliberate exception.** Go offers no way to fabricate an arbitrary pointer or free memory manually — that's how the language avoids dangling pointers and whole bug categories from C ([Russ Cox, Off to the Races](https://research.swtch.com/gorace)). The `unsafe` package exists but is explicit opt-in: whoever uses it accepts the risks the language removes by default. Pointers in Go solve A (mutation, meaningful nil) and, thanks to GC + type safety + bounds checking + no `free()`, don't create B (manual memory management).
+
+**"Physical address".** Avoid the phrasing. `&x` produces a value identifying `x` in the process's address space; translating to physical RAM is the OS/hardware's job. Saying "physical address" teaches a wrong model that charges interest when the reader reaches GC, moving stacks, and escape analysis.
+
+### Sources and authority level
+
+| Topic | Primary source |
+|---|---|
+| Syntax and semantics (`*T`, `nil`) | [Go specification](https://go.dev/ref/spec#Pointer_types) |
+| Values in memory, cost, representation | [Russ Cox, Go Data Structures](https://research.swtch.com/godata) |
+| Stack vs heap, why avoid the heap | [Keith Randall, Allocating on the Stack](https://go.dev/blog/allocation-optimizations) |
+| Escape analysis, stack, GC, reachability | [Cornell CS 4120, Memory Management and GC](https://www.cs.cornell.edu/courses/cs4120/2022sp/notes/gc) |
+| Model safety (no free, no dangling) | [Russ Cox, Off to the Races](https://research.swtch.com/gorace) |
+| When to use, value vs pointer benchmark | [Lane Wagner, When to Use Pointers in Go](https://www.boot.dev/blog/golang) |
+
+<Summary>
+
+- a pointer is a value identifying a variable: `&` produces it, `*` consumes it, and the pointer itself is passed by value
+- use a pointer to mutate a parameter, for meaningful `nil`, or with a benchmark in hand — when in doubt, use a value
+- stack vs heap is the compiler's decision (escape analysis), not the syntax's; check with `go build -gcflags="-m"`
+- dereferenced `nil` panics; `unsafe` is an opt-in exception; "physical address" is the wrong model
+
+</Summary>
+
+<NextSteps href="/go-error-handling" title="Error handling in Go">
+
+You know how to reach and mutate values with pointers. The next step is deciding what to do when something goes wrong along the way: not every `if err != nil` is the same phenomenon.
+
+</NextSteps>
+
+<SkillsGained skills={["Pointers", "Go memory model", "Stack vs heap", "Escape analysis", "Benchmarks"]} />

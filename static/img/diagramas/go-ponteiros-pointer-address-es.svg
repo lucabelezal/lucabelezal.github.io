@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 210" role="img" aria-label="Diagrama: p apunta a x">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <rect x="30" y="55" width="210" height="100" rx="10" class="box"/>
+  <text x="52" y="95" font-size="22" font-weight="bold">p</text>
+  <text x="52" y="126" font-size="15">*int · 0x1040</text>
+  <rect x="420" y="55" width="210" height="100" rx="10" class="box"/>
+  <text x="442" y="95" font-size="22" font-weight="bold">x</text>
+  <text x="442" y="126" font-size="15">int · 42</text>
+  <line x1="245" y1="105" x2="405" y2="105" class="arrow" marker-end="url(#ah)"/>
+  <text x="325" y="82" font-size="14" text-anchor="middle">&amp;x produce</text>
+  <text x="325" y="140" font-size="14" text-anchor="middle" class="lbl">*p lee / escribe</text>
+</svg>
