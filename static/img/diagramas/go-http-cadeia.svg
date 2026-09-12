@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 280" role="img" aria-label="Diagrama: request atravessa middleware até o handler">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .goodbox{stroke:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah26" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <rect x="20" y="105" width="120" height="70" rx="10" class="box"/>
+  <text x="36" y="136" font-size="14" font-weight="bold">request</text>
+  <text x="36" y="160" font-size="13" class="lbl">POST /double</text>
+  <line x1="145" y1="140" x2="195" y2="140" class="arrow" marker-end="url(#ah26)"/>
+  <rect x="200" y="60" width="170" height="70" rx="10" class="box"/>
+  <text x="216" y="90" font-size="14" font-weight="bold">mw(request_id)</text>
+  <text x="216" y="114" font-size="13" class="lbl">timer · log</text>
+  <line x1="375" y1="95" x2="425" y2="95" class="arrow" marker-end="url(#ah26)"/>
+  <rect x="200" y="175" width="170" height="70" rx="10" class="box"/>
+  <text x="216" y="205" font-size="14" font-weight="bold">mw(recover)</text>
+  <text x="216" y="229" font-size="13" class="lbl">500 + log</text>
+  <line x1="280" y1="130" x2="280" y2="170" class="arrow" marker-end="url(#ah26)"/>
+  <line x1="375" y1="210" x2="425" y2="185" class="arrow" marker-end="url(#ah26)"/>
+  <rect x="430" y="105" width="210" height="115" rx="10" class="goodbox"/>
+  <text x="446" y="136" font-size="14" font-weight="bold">handler</text>
+  <text x="446" y="160" font-size="13">200 {"result":42}</text>
+  <text x="446" y="184" font-size="13">400 json inválido</text>
+  <text x="446" y="208" font-size="13" class="lbl">ctx + timeout</text>
+</svg>

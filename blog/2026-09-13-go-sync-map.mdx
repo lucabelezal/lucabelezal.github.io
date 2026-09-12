@@ -1,0 +1,134 @@
+---
+slug: go-sync-map
+title: "sync.Map em Go: quando o mapa precisa de cadeado embutido"
+authors: [lucabelezal]
+tags: [go, backend, sistemas-distribuidos]
+date: 2026-09-13T11:00:00
+description: "sync.Map não é map thread-safe genérico: é otimização para leitura dominante com escrita esparsa. Entenda read/dirty, LoadOrStore e quando map+mutex vence."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+Todo map compartilhado precisa de dono: `sync.Mutex` por fora ou `sync.Map` com o cadeado dentro. A diferença não é conveniência — é **perfil de acesso**. `sync.Map` foi desenhada para um caso estreito e vence nele: leituras dominantes, escritas raras, chaves estáveis (caches, registros, memoization). Fora disso, map + mutex ganha — e este post mostra o porquê, por dentro.
+
+Post avulso, ponte entre [maps](/go-maps) e [concorrência](/go-concorrencia).
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- quando `sync.Map` vence e quando perde para map + mutex
+- o desenho read-only + dirty: leitura sem lock, escrita com lock
+- `LoadOrStore`, `Range`, `Delete` e a semântica de cada um
+- entradas expunged e promoção do dirty (sem decorar, entendendo)
+- a implementação atual (hash trie) e o que ela muda no conselho
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Maps em Go](/go-maps): hash, grupos, crescimento
+- [Concorrência](/go-concorrencia): mutex, RWMutex, `-race`
+
+</Prerequisites>
+
+## 1. Contexto
+
+O problema: cache global lido por 100 goroutines, escrito de vez em quando. Com map + `RWMutex`, toda leitura paga `RLock` (barato, mas com contenção de cache-line no contador do lock). `sync.Map` remove o lock do caminho quente: leituras acertam um mapa **read-only via atomic**, sem travar nada.
+
+## 2. O problema
+
+Usar `sync.Map` como "map thread-safe padrão" cobra em três lugares: API sem `len` e sem tipos (tudo `any`, assertions espalhadas), iteração `Range` com semântica fraca (pode visitar chave duas vezes ou perder atualização concorrente — documentado), e escrita constante mais lenta que mutex (toda escrita passa pelo mapa dirty sob lock + bookkeeping de promoção). O problema não é a ferramenta — é o perfil errado: escrita dominante com `sync.Map` é pagar o mecanismo sem colher o benefício.
+
+## 3. Modelo mental
+
+**Dois mapas, um contrato.** `read`: mapa comum, só leitura, acessado via atomic — **sem lock**. `dirty`: mapa sob mutex, onde escritas acontecem. Leitura acerta no `read` e volta sem travar; erro vai ao `dirty` (com lock), e misses repetidos **promovem** o dirty a read (troca de ponteiro atômica). Escritas em chaves novas passam pelo dirty; deletes marcam `expunged` (tumba do sync.Map: impede que promoção ressuscite chave deletada).
+
+![Diagrama: hit no read sem lock; miss vai ao dirty com lock e promove](/img/diagramas/go-syncmap-read.svg)
+
+**Por que funciona:** chaves estáveis + leitura dominante = quase tudo acerta no read, quase nunca há promoção. Cache de configuração, registro de conexões, memoize de respostas caras.
+
+**Implementação atual (2026): hash trie.** O artigo da VictoriaMetrics ([Understanding sync.Map](https://victoriametrics.com/blog/go-sync-map-hash-trie/)) descreve a evolução para hash trie: leituras lock-free, escritores com locking granular, colisões com retries. O conselho não muda — só o mecanismo ficou mais fino. Versione seu modelo mental: runtime evolui, como no post de maps.
+
+**Regra prática.** Leitura ≥ 90%, chaves estáveis → `sync.Map`. Resto → map + `RWMutex` (mais simples, tipado, `len` de graça).
+
+## 4. Implementação
+
+```go title="main.go" showLineNumbers
+var m sync.Map
+m.Store("ada", 36)
+v, ok := m.Load("ada")
+fmt.Println("load:", v, ok)
+
+actual, loaded := m.LoadOrStore("ada", 0)
+fmt.Println("loadOrStore:", actual, loaded)
+
+m.Delete("ada")
+_, ok = m.Load("ada")
+fmt.Println("pos-delete:", ok)
+
+m.Store("a", 1)
+m.Store("b", 2)
+n := 0
+m.Range(func(k, v any) bool {
+	n++
+	return true
+})
+fmt.Println("range:", n)
+```
+
+```bash title="Terminal"
+load: 36 true
+loadOrStore: 36 true
+pos-delete: false
+range: 2
+```
+
+`LoadOrStore` é atômico "carregue ou inicialize" — o padrão de cache (evita dupla computação sob corrida sem mutex externo). `Range` recebe callback: retornar `false` interrompe; sem snapshot, sem ordem. Note os `any`: cada `Load` exige assertion no código real — custo ergonômico que map tipado não tem.
+
+Comparativo honesto, mesmo workload (50 escritores):
+
+```bash title="Terminal"
+mutex map: 50
+```
+
+Validado `-race` limpo nos dois. Para escrita, mutex direto é simples e rápido — `sync.Map` brilharia com 50 leitores e 1 escritor, não o contrário.
+
+## 5. Falhas e trade-offs
+
+**`sync.Map` como default.** Sem `len`, sem tipos, `Range` fraco, escrita mais cara. Default continue sendo map + mutex; promova para `sync.Map` com perfil medido.
+
+**Assumir snapshot no `Range`.** Callback pode ver chave deletada no meio ou perder inserção concorrente. Agregação exata exige lock externo ou cópia — `sync.Map` não promete foto.
+
+**Chaves instáveis.** Churn de chaves (inserção/deleção constante) mantém o dirty inchado e promoções frequentes — exatamente o pior caso do desenho. Cache com TTL curto e alta rotatividade: map + mutex com limpeza.
+
+**Esquecer o `any`.** Cada saída é `any`: assertion errada = panic em runtime onde map tipado nem compilava. Envolva em tipo próprio (`type Cache struct{ m sync.Map }` + métodos tipados) se adotar.
+
+### Fontes e nível de autoridade
+
+| Assunto | Fonte principal |
+|---|---|
+| Design read/dirty, casos de uso | [pkg.go.dev/sync](https://pkg.go.dev/sync#Map) |
+| Hash trie atual, lock-free reads | [Phuong Le, sync.Map hash trie](https://victoriametrics.com/blog/go-sync-map-hash-trie/) |
+| Quando (não) usar | [Post maps](/go-maps) e [concorrência](/go-concorrencia) |
+
+<Summary>
+
+- `sync.Map` = read-only atômico + dirty sob lock; hit não trava, miss promove
+- `LoadOrStore` para init sob corrida; `Range` sem snapshot nem ordem; tudo `any`
+- leitura dominante + chaves estáveis → `sync.Map`; resto → map + mutex
+- implementação atual é hash trie; o conselho por perfil continua valendo
+
+</Summary>
+
+<NextSteps href="/go-concorrencia" title="Concorrência em Go">
+
+Contenção resolvida, volte ao fluxo: goroutines, channels e pipelines — onde o estado nem chega a ser compartilhado.
+
+</NextSteps>
+
+<SkillsGained skills={["sync.Map", "Concorrência", "Caches", "Lock-free"]} />

@@ -1,0 +1,140 @@
+---
+slug: go-worker-pool
+title: "Worker pools in Go: queues, limits, and clean shutdown"
+authors: [lucabelezal]
+tags: [go, backend, sistemas-distribuidos]
+date: 2026-09-13T13:00:00
+description: "Fixed pools with N workers, buffer backpressure, and context cancellation: bounded throughput, clean exits, and -race-validated sums."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+A goroutine per task scales until memory, file descriptors, or someone else's API blows up. Worker pools invert it: **fixed N workers, shared queue, throughput bounded by construction**. This post deepens the [concurrency post](/go-concorrencia)'s section: cooperative cancellation, backpressure, and shutdown order — validated with `-race`.
+
+Standalone post. Real outputs, Go 1.26.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- fixed pools: workers, job queues, result collection
+- backpressure via buffers: who waits when queues fill
+- cooperative cancellation via `ctx` in every worker
+- shutdown order: close jobs → wait → close results
+- sizing: why N ≈ NumCPU (CPU-bound) or higher (I/O-bound)
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Concurrency](/go-concorrencia): goroutines, channels, WaitGroup, `select` + `ctx`
+- Basic Go: closures, `range` over channels
+
+</Prerequisites>
+
+## 1. Context
+
+Unbounded, every request spawns goroutines with no ceiling: 10k slow requests = 10k simultaneous connections, buffers, and timers — contention, OOM, provider throttling. Pools fix maximum parallelism: queues absorb spikes (up to the buffer), the rest waits. Throughput becomes a parameter, not an accident.
+
+![Diagram: jobs in queue, N workers, results collected](/img/diagramas/go-pool-en.svg)
+
+## 2. The problem
+
+The naive version: `go process(job)` per item, no limits, no cancellation, no error collection. Under load the program becomes a tame fork-bomb; on deploy, SIGTERM kills mid-flight work without draining. The problem is never "concurrency" — it's **concurrency with no ceiling and no exit**.
+
+## 3. Mental model
+
+**Queues decouple pace; workers cap parallelism.** Producers enqueue (`jobs <- j` blocks when full = natural backpressure). N workers consume in loops. Results leave through another channel — never the same one, to avoid mixing input and output.
+
+**Cancellation enters via `ctx`, not raw `close`.** Closing `jobs` says "work is over"; canceling `ctx` says "stop now" (deploy, deadline). Workers check both in `select`, in that priority order.
+
+**Shutdown has an order:** close `jobs` (producers done) → `Wait` on workers → close results → consume to the end. Closing results before `Wait` = panic on send-to-closed; never closing = eternal `range`.
+
+**Rule of thumb.** N workers ≈ NumCPU for CPU-bound; 2–4× for I/O-bound (measured, not guessed). Queue buffers = burst tolerable in memory.
+
+## 4. Implementation
+
+```go title="main.go" showLineNumbers
+func worker(ctx context.Context, jobs <-chan int, out chan<- int, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case j, ok := <-jobs:
+			if !ok {
+				return
+			}
+			out <- j * 2
+		}
+	}
+}
+
+func main() {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	jobs := make(chan int, 4)
+	out := make(chan int, 4)
+	var wg sync.WaitGroup
+	for w := 0; w < 2; w++ {
+		wg.Add(1)
+		go worker(ctx, jobs, out, &wg)
+	}
+	for i := 1; i <= 4; i++ {
+		jobs <- i
+	}
+	close(jobs)
+	wg.Wait()
+	close(out)
+	sum := 0
+	for v := range out {
+		sum += v
+	}
+	fmt.Println("pool:", sum)
+}
+```
+
+```bash title="Terminal"
+pool: 20
+```
+
+Validated `-race`-clean. Note every decision: `ctx` first parameter; read-only `jobs` and write-only `out` in the types (they document direction); `close(jobs)` after producing everything; `close(out)` after `Wait`; unhurried summing outside.
+
+## 5. Failures and trade-offs
+
+**No `ctx`: pools that never shut down.** SIGTERM arrives, `main` returns, mid-job workers die mute. Every long-lived worker takes `ctx` — no exceptions (the concurrency post's lesson).
+
+**Unbuffered results + slow consumer = deadlock.** `out` without buffer and nobody reading stalls workers forever. Size `out` or consume in a separate goroutine.
+
+**Swallowed errors.** Workers that only process and never report failures hide incidents. Pattern: result channels carrying `struct{Value, Err}` (like the errors post) or metric accounting.
+
+**Pools for everything.** Trivial tasks (summing small slices) need no pool — coordination overhead beats the gain. Concurrency starts where measurement says so (Post 1, benchmarks).
+
+### Sources and authority level
+
+| Topic | Primary source |
+|---|---|
+| Pipelines and cancellation | [Rob Pike, Go Concurrency Patterns](https://go.dev/blog/pipelines) |
+| Pools, semaphores, backpressure | [Concurrency in Go](/go-concorrencia) |
+| Context and cancellation | [pkg.go.dev/context](https://pkg.go.dev/context) |
+
+<Summary>
+
+- fixed N workers + queues = throughput bounded by construction
+- buffers = backpressure; `ctx` = emergency exit; close→Wait→close order
+- channel directions in types (`<-chan`/`chan<-`) document the protocol
+- pools for real load; trivial tasks stay sequential
+
+</Summary>
+
+<NextSteps href="/go-concorrencia" title="Concurrency in Go">
+
+Pools mastered, back to the big map: goroutines, GMP, mutexes, and when no pool is needed at all.
+
+</NextSteps>
+
+<SkillsGained skills={["Worker pools", "Backpressure", "Cancellation", "Shutdown"]} />

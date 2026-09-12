@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 300" role="img" aria-label="Diagrama: hit no read sem lock, miss promove o dirty">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .goodtext{fill:#238636;font-weight:bold}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .goodbox{stroke:#3fb950}
+      .goodtext{fill:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah22" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <text x="30" y="40" font-size="14" class="lbl">hit: sem lock</text>
+  <rect x="30" y="55" width="170" height="65" rx="8" class="goodbox"/>
+  <text x="46" y="85" font-size="14" font-weight="bold">read (atomic)</text>
+  <text x="46" y="109" font-size="13" class="lbl">ada → 36 ✓</text>
+  <text x="250" y="40" font-size="14" class="lbl">miss: com lock + promove</text>
+  <rect x="250" y="55" width="170" height="65" rx="8" class="box"/>
+  <text x="266" y="85" font-size="14" font-weight="bold">dirty (mutex)</text>
+  <text x="266" y="109" font-size="13" class="lbl">escritas aqui</text>
+  <line x1="425" y1="87" x2="485" y2="87" class="arrow" marker-end="url(#ah22)"/>
+  <rect x="490" y="55" width="140" height="65" rx="8" class="goodbox"/>
+  <text x="506" y="85" font-size="14" font-weight="bold">read′</text>
+  <text x="506" y="109" font-size="13" class="lbl">promoção</text>
+  <text x="30" y="170" font-size="14" class="lbl">expunged: delete marca · promoção não ressuscita</text>
+  <rect x="30" y="185" width="600" height="70" rx="10" class="box"/>
+  <text x="46" y="215" font-size="14">LoadOrStore: carrega ou inicializa (atômico)</text>
+  <text x="46" y="239" font-size="13" class="lbl">Range: sem snapshot · tudo any</text>
+</svg>

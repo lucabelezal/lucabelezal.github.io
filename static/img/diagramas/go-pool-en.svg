@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 300" role="img" aria-label="Diagram: pool with queue, workers, results">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .goodbox{stroke:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah24" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <rect x="25" y="110" width="130" height="75" rx="10" class="box"/>
+  <text x="41" y="141" font-size="15" font-weight="bold">jobs</text>
+  <text x="41" y="165" font-size="13" class="lbl">queue · buffer</text>
+  <line x1="160" y1="130" x2="235" y2="85" class="arrow" marker-end="url(#ah24)"/>
+  <line x1="160" y1="155" x2="235" y2="200" class="arrow" marker-end="url(#ah24)"/>
+  <rect x="240" y="45" width="150" height="70" rx="10" class="box"/>
+  <text x="256" y="75" font-size="14" font-weight="bold">worker 1</text>
+  <text x="256" y="99" font-size="13" class="lbl">+ ctx</text>
+  <rect x="240" y="170" width="150" height="70" rx="10" class="box"/>
+  <text x="256" y="200" font-size="14" font-weight="bold">worker 2</text>
+  <text x="256" y="224" font-size="13" class="lbl">+ ctx</text>
+  <line x1="395" y1="80" x2="470" y2="125" class="arrow" marker-end="url(#ah24)"/>
+  <line x1="395" y1="205" x2="470" y2="155" class="arrow" marker-end="url(#ah24)"/>
+  <rect x="475" y="110" width="160" height="75" rx="10" class="goodbox"/>
+  <text x="491" y="141" font-size="15" font-weight="bold">results</text>
+  <text x="491" y="165" font-size="13" class="lbl">close after Wait</text>
+</svg>

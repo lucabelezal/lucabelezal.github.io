@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 240" role="img" aria-label="Diagrama: tabela de casos virando subtests">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .goodtext{fill:#238636;font-weight:bold}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .goodbox{stroke:#3fb950}
+      .goodtext{fill:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah25" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <rect x="25" y="60" width="230" height="120" rx="10" class="box"/>
+  <text x="41" y="90" font-size="14" font-weight="bold">tests[]</text>
+  <text x="41" y="114" font-size="13">vazio → 0</text>
+  <text x="41" y="138" font-size="13">um → 5</text>
+  <text x="41" y="162" font-size="13">varios → 6</text>
+  <line x1="260" y1="120" x2="340" y2="120" class="arrow" marker-end="url(#ah25)"/>
+  <text x="285" y="105" font-size="13" class="lbl">t.Run</text>
+  <rect x="345" y="60" width="285" height="120" rx="10" class="goodbox"/>
+  <text x="361" y="90" font-size="14" font-weight="bold">PASS ✓</text>
+  <text x="361" y="114" font-size="13">TestSum/vazio</text>
+  <text x="361" y="138" font-size="13">TestSum/um</text>
+  <text x="361" y="162" font-size="13">TestSum/varios</text>
+  <text x="25" y="212" font-size="13" class="lbl">+ go test -race -count=1 ./...</text>
+</svg>

@@ -1,0 +1,130 @@
+---
+slug: go-testes
+title: "Testes em Go: tabela, -race e o que realmente validar"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-13T14:00:00
+description: "Testes de tabela com subtests, -race no CI, redaction e contagem de goroutines: o kit mínimo que pega bug antes do merge — com saída real."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+Teste bom em Go é tabela + subtest + `-race`: casos como dados, cada um nomeado e isolado, detector ligado. Este post fecha o ciclo com [erros](/go-erros-logs) e [concorrência](/go-concorrencia): o que validar além do caminho feliz — redaction, vazamento de goroutine, condição de corrida.
+
+Post avulso. Saídas reais, Go 1.26.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- testes de tabela: casos como struct, subtests com `t.Run`
+- `-race` e `-v`: o que cada flag revela
+- testar redaction e campos obrigatórios de log
+- detectar leak com `NumGoroutine` antes/depois
+- o que NÃO testar (implementação, terceiros, framework)
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go básico: funções, structs, pacotes
+- [Erros e logs](/go-erros-logs) e [concorrência](/go-concorrencia) para os casos avançados
+
+</Prerequisites>
+
+## 1. Contexto
+
+`go test` roda arquivos `*_test.go`, com cache por padrão e `-count=1` para forçar. Convenção: função `TestXxx(t *testing.T)`, `t.Fatalf` para falhar com mensagem, `t.Run` para subtests. Tabela = slice de structs `{name, in, want}`: adicionar caso é adicionar linha, sem nova função.
+
+## 2. O problema
+
+Teste "exemplo único" apodrece: cobre o caminho feliz, esconde bordas (vazio, nil, zero), e quando quebra ninguém sabe qual caso. Pior: concorrência sem `-race` passa verde com race escondido — o detector existe justamente porque olho humano não pega intercalação.
+
+## 3. Modelo mental
+
+**Caso é dado, não código.** Tabela separa *o quê* (linhas) do *como* (runner). Nome do caso vira documentação executável (`TestSum/vazio`).
+
+**`-race` instrumenta, não adivinha.** Rastreia acessos entre goroutines em runtime; custa ~10x — por isso vive no CI, não em produção.
+
+**Teste comportamento observável.** Logs (campos, redaction), contagem de goroutines, saídas — não internos. Refatorar sem quebrar teste é a prova de que o teste mira o contrato.
+
+![Diagrama: tabela de casos alimentando subtests, -race por cima](/img/diagramas/go-testes-tabela.svg)
+
+**Regra prática.** Novo bug → novo caso na tabela primeiro (reproduz), depois o fix. Tabela cresce com os incidentes.
+
+## 4. Implementação
+
+```go title="sum_test.go" showLineNumbers
+func TestSum(t *testing.T) {
+	tests := []struct {
+		name string
+		in   []int
+		want int
+	}{
+		{"vazio", nil, 0},
+		{"um", []int{5}, 5},
+		{"varios", []int{1, 2, 3}, 6},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Sum(tt.in); got != tt.want {
+				t.Fatalf("Sum(%v) = %d, want %d", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+```
+
+```bash title="Terminal"
+=== RUN   TestSum
+=== RUN   TestSum/vazio
+=== RUN   TestSum/um
+=== RUN   TestSum/varios
+--- PASS: TestSum (0.00s)
+    --- PASS: TestSum/vazio (0.00s)
+    --- PASS: TestSum/um (0.00s)
+    --- PASS: TestSum/varios (0.00s)
+PASS
+ok  	tdd	1.396s
+```
+
+Comando completo do CI: `go test -race -count=1 ./...` — sem cache, com detector, em tudo. Para logs: handler em `bytes.Buffer` + `json.Unmarshal` afirmando `order_id` e `[REDACTED]` (padrão do post de erros). Para leaks: `runtime.NumGoroutine()` antes/depois do cenário (padrão do post de concorrência: 1 → 1).
+
+## 5. Falhas e trade-offs
+
+**Testar implementação.** Afirmar chamadas internas ou ordem de locks quebra a cada refatoração honesta. Mire saídas e efeitos.
+
+**`time.Sleep` para sincronizar teste.** Flaky por construção: quebra em CI lento, atrasa em CI rápido. Sincronize com channels/`Wait`/contexto com timeout — nunca com chute.
+
+**Cobertura como meta.** 100% com asserts vazios mente melhor que 70% honesto. Cobertura guia onde falta caso; não prova nada sozinha.
+
+**Teste de terceiro.** Mockar biblioteca para afirmar comportamento dela testa o mock. Teste sua integração (contrato que você usa), não a lib.
+
+### Fontes e nível de autoridade
+
+| Assunto | Fonte principal |
+|---|---|
+| `testing`, subtests, benchmarks | [pkg.go.dev/testing](https://pkg.go.dev/testing) |
+| Race detector | [Go Docs](https://go.dev/doc/articles/race_detector) |
+| Casos: logs e leaks | [Erros](/go-erros-logs) e [concorrência](/go-concorrencia) |
+
+<Summary>
+
+- tabela + `t.Run`: casos como dados, nomes como documentação
+- `go test -race -count=1 ./...` no CI, sempre
+- valide observável: campos de log, redaction, contagem de goroutines
+- bug novo entra como caso antes do fix; cobertura guia, não prova
+
+</Summary>
+
+<NextSteps href="/go-erros-logs" title="Erros e logs em Go">
+
+Testes afirmam comportamento — erros e logs definem qual comportamento importa: `%w`, borda única, redaction.
+
+</NextSteps>
+
+<SkillsGained skills={["Testes", "Tabela", "Race detector", "CI"]} />

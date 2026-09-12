@@ -1,5 +1,30 @@
 [
   {
+    "slug": "go-http-api",
+    "title": "API HTTP em Go: stdlib, middleware e JSON sem framework",
+    "date": "2026-09-13T15:00:00"
+  },
+  {
+    "slug": "go-testes",
+    "title": "Testes em Go: tabela, -race e o que realmente validar",
+    "date": "2026-09-13T14:00:00"
+  },
+  {
+    "slug": "go-worker-pool",
+    "title": "Worker pool em Go: fila, limite e desligamento limpo",
+    "date": "2026-09-13T13:00:00"
+  },
+  {
+    "slug": "go-defer-panic",
+    "title": "Defer, panic e recover em Go: LIFO, argumentos e a regra",
+    "date": "2026-09-13T12:00:00"
+  },
+  {
+    "slug": "go-sync-map",
+    "title": "sync.Map em Go: quando o mapa precisa de cadeado embutido",
+    "date": "2026-09-13T11:00:00"
+  },
+  {
     "slug": "cap-pacelc",
     "title": "CAP e PACELC na prática: P é pré-requisito, o resto é decisão",
     "date": "2026-09-13T09:00:00"

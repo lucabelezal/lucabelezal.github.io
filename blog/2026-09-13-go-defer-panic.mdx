@@ -1,0 +1,136 @@
+---
+slug: go-defer-panic
+title: "Defer, panic e recover em Go: LIFO, argumentos e a regra"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-13T12:00:00
+description: "Defer executa em LIFO com argumentos avaliados na hora; panic não é fluxo. Entenda recover, middleware e quando cada um — com código executável."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+`defer` adia para o fim da função, em ordem inversa — e avalia os argumentos **na hora**, não no fim. `panic` aborta a goroutine; `recover` só funciona dentro de deferred. Três frases que evitam 90% dos bugs: LIFO sempre, argumento agora, panic nunca como fluxo.
+
+Post avulso, complemento de [erros e logs](/go-erros-logs).
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- LIFO: último `defer` executa primeiro
+- argumentos avaliados no registro, não na execução
+- `panic`/`recover`: mecânica e por que não é try/catch
+- middleware de recover para HTTP: onde panic pode existir
+- `defer` para Unlock, Close e cancel — o trio inseparável
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Erros e logs](/go-erros-logs): `%w`, slog, borda
+- Go básico: funções, closures (Go 1.26 nos exemplos)
+
+</Prerequisites>
+
+## 1. Contexto
+
+`defer f(x)` registra uma chamada para o retorno da função atual: sucesso, erro ou panic — ela roda. Os usos canônicos são três, todos vistos na série: `mu.Unlock()`, `f.Close()`, `cancel()`. Sem `defer`, cada `return` antecipado precisa repetir a limpeza — e um dia alguém adiciona um `return` e esquece.
+
+## 2. O problema
+
+Duas surpresas clássicas. Primeira: defers "saem" ao contrário do que entram. Segunda: o valor usado é o do registro:
+
+```go title="main.go" showLineNumbers
+func lifo() {
+	defer fmt.Println("3: sai por último registrado")
+	defer fmt.Println("2:")
+	fmt.Println("1: entra primeiro")
+}
+
+func args(x int) {
+	defer fmt.Println("defer viu:", x)
+	x = 99
+	fmt.Println("corpo:", x)
+}
+```
+
+```bash title="Terminal"
+1: entra primeiro
+2:
+3: sai por último registrado
+corpo: 99
+defer viu: 1
+```
+
+O `defer` viu `1` — argumento avaliado no registro, antes do corpo mudar `x`. Quem espera "foto do fim" lê dado velho; quem precisa do valor final usa closure (`defer func() { fmt.Println(x) }()`).
+
+## 3. Modelo mental
+
+**LIFO = pilha de cleanup.** Pense em abrir/fechar aninhado: último recurso adquirido, primeiro liberado — ordem que desfaz dependências na sequência certa (ex.: `Unlock` antes de `Close` do que depende dele).
+
+**`panic` atravessa chamadas, não goroutines.** Panic sobe a pilha da goroutine atual até `recover` em deferred — ou derruba o programa. Goroutine vizinha nem fica sabendo. Por isso `panic` como fluxo é quebrado por construção: erro esperado atravessa fronteira de goroutine como **valor**, nunca como pânico.
+
+**`recover` só em deferred, só na mesma goroutine.** Fora disso, retorna nil. Middleware HTTP com `recover` protege o servidor de um handler em pânico (log + 500), sem fingir que foi erro tratado.
+
+![Diagrama: pilha LIFO de defers executando no retorno](/img/diagramas/go-defer-lifo.svg)
+
+**Regra prática.** `defer` para desfazer (Unlock/Close/cancel); `panic` para invariante violada (índice impossível, programador errou); `recover` só na borda (servidor, worker pool) convertendo em 500/log.
+
+## 4. Implementação
+
+Middleware de recover: o único lugar onde `recover` é idioma:
+
+```go title="main.go" showLineNumbers
+func recoverMW(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Printf("panic: %v", rec)
+				http.Error(w, "erro interno", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+```
+
+E o trio inseparável, que dispensa exemplo novo — já validado na série: `defer mu.Unlock()` (concorrência), `defer f.Close()` (pipeline), `defer cancel()` (context). Se sua função adquire e não agenda a soltura na linha seguinte, o bug já nasceu.
+
+## 5. Falhas e trade-offs
+
+**`recover` como try/catch.** Captura na mesma goroutine, esconde o caminho feliz, transforma bug em silêncio. Exceção: borda de servidor/worker convertendo em 500 + log + métrica.
+
+**Defer em loop quente.** `defer` tem custo (ns, mas soma em milhões de iterações). Em loop apertado, faça cleanup explícito ou reestruture em função por iteração.
+
+**`defer` que muda retorno nomeado.** Deferred pode atribuir aos named returns — poder legítimo (ex.: enriquecer erro com `Close` falho), fonte de sustos quando acidental. Se usa, comente; se não precisa, retornos sem nome.
+
+**Panic com valor útil?** `panic("msg")` perde tipo; `panic(errValor)` permite `recover` inspecionar. Mesmo assim: invariante, não fluxo.
+
+### Fontes e nível de autoridade
+
+| Assunto | Fonte principal |
+|---|---|
+| `defer`, `panic`, `recover` | [Especificação do Go](https://go.dev/ref/spec#Defer_statements) |
+| Defer e panic na prática | [Lane Wagner, Defer in Go](https://www.boot.dev/blog/golang) |
+| Erros como valores | [Erros e logs](/go-erros-logs) |
+
+<Summary>
+
+- `defer` executa em LIFO; argumentos avaliados no registro (closure para valor final)
+- `panic` sobe a pilha da goroutine; `recover` só em deferred da mesma
+- trio: Unlock, Close, cancel — sempre com `defer` na linha seguinte
+- `recover` só na borda (HTTP 500 + log); nunca como fluxo
+
+</Summary>
+
+<NextSteps href="/go-erros-logs" title="Erros e logs em Go">
+
+Limpeza e pânico dominados, volte à disciplina completa: embrulhar com `%w`, logar estruturado uma vez, na borda.
+
+</NextSteps>
+
+<SkillsGained skills={["Defer", "Panic", "Recover", "Middleware"]} />

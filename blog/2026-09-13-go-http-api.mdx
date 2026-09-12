@@ -1,0 +1,136 @@
+---
+slug: go-http-api
+title: "API HTTP em Go: stdlib, middleware e JSON sem framework"
+authors: [lucabelezal]
+tags: [go, backend, sistemas-distribuidos]
+date: 2026-09-13T15:00:00
+description: "net/http da stdlib com roteamento por método, middleware de request_id, JSON e logs: API completa validada com curl — sem framework."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+Desde Go 1.22, `net/http` roteia por método (`"GET /health"`), e com middleware em cadeia + `encoding/json` + `slog` você monta API completa sem framework. Este post usa tudo da série: `ctx` com timeout ([concorrência](/go-concorrencia)), logger com `request_id` ([erros](/go-erros-logs)), shutdown gracioso e testes de contrato.
+
+Post avulso, validado com `curl` de verdade. Saídas reais, Go 1.26.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- roteamento stdlib por método (Go 1.22+): `"GET /health"`
+- middleware em cadeia: `request_id`, duração, logs
+- JSON: decode com erro 400 honesto, encode com Content-Type
+- `ctx` por handler + timeouts de servidor
+- contrato testável com `curl` (e depois, com `httptest`)
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Concorrência](/go-concorrencia): `ctx`, shutdown, `main` real
+- [Erros e logs](/go-erros-logs): `slog`, `request_id`, borda
+
+</Prerequisites>
+
+## 1. Contexto
+
+Framework resolve o que a stdlib já resolve desde 1.22: rotear por método e padrão, servir com timeouts, encerrar com drenagem. O que framework ainda entrega — validação, DI, docs — se avalia depois, com dor medida. Comece stdlib: menos camada para debugar, upgrade sem breaking, binário sem surpresa.
+
+![Diagrama: request atravessa middleware, handler, JSON de volta](/img/diagramas/go-http-cadeia.svg)
+
+## 2. O problema
+
+API sem request_id: três requests falham juntos e o log não diz qual é qual. Sem timeout: handler lento prende conexão para sempre (Slowloris de brinde). Sem Content-Type: cliente adivinha o corpo. Sem shutdown: deploy mata request no meio. Cada um desses já derrubou produção real — e nenhum precisa de framework para resolver.
+
+## 3. Modelo mental
+
+**Middleware é cebola tipada.** `func mw(log, next) http.Handler`: cada camada recebe request, faz o seu (id, timer, auth) e chama a próxima. Ordem importa: request_id primeiro (tudo abaixo loga com ele), recovery por fora de tudo.
+
+**Handler devolve, não decide infra.** Handler parseia, chama serviço, escreve JSON + status. Timeout vem do `ctx`; shutdown, do `main`; log, do middleware. Handler gordo com `log.Fatal` dentro é o bug clássico.
+
+**Contrato antes de código.** Método + path + status + corpo: `GET /health → 200 {"status":"ok"}`, `POST /double {"n":21} → 200 {"result":42}`, JSON inválido → 400 texto. Contrato escrito vira teste (curl hoje, `httptest` amanhã).
+
+**Regra prática.** Stdlib até doer de verdade; middleware fino e ordenado; todo handler com `ctx` e todo servidor com timeout + shutdown (a `main` real do post de concorrência).
+
+## 4. Implementação
+
+```go title="main.go" showLineNumbers
+func mw(log *slog.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := fmt.Sprintf("req-%d", time.Now().UnixNano()%100000)
+		ctx := context.WithValue(r.Context(), reqKey, id)
+		l := log.With(slog.String("request_id", id))
+		start := time.Now()
+		next.ServeHTTP(w, r.WithContext(ctx))
+		l.Info("done", slog.String("method", r.Method), slog.String("path", r.URL.Path), slog.Duration("ms", time.Since(start)))
+	})
+}
+
+mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+})
+mux.HandleFunc("POST /double", func(w http.ResponseWriter, r *http.Request) {
+	var in struct{ N int `json:"n"` }
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, "json inválido", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"result": in.N * 2})
+})
+```
+
+```bash title="Terminal"
+{"status":"ok"}
+{"result":42}
+json inválido
+```
+
+E no log do servidor, cada request com sua identidade:
+
+```bash title="Terminal"
+{"level":"INFO","msg":"done","request_id":"req-69000","method":"GET","path":"/health",...}
+{"level":"INFO","msg":"done","request_id":"req-20000","method":"POST","path":"/double",...}
+```
+
+Três `curl` validam o contrato; o `request_id` costura log e request. Próximo passo natural: mesmos casos em `httptest` no CI (padrão do post de testes).
+
+## 5. Falhas e trade-offs
+
+**Framework no dia um.** Chi/Gin/Fiber antes da primeira dor: camada para debugar, upgrade com breaking, lock-in de convenção. Adote quando stdlib provar limite (validação complexa, OpenAPI gerado, websockets com estado).
+
+**Sem timeout no servidor.** Handler com `ctx` não salva conexão sem `ReadTimeout`/`WriteTimeout` no `http.Server`: Slowloris ocupa workers de graça. Timeouts nas duas pontas, sempre.
+
+**`request_id` gerado no handler.** Tarde demais: middlewares anteriores já logaram sem ele. Gere na borda (primeiro middleware), propague via `ctx`.
+
+**JSON sem Content-Type.** Cliente que confia no corpo quebra em proxy que reescreve. Header sempre, antes do primeiro `Encode` (depois de escrever, header trava).
+
+### Fontes e nível de autoridade
+
+| Assunto | Fonte principal |
+|---|---|
+| `net/http`, roteamento, timeouts | [pkg.go.dev/net/http](https://pkg.go.dev/net/http) |
+| Middleware e `main` real | [Concorrência em Go](/go-concorrencia) |
+| Logs e `request_id` | [Erros e logs](/go-erros-logs) |
+
+<Summary>
+
+- stdlib roteia por método desde 1.22; framework só com dor medida
+- middleware: request_id primeiro, timer, recovery por fora
+- contrato explícito (status + corpo) validado com curl, depois httptest
+- servidor sempre com timeout + shutdown; handler sempre com ctx
+
+</Summary>
+
+<NextSteps href="/go-concorrencia" title="Concorrência em Go">
+
+API no ar, volte ao runtime: a `main` real com shutdown gracioso mora no post de concorrência — e o próximo gargalo aparece no pprof.
+
+</NextSteps>
+
+<SkillsGained skills={["HTTP", "Middleware", "JSON", "API"]} />

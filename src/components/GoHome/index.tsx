@@ -3,6 +3,36 @@ import styles from './styles.module.css';
 
 const contents = [
   {
+    title: 'API HTTP em Go',
+    description: 'Stdlib sem framework: roteamento, middleware, JSON e contrato com curl.',
+    href: '/go-http-api',
+    date: '13 set 2026',
+  },
+  {
+    title: 'Testes em Go',
+    description: 'Tabela, subtests, -race e o que validar além do caminho feliz.',
+    href: '/go-testes',
+    date: '13 set 2026',
+  },
+  {
+    title: 'Worker pool em Go',
+    description: 'Fila, limite, backpressure e desligamento limpo com contexto.',
+    href: '/go-worker-pool',
+    date: '13 set 2026',
+  },
+  {
+    title: 'Defer, panic e recover em Go',
+    description: 'LIFO, argumentos na hora e a regra: panic nunca é fluxo.',
+    href: '/go-defer-panic',
+    date: '13 set 2026',
+  },
+  {
+    title: 'sync.Map em Go',
+    description: 'Read sem lock, dirty com lock: quando o mapa precisa de cadeado embutido.',
+    href: '/go-sync-map',
+    date: '13 set 2026',
+  },
+  {
     title: 'CAP e PACELC na prática',
     description: 'P é pré-requisito: C vs A na partição, L vs C fora dela.',
     href: '/cap-pacelc',

@@ -102,6 +102,41 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'link',
+          label: 'API HTTP em Go',
+          href: '/go-http-api',
+          description: 'Stdlib, middleware e JSON sem framework.',
+          customProps: {date: '13 set 2026'},
+        },
+        {
+          type: 'link',
+          label: 'Testes em Go',
+          href: '/go-testes',
+          description: 'Tabela, -race e o que validar.',
+          customProps: {date: '13 set 2026'},
+        },
+        {
+          type: 'link',
+          label: 'Worker pool em Go',
+          href: '/go-worker-pool',
+          description: 'Fila, limite e shutdown limpo.',
+          customProps: {date: '13 set 2026'},
+        },
+        {
+          type: 'link',
+          label: 'Defer, panic e recover em Go',
+          href: '/go-defer-panic',
+          description: 'LIFO, argumentos e a regra.',
+          customProps: {date: '13 set 2026'},
+        },
+        {
+          type: 'link',
+          label: 'sync.Map em Go',
+          href: '/go-sync-map',
+          description: 'Read/dirty, LoadOrStore e quando usar.',
+          customProps: {date: '13 set 2026'},
+        },
+        {
+          type: 'link',
           label: 'CAP e PACELC na prática',
           href: '/cap-pacelc',
           description: 'P fixo, C vs A, L vs C.',

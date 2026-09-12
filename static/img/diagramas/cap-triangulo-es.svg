@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 365" role="img" aria-label="Diagrama: Venn C, A, P con C∩A∩P imposible bajo partición">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -10 660 420" role="img" aria-label="Diagrama: Venn C, A, P con C∩A∩P imposible bajo partición">
   <style>
-    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f;text-anchor:middle}
     .c{fill:none;stroke:#0969da;stroke-width:2.5}
     .a{fill:none;stroke:#b35900;stroke-width:2.5}
     .p{fill:none;stroke:#238636;stroke-width:2.5}
@@ -17,19 +17,19 @@
       .badtext{fill:#ff6b6b}
     }
   </style>
-  <circle cx="330" cy="130" r="95" class="c"/>
-  <circle cx="240" cy="235" r="95" class="a"/>
-  <circle cx="420" cy="235" r="95" class="p"/>
-  <text x="322" y="72" font-size="18" font-weight="bold">C</text>
-  <text x="284" y="92" font-size="11" class="lbl">consistencia</text>
-  <text x="182" y="252" font-size="18" font-weight="bold">A</text>
-  <text x="126" y="270" font-size="11" class="lbl">disponibilidad</text>
-  <text x="472" y="252" font-size="18" font-weight="bold">P</text>
-  <text x="446" y="270" font-size="11" class="lbl">tolerancia</text>
-  <text x="246" y="158" font-size="11" class="lbl">C∩A</text>
-  <text x="392" y="158" font-size="11" class="lbl">C∩P</text>
-  <text x="308" y="292" font-size="11" class="lbl">A∩P</text>
-  <text x="318" y="196" font-size="24" class="badtext">✗</text>
-  <text x="296" y="216" font-size="11" class="badtext">C∩A∩P</text>
-  <text x="120" y="350" font-size="14" class="goodtext">C∩P ✓ o A∩P ✓ · C∩A∩P ✗ bajo partición</text>
+  <circle cx="330" cy="120" r="125" class="c"/>
+  <circle cx="250" cy="240" r="125" class="a"/>
+  <circle cx="410" cy="240" r="125" class="p"/>
+  <text x="330" y="72" font-size="20" font-weight="bold">C</text>
+  <text x="330" y="94" font-size="12" class="lbl">consistencia</text>
+  <text x="190" y="268" font-size="20" font-weight="bold">A</text>
+  <text x="190" y="290" font-size="12" class="lbl">disponibilidad</text>
+  <text x="470" y="268" font-size="20" font-weight="bold">P</text>
+  <text x="470" y="290" font-size="12" class="lbl">tolerancia ★</text>
+  <text x="265" y="175" font-size="11" class="lbl">C∩A</text>
+  <text x="395" y="175" font-size="11" class="lbl">C∩P</text>
+  <text x="330" y="293" font-size="11" class="lbl">A∩P</text>
+  <text x="330" y="205" font-size="26" class="badtext">✗</text>
+  <text x="330" y="227" font-size="12" class="badtext">C∩A∩P</text>
+  <text x="330" y="392" font-size="14" class="goodtext">C∩P ✓ o A∩P ✓ · C∩A∩P ✗ bajo partición</text>
 </svg>

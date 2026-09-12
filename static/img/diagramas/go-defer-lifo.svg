@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 300" role="img" aria-label="Diagrama: defers executam em LIFO">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .lbl{fill:#57606a}
+    .num{fill:#238636;font-weight:bold}
+    .arrow{stroke:#238636;stroke-width:2;fill:none}
+    .head{fill:#238636;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .lbl{fill:#8b949e}
+      .num{fill:#3fb950}
+      .arrow{stroke:#3fb950}
+      .head{fill:#3fb950}
+    }
+  </style>
+  <defs>
+    <marker id="ah23" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <text x="60" y="40" font-size="14" class="lbl">registra ↓</text>
+  <rect x="60" y="55" width="280" height="55" rx="8" class="box"/>
+  <text x="76" y="89" font-size="14">defer mu.Unlock() <tspan class="num">①</tspan></text>
+  <rect x="60" y="120" width="280" height="55" rx="8" class="box"/>
+  <text x="76" y="154" font-size="14">defer f.Close() <tspan class="num">②</tspan></text>
+  <rect x="60" y="185" width="280" height="55" rx="8" class="box"/>
+  <text x="76" y="219" font-size="14">defer cancel() <tspan class="num">③</tspan></text>
+  <line x1="380" y1="230" x2="380" y2="70" class="arrow" marker-end="url(#ah23)"/>
+  <text x="400" y="155" font-size="14" class="num">executa ③→①</text>
+  <text x="400" y="180" font-size="13" class="lbl">LIFO no return</text>
+</svg>
