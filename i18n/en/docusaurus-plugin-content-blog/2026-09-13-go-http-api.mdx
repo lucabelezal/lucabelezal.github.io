@@ -4,7 +4,7 @@ title: "HTTP APIs in Go: stdlib, middleware, and JSON without frameworks"
 authors: [lucabelezal]
 tags: [go, backend, sistemas-distribuidos]
 date: 2026-09-13T15:00:00
-description: "Stdlib net/http, step by step: minimal server, method routing, middleware, JSON, and logs — validated with real curl, no frameworks."
+description: "Stdlib net/http, step by step: minimal server, method routing, middleware, JSON, full file layout, and a Spring comparison — validated with real curl."
 ---
 
 import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
@@ -13,7 +13,7 @@ import Summary from '@site/src/components/blog/Summary';
 import NextSteps from '@site/src/components/blog/NextSteps';
 import SkillsGained from '@site/src/components/blog/SkillsGained';
 
-An HTTP API in Go needs four things: listening on a port, routing paths to functions, reading/writing JSON, and logging with identity. The stdlib has delivered all four since Go 1.22 — no framework. Let's build in that order, one layer at a time, each running before the next.
+An HTTP API in Go needs four things: listening on a port, routing paths to functions, reading/writing JSON, and logging with identity. The stdlib has delivered all four since Go 1.22 — no framework. Let's build in that order, one layer at a time, each running before the next, ending with the full file layout used at work and a map for people coming from Spring.
 
 Standalone post, validated with real `curl`. Real outputs, Go 1.26.
 
@@ -26,6 +26,8 @@ Standalone post, validated with real `curl`. Real outputs, Go 1.26.
 - handlers: the `func(w, r)` signature unpacked
 - JSON: decode with honest 400s, encode with Content-Type
 - chained middleware: `request_id`, durations, logs
+- the full `cmd/` + `internal/` layout as used in production
+- a Spring-to-Go map for people coming from Java
 
 </WhatYouWillLearn>
 
@@ -42,13 +44,29 @@ Frameworks solve what the stdlib has solved since 1.22: routing by method and pa
 
 ![Diagram: request crosses middleware, handler, JSON back](/img/diagramas/go-http-cadeia.svg)
 
+> **Direct answer:** yes, `http.NewServeMux()` is the standard way in the standard library. Since Go 1.22 it routes by method (`"GET /health"`). Chi is a `ServeMux` with sugar (groups, params). Gin/Fiber/Echo are their own engines — popular in job posts, but outside the stdlib.
+
 ## 2. The problem
 
 APIs without request_ids: three requests fail together and logs can't tell which is which. Without timeouts: slow handlers hold connections forever. Without Content-Type: clients guess bodies. Each has taken down real production — none needs a framework.
 
-## 3. Step 1 — the smallest responding server
+## 3. Mental model
 
-```go title="main.go" showLineNumbers
+Three definitions before the code:
+
+- **`Handler`** — anything with `ServeHTTP(w, r)`. In practice, `func(w http.ResponseWriter, r *http.Request)`: `w` is where the response leaves, `r` is what arrived.
+- **`Mux`** — a pattern → handler table. `http.NewServeMux()` creates it, `HandleFunc("GET /x", f)` registers a row.
+- **Middleware** — a function taking a handler and returning another: `func(next http.Handler) http.Handler`. Requests enter from outside, responses leave from inside. It's an onion: the outermost layer sees everything first.
+
+Onion order in this post: `recover` outside everything → `request_id` (generates identity) → `logger` (measures with identity) → `mux`.
+
+## 4. Implementation
+
+Go 1.26, zero dependencies. Each step runs before the next.
+
+### 4.1 Step 1 — the smallest responding server
+
+```go title="main.go (step 1)" showLineNumbers
 package main
 
 import "net/http"
@@ -75,11 +93,11 @@ ok
 
 Server live. Everything else in this post is layers over these 10 lines.
 
-## 4. Step 2 — real JSON
+### 4.2 Step 2 — real JSON
 
 Plain text isn't an API. Swap the response for JSON and add a POST route reading JSON:
 
-```go title="main.go" showLineNumbers
+```go title="main.go (step 2)" showLineNumbers
 mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -109,11 +127,11 @@ $ curl -X POST http://127.0.0.1:18098/double -d 'xxx'
 json inválido
 ```
 
-## 5. Step 3 — middleware: which request is which
+### 4.3 Step 3 — middleware: which request is which
 
 With two routes, logs already blur together. Middleware fixes it: a function wrapping the router, stamping `request_id` and timing:
 
-```go title="main.go" showLineNumbers
+```go title="main.go (step 3)" showLineNumbers
 func mw(log *slog.Logger, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := fmt.Sprintf("req-%d", time.Now().UnixNano()%100000)
@@ -135,11 +153,257 @@ Read inside out: generates `id`, hangs it on `ctx` (handlers below read it with 
 
 Three requests, three identities — logs now answer "which one failed".
 
+### 4.4 Step 4 — full layout by file
+
+The snippets above live in one `main.go` for learning. At work, split by responsibility: `cmd` assembles, `internal` implements. Every file below compiles together — copy into this structure and run `go run ./cmd/api`.
+
+```go title="go.mod"
+module example.com/httpapi
+
+go 1.26
+```
+
+```go title="internal/middleware/requestid.go" showLineNumbers
+package middleware
+
+import (
+	"context"
+	"fmt"
+	"net/http"
+	"time"
+)
+
+type ctxKey string
+
+const reqKey ctxKey = "request_id"
+
+// RequestID generates the identity at the edge and hangs it on the context.
+func RequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		id := fmt.Sprintf("req-%d", time.Now().UnixNano()%100000)
+		w.Header().Set("X-Request-ID", id)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), reqKey, id)))
+	})
+}
+
+// FromContext reads the id with no extra parameter in the handler.
+func FromContext(ctx context.Context) string {
+	if v, _ := ctx.Value(reqKey).(string); v != "" {
+		return v
+	}
+	return "req-unknown"
+}
+```
+
+**Rule of thumb.** Generate `request_id` at the edge, never in handlers. Too late = earlier middlewares already logged without it.
+
+```go title="internal/middleware/logger.go" showLineNumbers
+package middleware
+
+import (
+	"log/slog"
+	"net/http"
+	"time"
+)
+
+// Logger measures duration and logs with the context's request_id.
+func Logger(log *slog.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		next.ServeHTTP(w, r)
+		log.Info("done",
+			slog.String("request_id", FromContext(r.Context())),
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.Duration("ms", time.Since(start)),
+		)
+	})
+}
+```
+
+```go title="internal/middleware/recover.go" showLineNumbers
+package middleware
+
+import (
+	"log/slog"
+	"net/http"
+)
+
+// Recover outside everything: panics become 500, the server stays alive.
+func Recover(log *slog.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				log.Error("panic", slog.Any("panic", rec), slog.String("path", r.URL.Path))
+				http.Error(w, "erro interno", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
+```
+
+```go title="internal/handler/health.go" showLineNumbers
+package handler
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+// Health is the simplest readiness: 200 + JSON.
+func Health(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+```
+
+```go title="internal/handler/double.go" showLineNumbers
+package handler
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+// Double reads {"n":21} and returns {"result":42}. Invalid JSON = 400.
+func Double(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		N int `json:"n"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, "json inválido", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"result": in.N * 2})
+}
+```
+
+```go title="internal/server/mux.go" showLineNumbers
+package server
+
+import (
+	"net/http"
+
+	"example.com/httpapi/internal/handler"
+)
+
+// NewMux is the route table: method + pattern → handler.
+func NewMux() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", handler.Health)
+	mux.HandleFunc("POST /double", handler.Double)
+	return mux
+}
+```
+
+```go title="cmd/api/main.go" showLineNumbers
+package main
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"time"
+
+	"example.com/httpapi/internal/middleware"
+	"example.com/httpapi/internal/server"
+)
+
+func main() {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	mux := server.NewMux()
+	// Onion, outside in: recover → request_id → logger → mux.
+	h := middleware.Recover(log, middleware.RequestID(middleware.Logger(log, mux)))
+
+	srv := &http.Server{
+		Addr:         "127.0.0.1:18098",
+		Handler:      h,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	go func() {
+		log.Info("listen", slog.String("addr", srv.Addr))
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("serve", slog.Any("err", err))
+			os.Exit(1)
+		}
+	}()
+
+	<-ctx.Done()
+	shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = srv.Shutdown(shutCtx)
+}
+```
+
+```bash title="Terminal"
+$ go run ./cmd/api
+{"level":"INFO","msg":"listen","addr":"127.0.0.1:18098"}
+$ curl http://127.0.0.1:18098/health
+{"status":"ok"}
+$ curl -X POST http://127.0.0.1:18098/double -d '{"n":21}'
+{"result":42}
+```
+
+Why this split: `handler` knows no logs or middleware — only `w` and `r`. `server` knows only routes. `cmd/api` assembles the onion and timeouts. Testing a handler becomes a direct function call, no server to boot.
+
+## 5. Coming from Spring
+
+Equivalence table for reference — the lesson lives in the sections above, not here:
+
+| Spring | Go stdlib (this post) | Instead of what |
+|---|---|---|
+| `@RestController` + `@GetMapping("/health")` | `mux.HandleFunc("GET /health", handler.Health)` | Method + path registration is explicit in `ServeMux`, no reflection |
+| `@RequestBody` + Jackson | `json.NewDecoder(r.Body).Decode(&in)` | Manual decode: you decide 400 vs 500 |
+| `@ResponseBody` / Jackson | `w.Header().Set("Content-Type", ...)` + `json.NewEncoder(w).Encode` | Header before the first byte, no implicit serializer |
+| `OncePerRequestFilter` | `func(next http.Handler) http.Handler` | Onion assembled in `main`, order visible |
+| `server.port`, `server.tomcat.*-timeout` | `http.Server{Addr, ReadTimeout, WriteTimeout}` | Timeout where serving happens, not in properties |
+| `@ControllerAdvice` + 500 | `middleware.Recover` with `recover()` | Panic becomes 500 without killing the process |
+| `MDC` / `traceId` | `request_id` in `context.Context` | Explicit propagation via `ctx`, no thread-local |
+
+Side-by-side example of the same endpoint:
+
+```java title="DoubleController.java"
+@PostMapping("/double")
+public Map<String, Integer> doubleIt(@RequestBody Map<String, Integer> in) {
+    return Map.of("result", in.get("n") * 2);
+}
+```
+
+```go title="internal/handler/double.go"
+func Double(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		N int `json:"n"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, "json inválido", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"result": in.N * 2})
+}
+```
+
+Honest trade-off: Spring delivers DI, validation (`@Valid`), generated OpenAPI — charging bigger runtimes, proxy/reflection in stacktraces, convention lock-in. The stdlib delivers total control and a small binary — charging verbs: every 400, every header, every timeout is your code.
+
+**Rule of thumb.** Coming from Spring, resist recreating annotations with a framework on day one. Stay on the stdlib until you miss complex validation or generated docs — then Chi/Gin pay for it.
+
 ## 6. Failures and trade-offs
 
 **Frameworks on day one.** Chi/Gin/Fiber before the first pain: layers to debug, breaking upgrades, convention lock-in. Adopt when the stdlib proves limits.
 
-**No server timeouts.** Handlers with `ctx` don't save connections without `ReadTimeout`/`WriteTimeout` on `http.Server`: Slowloris holds workers for free. Timeouts on both ends + graceful shutdown (the concurrency post's real `main`).
+**No server timeouts.** Handlers with `ctx` don't save connections without `ReadTimeout`/`WriteTimeout` on `http.Server`: Slowloris holds workers for free. Timeouts on both ends + graceful shutdown (the real `main` above, same pattern as the concurrency post).
 
 **`request_id` generated in handlers.** Too late: earlier middlewares already logged without it. Generate at the edge (first middleware), propagate via `ctx`.
 
@@ -155,7 +419,9 @@ Three requests, three identities — logs now answer "which one failed".
 
 - minimal server: mux + `HandleFunc("GET /x")` + `(w, r)` handler
 - JSON with Content-Type before Encode; invalid = 400, not 500
-- middleware: request_id at the edge, timers, recovery outside
+- middleware: request_id at the edge, timer, recover outside
+- layout: `cmd/api` assembles, `internal/` implements, handlers infra-free
+- Spring → Go: Controller becomes HandleFunc, Filter becomes onion, Jackson becomes explicit Encoder/Decoder
 - servers always with timeouts + shutdown; handlers always with ctx
 
 </Summary>
