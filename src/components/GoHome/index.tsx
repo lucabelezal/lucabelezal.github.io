@@ -3,6 +3,24 @@ import styles from './styles.module.css';
 
 const contents = [
   {
+    title: 'CAP e PACELC na prática',
+    description: 'P é pré-requisito: C vs A na partição, L vs C fora dela.',
+    href: '/cap-pacelc',
+    date: '13 set 2026',
+  },
+  {
+    title: 'Generics em Go',
+    description: 'Constraints, type sets e um Cache[K, V] pronto para produção.',
+    href: '/go-generics',
+    date: '12 set 2026',
+  },
+  {
+    title: 'Erros e logs em Go',
+    description: 'Embrulhar com %w, inspecionar com Is/As e logar estruturado com slog.',
+    href: '/go-erros-logs',
+    date: '12 set 2026',
+  },
+  {
     title: 'Concorrência em Go',
     description: 'Goroutines, channels, WaitGroup e race detector com saídas reais.',
     href: '/go-concorrencia',

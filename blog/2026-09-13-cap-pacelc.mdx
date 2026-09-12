@@ -1,0 +1,160 @@
+---
+slug: cap-pacelc
+title: "CAP e PACELC na prática: P é pré-requisito, o resto é decisão"
+authors: [lucabelezal]
+tags: [sistemas-distribuidos, backend]
+date: 2026-09-13T09:00:00
+description: "CAP sem decoreba: partição é pré-requisito, a escolha real é C vs A — por serviço. E PACELC cobre o resto do tempo: latência vs consistência."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+Todo sistema distribuído falha em rede. Quando falha, só há duas saídas: mostrar dado possivelmente velho ou não mostrar nada. Essa frase é o teorema CAP inteiro na prática — e ela esconde o detalhe que quase ninguém explica: **a tolerância a partições (P) não é uma opção, é o pré-requisito** que ativa a escolha entre consistência (C) e disponibilidade (A). E quando não há falha, entra o PACELC: latência ou consistência?
+
+Post pragmático de System Design (com a tag nova `sistemas-distribuidos`). Teoria mínima para decidir, links para aprofundar no fim.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- CAP em uma frase operacional + ACID/BASE em um parágrafo cada
+- por que P é fixo e a escolha real é C vs A (só durante partição)
+- CP (ingressos, financeiro) vs AP (feed, busca) com exemplos reais
+- escolhas por serviço: booking CP + search AP no mesmo sistema
+- PACELC: sem partição, a troca é latência vs consistência (Dynamo PA/EL, Spanner PC/EC)
+- onde aprofundar: Fidelis, Brewer 2012, Kleppmann
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- ideia de sistemas distribuídos (múltiplos nós, replicação)
+- [Concorrência](/go-concorrencia) ajuda na intuição de trade-offs (opcional)
+
+</Prerequisites>
+
+## 1. Contexto
+
+**CAP (Brewer, 2000):** consistência (toda leitura vê o dado mais recente), disponibilidade (toda request recebe resposta), tolerância a partições (opera mesmo com a rede partida). **ACID** (SQL tradicional): transações atômicas, consistentes, isoladas e duráveis — precisão antes de tudo. **BASE** (NoSQL distribuído): basicamente disponível, soft state, eventualmente consistente — disponibilidade e escala antes da precisão imediata.
+
+### C, A, P — um a um, antes de comparar
+
+**Consistência: toda leitura vê a escrita mais recente, em qualquer nó.** Você escreve no servidor dos EUA e lê no Brasil: mesmo dado, sem "ainda não replicou". Preço: a escrita espera confirmação de (quase) todos — lenta, e trava se algum não responde. Pense em transferência bancária: saldo zerado aqui nega o saque lá, sempre igual.
+
+**Disponibilidade: toda request recebe resposta.** Positiva, erro, 404 — mas resposta, nunca silêncio nem espera infinita. Preço: a resposta pode vir de réplica desatualizada. Pense no feed: foto de segundos atrás, página sempre no ar.
+
+**Tolerância a partições: opera com a rede partida.** Partição = falha de comunicação entre nós (cabo, provedor, deploy, zona fora do ar). Sistema tolerante continua atendendo de cada lado do corte — mesmo que os lados divirjam temporariamente. Não é "ter muitas partes": é **sobreviver ao corte**. Como rede falha sempre (em escala, é questão de quando), P não se escolhe — se assume.
+
+![Diagrama: triângulo CAP com P fixo, escolha entre C e A](/img/diagramas/cap-triangulo.svg)
+
+## 2. O problema
+
+E-commerce global: catálogo nos EUA, réplica no Brasil. Um produto é deletado nos EUA; a replicação falha no meio do caminho. O usuário brasileiro abre a vitrine. Duas saídas, sem meio-termo:
+
+1. **Mostra o produto** (talvez deletado) → disponibilidade: UX fluida, risco de vender o que não existe.
+2. **Mostra indisponível/carregando** até sincronizar → consistência: dado correto, loja "quebrada" por minutos.
+
+Não decidir é decidir mal: cada default silencioso do banco escolhe por você. A pergunta operacional que o CAP resume: *na partição, dado velho ou nada?*
+
+## 3. Modelo mental
+
+**P é pré-requisito, não opção.** Sem múltiplos nós não há partição — e sem partição não há teorema (banco único é "CA" por vacuidade, não por escolha). Em sistema distribuído real, P é fixo: a escolha é sempre **C vs A, durante a falha**. Ensinar "escolha 2 de 3 livremente" é o erro que mais confunde em entrevista.
+
+**CP: quando dado errado custa dinheiro.** Ingressos (dois não compram o mesmo assento), companhias aéreas, estoque (dez compram a última unidade?), financeiro (saldo zerado nega a segunda transferência). MongoDB, etcd/Consul, CockroachDB.
+
+**AP: quase todo o resto.** Feed, perfil, dashboard, comentários, busca: foto desatualizada por segundos não quebra negócio — página fora do ar, sim. DynamoDB, Cassandra, CouchDB.
+
+**Por serviço, não por sistema.** Microsserviços aplicam CAP por segmento: booking de ingressos CP (consistência inegociável) + busca de filmes AP (descrição velha por segundos é aceitável). Definir no desenho da fundação, antes da arquitetura — depois vira retrabalho.
+
+**Brewer revisitou (2012): espectro, não binário.** Consistência e disponibilidade têm graus; partições são raras na maioria dos workloads — fora delas dá para otimizar C e A juntos. "Escolha 2" virou ponto de partida, não lei.
+
+**PACELC (Abadi, 2010): e sem falha?** Se há partição: A ou C (igual ao CAP). Se **não** há (Else): **Latência ou Consistência**. DynamoDB = PA/EL (disponível na falha, rápido no normal); Spanner = PC/EC (consistente sempre, paga latência com TrueTime):
+
+![Diagrama: com partição A vs C; sem partição L vs C](/img/diagramas/pacelc-fluxo.svg)
+
+**Regra prática.** Na partição: dado velho ou nada? Sem partição: rápido ou igual em todo lugar? Duas perguntas, quatro combinações — e cada serviço responde separado.
+
+### Distribuir é replicar, particionar — ou os dois (NoSQL Distilled)
+
+Dois eixos independentes ([Fowler, key points](https://martinfowler.com/)): **sharding** (dados diferentes em servidores diferentes — cada um é fonte única do seu pedaço) e **replicação** (mesmo dado em vários lugares). Replicação tem dois sabores: **líder-seguidor** (escritas no líder, menos conflito, ponto único de escrita) e **peer-to-peer** (escrita em qualquer nó, sem ponto único, reconcilia depois — Dynamo/Cassandra).
+
+Três consequências que fecham o post: consistência forte não exige falar com *todas* as réplicas — basta **quorum** suficiente; consistência custa latência (mais nós na operação, mais espera); e **polyglot persistence** é a conclusão honesta — Postgres no core transacional, Redis no cache, Dynamo no feed — com o aviso de custo: cada tecnologia nova cobra complexidade operacional. Escolher banco é casar latência, modelo e operação por workload, como a seção 4 já faz.
+
+### A prova em 4 linhas (Gilbert & Lynch)
+
+Por que os três juntos são impossíveis? Dois servidores, `G1` e `G2`, mesma variável `v = v0`:
+
+1. Particione a rede: `G1` e `G2` não se falam.
+2. Cliente escreve `v1` em `G1`. Disponibilidade obriga resposta — `G1` confirma sem replicar (não há como).
+3. Cliente lê de `G2`. Disponibilidade obriga resposta — `G2` devolve `v0` (não sabe de `v1`).
+4. Leitura após escrita retornou valor antigo: **inconsistência**. Contradição — logo, C+A+P simultâneos não existem.
+
+É a demonstração formal ([Gilbert & Lynch, 2002](https://dl.acm.org/doi/10.1145/564585.564587)) virando intuição: disponibilidade manda responder, partição impede sincronizar, consistência cobra o preço. Guarde os 4 passos para a entrevista.
+
+## 4. Implementação (decisão)
+
+Checklist de Bolso por workload:
+
+| Workload | Escolha | Exemplos |
+|---|---|---|
+| dinheiro, assento, estoque | PC/EC | Postgres, Spanner, etcd |
+| feed, busca, catálogo | PA/EL | DynamoDB, Cassandra |
+| coordenação, locks, config | PC/EC | etcd, Consul, ZooKeeper |
+| cache, sessão, analytics | PA/EL | Redis cluster, SimpleDB |
+
+Sem partição, ajuste fino: Cosmos DB oferece 5 níveis entre eventual e forte — PACELC operacionalizado em configuração. A implementação é escolher o nível por workload, não o banco "certo" em abstrato.
+
+### Consistência ajustável: o MongoDB como exemplo
+
+Rótulos CP/AP enganam quando o banco permite calibrar. No MongoDB, `writeConcern: "majority"` espera confirmação da maioria das réplicas (consistência forte, latência maior — financeiro, inventário); `writeConcern: 1` confirma no primário e segue (rápido, eventual). `readPreference: "secondary"` lê de secundárias (disponível, talvez velho); do primário (atual, sob carga nele). Mesmo banco, dois comportamentos — a "escolha CAP" vira parâmetro por operação, não tatuagem do produto. Chat (disponível, reconcilia depois) e banco (consistente, trava na partição) podem inclusive morar no mesmo cluster com concerns diferentes.
+
+## 5. Falhas e trade-offs
+
+**"Escolha 2 livremente".** Não existe CA distribuído (sem P não há sistema distribuído). Quem recita o triângulo sem o P-fixo erra a primeira pergunta do entrevistador.
+
+**Consistência ACID ≠ consistência CAP.** ACID-C = invariantes e regras respeitadas; CAP-C = toda leitura vê a escrita mais recente (linearizabilidade). Confundir as duas contamina o desenho. ([Kleppmann, A Critique of the CAP Theorem](https://arxiv.org/abs/1509.05393)).
+
+**CP em tudo / AP em tudo.** Booking AP vende ingresso duplo; busca CP derruba a loja por uma descrição. Granularidade por serviço, sempre.
+
+**Ignorar o Else.** Time que só discute partição esquece que 99,9% do tempo não há falha — e é aí que latência vs consistência decide UX e custo. PACELC existe para o caso comum, não para a exceção.
+
+**Tratar CAP como decisão técnica.** O trade-off consistência vs disponibilidade é decisão de **negócio**, não de engenharia ([Fowler & Cartwright](https://martinfowler.com/)): o custo de um double-booking pode ser menor que o de não vender nada — e exigir "five nines" até no sistema de pedir sanduíche é desperdício com carimbo arquitetural. Resiliência (e consistência) por componente, calibrada pelo valor em risco: booking tolera zero duplo, busca tolera segundos de atraso. Sem o financeiro na conversa, o arquiteto otimiza no escuro.
+
+**Escolher banco só pelo CAP.** Ninguém escolhe Cassandra para chat "porque é AP" — escolhe por escrita distribuída, operação multirregião, modelo de dados. Como resume o ByteByteGo citando o próprio Brewer: o CAP proíbe só uma fatia minúscula do espaço de design (disponibilidade *e* consistência *perfeitas* sob partição, que são raras). O teorema abre a discussão de trade-offs; a escolha do banco exige cavar latência, modelo, operação e custo.
+
+### Para aprofundar
+
+| Tema | Fonte |
+|---|---|
+| CAP, ACID, BASE, tabela de flavors | [Matheus Fidelis, Teorema CAP](https://fidelissauro.dev/teorema-cap/) |
+| PACELC, PA/EL, PC/EC por banco | [Matheus Fidelis, Teorema PACELC](https://fidelissauro.dev/pacelc/) |
+| P fixo, CP vs AP, por serviço (vídeo) | Pedro Camaforte, Teorema CAP no YouTube |
+| Revisão do próprio Brewer (2012) | [CAP Twelve Years Later](https://www.infoq.com/articles/cap-twelve-years-later-how-the-rules-have-changed/) |
+| Crítica formal ao CAP | [Kleppmann, A Critique](https://arxiv.org/abs/1509.05393) |
+| CAP incompreendido, PACELC | [ByteByteGo, CAP Theorem](https://bytebytego.com/guides/cap-theorem-one-of-the-most-misunderstood-terms/) |
+| CAP com exemplos MongoDB | [MongoDB, CAP Explained](https://www.mongodb.com/) |
+| CAP como decisão de negócio | [Fowler & Cartwright](https://martinfowler.com/) |
+| Distribuição, consistência, polyglot | [Fowler, NoSQL Distilled](https://martinfowler.com/) |
+| Prova ilustrada G1/G2 | [Whittaker, Illustrated Proof](https://mwhittaker.github.io/) |
+| CAP na AWS, resiliência | [AWS Whitepapers](https://docs.aws.amazon.com/whitepapers/) |
+
+<Summary>
+
+- P é pré-requisito: a escolha real é C (nada até sincronizar) vs A (dado talvez velho), durante a partição
+- CP para dinheiro/assentos; AP para feed/busca; por serviço, não por sistema
+- sem partição, PACELC: latência ou consistência (Dynamo PA/EL, Spanner PC/EC)
+- consistência tem graus (Brewer 2012); ACID-C ≠ CAP-C
+
+</Summary>
+
+<NextSteps href="/go-concorrencia" title="Concorrência em Go">
+
+Trade-offs de banco decididos, volte ao processo: concorrência e paralelismo dentro de um nó — goroutines, channels e o que o runtime garante enquanto a rede não falha.
+
+</NextSteps>
+
+<SkillsGained skills={["CAP", "PACELC", "ACID", "BASE", "System Design"]} />

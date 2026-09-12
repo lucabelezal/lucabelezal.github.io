@@ -1,0 +1,187 @@
+---
+slug: go-generics
+title: "Generics en Go: constraints, type sets y código de producción"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-12T23:55:00
+description: "Los generics eliminan duplicación sin perder seguridad de tipos: parámetros, constraints, comparable y un Cache[K, V] listo para producción — con código ejecutable."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+En el Post 3, la interface ganó un segundo sentido: además de conjunto de métodos, conjunto de tipos — el mecanismo que permite constraints de generics. Este post usa ese segundo sentido para resolver el problema más viejo del Go pre-1.18: la misma lógica copiada por tipo. Y cierra con lo que pediste: código listo para producción, no ejemplo de juguete.
+
+Post independiente. Salidas reales, Go 1.26.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- el problema que resuelven los generics: duplicación por tipo
+- parámetros de tipo `[T any]`, inferencia y zero value de `T`
+- constraints como interfaces: `comparable`, `cmp.Ordered`, type lists con `~`
+- `Cache[K comparable, V any]` thread-safe listo para producción
+- cuándo NO usar generics (la interface basta; demasiado `any`)
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Interfaces en Go](/go-interfaces): method sets y type sets
+- [Structs](/go-structs-methods) y [concurrencia](/go-concorrencia): el `Cache` junta ambos
+
+</Prerequisites>
+
+## 1. Contexto
+
+Antes de generics, la lógica agnóstica al tipo se duplicaba por tipo:
+
+```go title="sin-generics.go"
+func splitIntSlice(s []int) ([]int, []int) {
+	mid := len(s) / 2
+	return s[:mid], s[mid:]
+}
+
+func splitStringSlice(s []string) ([]string, []string) {
+	mid := len(s) / 2
+	return s[:mid], s[mid:]
+}
+```
+
+Mismo cuerpo, solo cambia el tipo — violación DRY que el lenguaje impuso por una década (simplicidad deliberada; la demanda ganó en los surveys). Go 1.18 lo resolvió con parámetros de tipo + constraints, sin soltar la verificación en compilación ([An Introduction To Generics](https://go.dev/blog/intro-generics)).
+
+## 2. El problema
+
+Sin generics, tres malas salidas: duplicar por tipo (diverge con el tiempo), `any` + assertions (chequea en runtime, panics donde el compilador atraparía), generar código (`go generate` — complejidad de build). El problema no es estética — es **seguridad de tipos bajo reuso**: cómo escribir una vez y seguir con error en compilación.
+
+## 3. Modelo mental
+
+**Parámetro de tipo es variable para tipos.** `[T any]` declara: "vale para cualquier `T`". El compilador instancia por uso — `splitAnySlice([]int{...})` infiere `T=int`, sin anotar.
+
+**Constraint es interface.** `any` = todos los tipos. `comparable` = tipos comparables con `==` (permite comparar dentro de la función). Type lists (`~int | ~string`) = unión de tipos base (`~` incluye tipos definidos sobre ellos). Es el type set del Post 3 trabajando:
+
+![Diagrama: constraint Ordered como unión, Min instanciado](/img/diagramas/go-generics-constraint.svg)
+
+**Zero value de `T` existe.** `var zero T` — útil para retornos "vacío + error".
+
+**Regla práctica.** Empieza con `any`; aprieta la constraint solo hasta que la función compile (`comparable` para `==`, `cmp.Ordered` para `<`). Constraint ancha demás miente; estrecha demás impide reuso.
+
+## 4. Implementación
+
+### Funciones: `Sum` y `Min`
+
+```go title="main.go" showLineNumbers
+func Sum[T int64 | float64](vals []T) T {
+	var total T
+	for _, v := range vals {
+		total += v
+	}
+	return total
+}
+
+func Min[T cmp.Ordered](a, b T) T {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+fmt.Println("sum:", Sum([]int64{1, 2, 3}), Sum([]float64{1.5, 2.5}))
+fmt.Println("min:", Min(3, 7), Min("b", "a"))
+```
+
+```bash title="Terminal"
+sum: 6 4
+min: 3 a
+```
+
+`Sum` restringe a sumables (unión explícita); `Min` usa `cmp.Ordered` de la stdlib (cubre ordenables sin reescribir la lista). `T` inferido en las cuatro llamadas — cero anotaciones.
+
+### Producción: `Cache[K, V]` thread-safe
+
+Juntando structs (Post 2), visibilidad (campo en minúscula, `New` en mayúscula) y mutex (concurrencia):
+
+```go title="cache.go" showLineNumbers
+type Cache[K comparable, V any] struct {
+	mu   sync.RWMutex
+	data map[K]V
+}
+
+func NewCache[K comparable, V any]() *Cache[K, V] {
+	return &Cache[K, V]{data: make(map[K]V)}
+}
+
+func (c *Cache[K, V]) Get(k K) (V, bool) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	v, ok := c.data[k]
+	return v, ok
+}
+
+func (c *Cache[K, V]) Set(k K, v V) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.data[k] = v
+}
+```
+
+```go title="main.go"
+users := NewCache[string, string]()
+users.Set("ada", "admin")
+v, ok := users.Get("ada")
+fmt.Println("cache:", v, ok)
+
+_, ok = users.Get("ghost")
+fmt.Println("miss:", ok)
+```
+
+```bash title="Terminal"
+cache: admin true
+miss: false
+```
+
+Por qué producción y no juguete: `K comparable` (la clave de map lo exige), `V any` (valores opacos), `RWMutex` (lecturas simultáneas), `Get` con `, ok` (cero vs ausente — post de maps), `New` devolviendo puntero (post de visibilidad). Validado con `-race` y `go vet` limpios.
+
+![Diagrama: Cache[string, string] instanciado, métodos con RLock/Lock](/img/diagramas/go-generics-cache.svg)
+
+## 5. Fallas y trade-offs
+
+**Generics donde la interface basta.** Si el código solo llama métodos, la interface es más simple y dispensa inferencia. Los generics brillan en contenedores y algoritmos sobre tipos (slices, maps, min, sum) — fuera de eso, suelen ser complicación performática.
+
+**Demasiado `any`.** `[T any]` que por dentro hace type switch para 3 tipos concretos miente sobre generalidad: escribe la unión honesta o tres funciones. `any` en el parámetro + assertion en el cuerpo = dynamic typing con extra steps.
+
+**Costo: monomorfización.** Cada instanciación genera código especializado — el binario crece con combinaciones usadas. Irrelevante en 2–3 tipos; observable en matrices de decenas. Mide (`-race`, benchmarks del Post 1) antes de culpar.
+
+**`comparable` no es todo.** Slices, maps y funcs no satisfacen `comparable` — la constraint falla en compilación con mensaje honesto. Diseña la API conociendo el límite.
+
+**La inferencia tiene límite.** Casos ambiguos exigen anotación explícita (`sellProducts[book](...)`). Explícito ocasional > magia rota.
+
+### Fuentes y nivel de autoridad
+
+| Tema | Fuente principal |
+|---|---|
+| Introducción oficial | [Go Blog, Intro to Generics](https://go.dev/blog/intro-generics) |
+| Parámetros de tipo, constraints | [Especificación de Go](https://go.dev/ref/spec#Type_parameter_declarations) |
+| El dilema (por qué tardó) | [Russ Cox, The Generic Dilemma](https://research.swtch.com/generic) |
+| Constraints en la práctica | [Lane Wagner, Generics in Go](https://www.boot.dev/blog/golang) |
+
+<Summary>
+
+- generics = lógica una vez, varios tipos, verificación en compilación
+- constraint es interface: `any`, `comparable`, type lists con `~`
+- `Cache[K comparable, V any]`: claves comparables, valores opacos, RWMutex, `, ok`
+- la interface basta cuando solo hay llamada de métodos; `any` + assertion es dynamic disfrazado
+
+</Summary>
+
+<NextSteps href="/go-interfaces" title="Interfaces en Go">
+
+Las constraints son interfaces — relee el Post 3 con esa mirada: method sets para comportamiento, type sets para generics. Dos sentidos, un mecanismo.
+
+</NextSteps>
+
+<SkillsGained skills={["Generics", "Constraints", "Type sets", "Cache", "Producción"]} />

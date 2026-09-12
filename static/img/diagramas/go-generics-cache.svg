@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 300" role="img" aria-label="Diagrama: Cache genérico instanciado com mutex">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .inner{fill:none;stroke:#0969da;stroke-width:1.5}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#238636;stroke-width:2;fill:none}
+    .head{fill:#238636;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .inner{stroke:#58a6ff}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#3fb950}
+      .head{fill:#3fb950}
+    }
+  </style>
+  <defs>
+    <marker id="ah20" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <rect x="30" y="30" width="280" height="240" rx="10" class="box"/>
+  <text x="50" y="62" font-size="16" font-weight="bold">Cache[K, V]</text>
+  <text x="50" y="86" font-size="13" class="lbl">K comparable · V any</text>
+  <rect x="50" y="102" width="240" height="60" rx="8" class="inner"/>
+  <text x="64" y="128" font-size="14">mu sync.RWMutex</text>
+  <text x="64" y="150" font-size="14">data map[K]V</text>
+  <text x="50" y="196" font-size="14">Get → RLock</text>
+  <text x="50" y="222" font-size="14">Set → Lock</text>
+  <text x="50" y="250" font-size="13" class="lbl">New → *Cache[K,V]</text>
+  <line x1="315" y1="150" x2="385" y2="150" class="arrow" marker-end="url(#ah20)"/>
+  <rect x="390" y="30" width="240" height="240" rx="10" class="box"/>
+  <text x="410" y="62" font-size="16" font-weight="bold">users</text>
+  <text x="410" y="86" font-size="13" class="lbl">Cache[string,string]</text>
+  <text x="410" y="120" font-size="14">Set("ada","admin")</text>
+  <text x="410" y="150" font-size="14">Get("ada") → admin, true</text>
+  <text x="410" y="180" font-size="14">Get("ghost") → "", false</text>
+  <text x="410" y="220" font-size="13" class="lbl">-race · vet limpos</text>
+</svg>

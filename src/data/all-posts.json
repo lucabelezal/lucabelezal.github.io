@@ -1,5 +1,20 @@
 [
   {
+    "slug": "cap-pacelc",
+    "title": "CAP e PACELC na prática: P é pré-requisito, o resto é decisão",
+    "date": "2026-09-13T09:00:00"
+  },
+  {
+    "slug": "go-generics",
+    "title": "Generics em Go: constraints, type sets e código produção",
+    "date": "2026-09-12T23:55:00"
+  },
+  {
+    "slug": "go-erros-logs",
+    "title": "Erros e logs em Go: embrulhar com %w, logar estruturado",
+    "date": "2026-09-12T23:45:00"
+  },
+  {
     "slug": "go-concorrencia",
     "title": "Concorrência em Go: goroutines, channels e o detector de race",
     "date": "2026-09-12T23:30:00"

@@ -2,7 +2,7 @@
 slug: go-concorrencia
 title: "Concurrency in Go: goroutines, channels, and the race detector"
 authors: [lucabelezal]
-tags: [go, backend]
+tags: [go, backend, sistemas-distribuidos]
 date: 2026-09-12T23:30:00
 description: "Concurrency is not parallelism. Understand goroutines, channels, WaitGroup, mutexes, and worker pools — with a real race, the detector on, and validated outputs."
 ---
@@ -26,7 +26,8 @@ Standalone post (outside Go Inside Out), conceptually grounded in [Matheus Fidel
 - channels: rendezvous (unbuffered) vs queue (buffered)
 - `WaitGroup` with the right `Done` owner — including the common bug
 - `select`, nil/closed matrix, and `struct{}` signals
-- mutexes, `RWMutex`, the race detector, and worker pools with real outputs
+- mutexes, `RWMutex`, the Counter struct, the race detector, and worker pools with real outputs
+- timeouts and cancellation with `select` + `context`
 - gen → workers → sum pipeline, race-clean
 
 </WhatYouWillLearn>
@@ -73,6 +74,8 @@ Head chef → runtime scheduler (GOMAXPROCS)
 
 `go` before a call promises no three CPUs — it promises three managed tasks. With free cooks (cores), the scheduler truly parallelizes.
 
+![Diagram: 1 cook alternating orders vs 3 cooks in parallel, mapped to Go](/img/diagramas/go-conc-cozinha-en.svg)
+
 ## 2. The problem
 
 One hundred goroutines incrementing a counter. It runs, prints 100, looks right:
@@ -114,6 +117,32 @@ Previous write at ... by goroutine 7:
 **Mutexes vs channels: guard data with mutexes, coordinate flow with channels.** Shared counters → `sync.Mutex`. Orchestration (work done, stage end, parallelism caps) → channels. "Mutexes for everything" serializes the whole program; "channels for everything" spreads state across an invisible protocol.
 
 **Rule of thumb.** Shared mutable data: mutexes plus `-race` in CI. Flow between stages: channels. Never both for the same problem.
+
+### Inside channels: `hchan` in 30 seconds
+
+Every `make(chan T, N)` creates a heap `hchan`: ring buffer (`buf`, `sendx`, `recvx`, `qcount`), `closed` flag, internal lock, and two queues — `sendq` and `recvq` — of parked goroutines (`sudog` records: which goroutine, which value, which channel). Three optimizations explaining behavior:
+
+- **Direct stack→stack copy.** With a waiting receiver and no buffer, the runtime copies from the sender's frame to the receiver's frame — no heap in between. Unbuffered channels can beat buffered ones under low contention.
+- **Close wakes everyone.** `close` sets the flag and unparks: receivers drain the buffer then get zero values; parked senders panic. Closing twice: panic.
+- **Happens-before rules** (memory model): sends happen-before matching receives; `close` happens-before receives returning zero because of it. Write side effects **before** the send/close — after it, nothing is guaranteed.
+
+For the full dive (send/receive lifecycle, `select` internals, sudog recycling): [Gabor Koos, Go Channels Internals](https://blog.gaborkoos.com/). Executable pattern catalog: [symonk/go-concurrency-deep-dive](https://github.com/symonk/go-concurrency-deep-dive).
+
+### GMP: who runs your goroutine
+
+Under `go f()` sits the scheduler with three letters: **G** (goroutine), **M** (OS thread), **P** (processor — execution context, `GOMAXPROCS` = core count by default). Goroutines enter queues (one global + one local per P); idle Ps **steal** work from others' queues (work stealing):
+
+![Diagram: GMP scheduler with work stealing](/img/diagramas/go-conc-gmp-en.svg)
+
+Observable live with `GODEBUG=schedtrace=1000` (real output, `GOMAXPROCS=2`):
+
+```bash title="Terminal"
+SCHED 0ms: gomaxprocs=2 idleprocs=0 threads=4 runqueue=0 [ 1 0 ]
+```
+
+`runqueue=0` = empty global queue; `[ 1 0 ]` = one goroutine in P0's local queue, zero in P1's. When P1 drains, it steals from P0 instead of sleeping — that's how 100k goroutines live on a few threads.
+
+Three scheduler details worth the model: **async preemption** (since Go 1.14, ~10ms via SIGURG — endless loops without calls no longer stall the scheduler); **netpoller** (I/O becomes epoll/kqueue events: goroutines sleep without holding P); **blocking syscalls release P** (another thread takes over while one waits on the kernel). Scalable concurrency is born from these three.
 
 ### `select`: one listener, several channels
 
@@ -208,6 +237,31 @@ mu.Unlock()
 
 Convention: the variable is called `mu`, and `Unlock` goes `defer`red right after `Lock` — forgetting to unlock is self-inflicted deadlock. Maps, reminder: pure concurrent reads are safe; the danger is reading alongside writing (the runtime kills with `fatal error: concurrent map read and map write`).
 
+### Structs with mutexes: the Counter pattern
+
+Real cases are rarely bare `int`s — they're state inside structs. The mutex lives with the data it guards, and methods are the only door (straight bridge to the packages post's visibility: lowercase field, uppercase method):
+
+```go title="main.go" showLineNumbers
+type Contador struct {
+	mu    sync.Mutex
+	valor int
+}
+
+func (c *Contador) Incrementar() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.valor++
+}
+
+func (c *Contador) Valor() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.valor
+}
+```
+
+**Pointer** receivers required: value receivers would copy the mutex each call (Post 2's `go vet` flags it). `Contador{}` comes out usable — useful zero value, no constructor.
+
 ### Worker pool: semaphores with buffered channels
 
 ```go title="main.go" showLineNumbers
@@ -283,6 +337,116 @@ pipeline: 30
 
 Each stage only knows channels (`<-chan` parameters document "I only read"). Close `out` once, by its owner, after `Wait` — closing twice or sending on closed: panic. It's the [Go Concurrency Patterns](https://go.dev/blog/pipelines) template applied by the book.
 
+### The real `main`: timeouts, graceful shutdown, logger
+
+Putting it together — request `context`, per-operation timeouts, a server with deadlines, shutdown without dropping connections:
+
+```go title="main.go" showLineNumbers
+mux.HandleFunc("/order", func(w http.ResponseWriter, r *http.Request) {
+	// highlight-next-line
+	ctx, cancel := context.WithTimeout(r.Context(), 1500*time.Millisecond)
+	defer cancel()
+	select {
+	case <-time.After(200 * time.Millisecond):
+		fmt.Fprintln(w, `{"status":"shipped"}`)
+	case <-ctx.Done():
+		http.Error(w, "timeout", http.StatusGatewayTimeout)
+	}
+})
+
+srv := &http.Server{
+	Addr:         "127.0.0.1:18099",
+	Handler:      mux,
+	ReadTimeout:  5 * time.Second,
+	WriteTimeout: 5 * time.Second,
+}
+
+// highlight-next-line
+ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+defer stop()
+
+go func() {
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		log.Error("servidor", slog.Any("err", err))
+	}
+}()
+
+<-ctx.Done() // waits for Ctrl+C / SIGTERM
+shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+srv.Shutdown(shutCtx) // drains connections, then exits
+```
+
+```bash title="Terminal"
+{"time":"...","level":"INFO","msg":"servindo","addr":"127.0.0.1:18099"}
+{"status":"shipped"}
+```
+
+Up, answering, validated end to end. The decisions that matter: `r.Context()` as parent (client cancellation propagates alone), **per-operation** timeouts (not just server-wide), `Read/WriteTimeout` against Slowloris, `Shutdown` with a deadline instead of a hard kill. It's the skeleton from Jones Charles ([Context in practice](https://dev.to)) and Ajmani's Google Search example ([Go Concurrency Patterns: Context](https://go.dev/blog/context)) — no framework.
+
+### Timeouts and cancellation: `select` + `context`
+
+Two lines every backend writes: waiting with a deadline and obeying cancellation:
+
+```go title="main.go" showLineNumbers
+ch := make(chan string)
+go func() {
+	time.Sleep(2 * time.Second)
+	ch <- "resultado"
+}()
+
+select {
+case res := <-ch:
+	fmt.Println("recebido:", res)
+case <-time.After(100 * time.Millisecond):
+	fmt.Println("timeout!")
+}
+
+ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+defer cancel()
+select {
+case <-ctx.Done():
+	fmt.Println("cancelado:", ctx.Err())
+case <-time.After(time.Second):
+	fmt.Println("concluído")
+}
+```
+
+```bash title="Terminal"
+timeout!
+cancelado: context deadline exceeded
+```
+
+`time.After` turns waiting into a `select` case; `ctx.Done()` closes when the deadline hits or the caller cancels — the worker takes whichever is ready first and drops the rest. That's how deadline-bearing requests cross handlers, queries, and calls without leaking goroutines.
+
+### Cooperative cancellation: loops obeying `ctx`
+
+One-shot timeouts solve one wait; long-lived workers must check cancellation every lap:
+
+```go title="main.go" showLineNumbers
+func worker(ctx context.Context, id int, done chan<- int) {
+	for {
+		select {
+		case <-ctx.Done():
+			done <- id
+			return
+		default:
+			time.Sleep(100 * time.Millisecond) // works
+		}
+	}
+}
+```
+
+```bash title="Terminal"
+goroutines antes: 1
+worker saiu: 2
+worker saiu: 3
+worker saiu: 1
+goroutines depois: 1
+```
+
+`runtime.NumGoroutine()` before and after proves it: all 3 workers exited, nothing leaked. Goroutine counters + `pprof` are the leak-hunting kit: if the count only climbs between requests, some goroutine has no exit path — go back and give it a `ctx.Done()`.
+
 ## 5. Failures and trade-offs
 
 **`Done` in the wrong place.** `wg.Add(1)` in the loop + `wg.Done()` in `main`'s consumption "works" while counts match — and becomes `negative WaitGroup counter` (panic) or eternal `Wait` at the first divergence. `defer wg.Done()` opens every worker goroutine, no exceptions.
@@ -309,6 +473,9 @@ Each stage only knows channels (`<-chan` parameters document "I only read"). Clo
 | Concepts, analogies, locks, distributed | [Matheus Fidelis](https://fidelissauro.dev/concorrencia-paralelismo/) |
 | PT-BR guide, worker pool, timeout, context | [golang.com.br](https://golang.com.br/) |
 | Goroutines, fan-out/in, best practices | [Stream, Goroutines Guide](https://getstream.io/blog/) |
+| GMP scheduler, memory, GC, production | [Murat Demirci, Go Runtime Internals](https://muratdemirci.com.tr/en/go-runtime-internals) |
+| `hchan`, `sudog`, select internals | [Gabor Koos, Go Channels Internals](https://blog.gaborkoos.com/) |
+| Executable pattern catalog | [symonk/go-concurrency-deep-dive](https://github.com/symonk/go-concurrency-deep-dive) |
 
 <Summary>
 

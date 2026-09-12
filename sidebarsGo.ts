@@ -102,6 +102,27 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'link',
+          label: 'CAP e PACELC na prática',
+          href: '/cap-pacelc',
+          description: 'P fixo, C vs A, L vs C.',
+          customProps: {date: '13 set 2026'},
+        },
+        {
+          type: 'link',
+          label: 'Generics em Go',
+          href: '/go-generics',
+          description: 'Constraints, type sets e Cache pronto.',
+          customProps: {date: '12 set 2026'},
+        },
+        {
+          type: 'link',
+          label: 'Erros e logs em Go',
+          href: '/go-erros-logs',
+          description: '%w, Is/As e slog estruturado.',
+          customProps: {date: '12 set 2026'},
+        },
+        {
+          type: 'link',
           label: 'Concorrência em Go',
           href: '/go-concorrencia',
           description: 'Goroutines, channels e race detector.',

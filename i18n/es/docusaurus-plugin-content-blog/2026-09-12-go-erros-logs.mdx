@@ -1,0 +1,233 @@
+---
+slug: go-erros-logs
+title: "Errores y logs en Go: envolver con %w, log estructurado"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-12T23:45:00
+description: "Los errores son valores que viajan; los logs son el rastro observable. Entiende %w vs %v, errors.Is/As, errores custom y slog estructurado — con código ejecutable."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+El error en Go es valor: viaja por la call chain cargando historia. El log es el rastro observable de ese valor en producción. Ambos se combinan en una sola disciplina — **envuelve con contexto en cada capa (`%w`), loguea estructurado una vez, en el borde** — y se rompen juntos cuando usas `%v`, logueas strings sueltas o registras el mismo error en cinco lugares.
+
+Post independiente y práctico, compañero de [Manejo de errores en Go](/go-error-handling) (que trata las decisiones arquitectónicas). Aquí: mecánica + logs.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- `%w` vs `%v`: por qué el verbo decide si `errors.Is` funciona
+- cadena de envoltura: cada capa añade contexto sin borrar el origen
+- errores custom con `Unwrap` e inspección con `errors.As`
+- `slog` estructurado (stdlib): niveles, atributos, handler JSON
+- `action` estable para Datadog + redaction vía `ReplaceAttr`
+- `String()` para structs legibles en logs
+- dónde loguear (el borde) y dónde no (toda capa)
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Manejo de errores en Go](/go-error-handling): tratar, propagar, traducir, acumular
+- Go básico: interfaces, `fmt`, paquetes (Go 1.26 en los ejemplos)
+
+</Prerequisites>
+
+## 1. Contexto
+
+La interface es mínima — cualquier tipo con `Error() string` es error:
+
+```go title="errors.go"
+type error interface {
+	Error() string
+}
+```
+
+De ahí derivan tres herramientas de la stdlib: **sentinelas** (`var ErrNotFound = errors.New(...)`, comparables con `==`/`Is`), **envoltura** (`fmt.Errorf("...: %w", err)`, preserva la cadena) y **tipos custom** (struct con contexto + `Unwrap`). En logs, la era moderna es el paquete **`slog`** (stdlib desde Go 1.21): niveles, atributos clave-valor e handlers intercambiables — el consejo "usa el log estándar" de 2020 hoy se lee "usa `slog`".
+
+> **Definición (propuesta).** Envolver es añadir contexto a un error preservando el original alcanzable; loguear es registrar el error final con atributos buscables, una vez, donde la operación termina para el llamador.
+
+## 2. El problema
+
+Dos rupturas silenciosas. Primera: `%v` en la envoltura destruye la cadena — `errors.Is(err, io.EOF)` falla para siempre, y el retry que dependía de ella nunca dispara. Segunda: loguear `"deu ruim"` en string suelta, en cada capa — cinco líneas en el agregador, ninguna con `user_id`, ninguna correlacionable. El error viajó sin historia; el log registró sin contexto. Producción con esos dos vicios se depura por adivinanza.
+
+## 3. Modelo mental
+
+**`%w` preserva, `%v` borra.** `fmt.Errorf("ler: %w", err)` guarda el original tras `Unwrap`; `errors.Is/As` caminan la cadena. Con `%v`, el original se vuelve texto — comparación imposible.
+
+**Cada capa añade contexto, nadie borra el origen.** `handler: buscar "": não encontrado` se lee como stack trace textual: del borde a la causa. Regla de bolsillo: nombre de la función + entradas relevantes, nunca secretos.
+
+**Log en el borde, con atributos.** Quien retorna error no loguea (solo envuelve); quien atiende la request loguea una vez, con `op`, `user_id`, `err`. Log en toda capa = cinco líneas por falla = ruido que esconde incidentes.
+
+**Structs hablan vía `String()`.** `{1996 0x40c138}` no dice nada; `{make:Toyota, year:1996}` sí. Método `String()` en el tipo = logs legibles gratis en todo `fmt`/`slog`.
+
+**Regla práctica.** El error viaja hacia arriba con `%w`; el log sale una vez, estructurado, en el borde. Todo lo demás es variación.
+
+## 4. Implementación
+
+### Cadena completa: custom + envoltura + inspección
+
+```go title="main.go" showLineNumbers
+var ErrNotFound = errors.New("não encontrado")
+
+type AppError struct {
+	Op  string
+	Err error
+}
+
+func (e *AppError) Error() string { return e.Op + ": " + e.Err.Error() }
+func (e *AppError) Unwrap() error { return e.Err }
+
+func buscar(id string) error {
+	if id == "" {
+		return fmt.Errorf("buscar %q: %w", id, ErrNotFound)
+	}
+	return nil
+}
+
+func main() {
+	err := &AppError{Op: "handler", Err: buscar("")}
+	fmt.Println("msg:", err)
+	fmt.Println("is NotFound?", errors.Is(err, ErrNotFound))
+
+	var appErr *AppError
+	fmt.Println("as AppError?", errors.As(err, &appErr), appErr.Op)
+}
+```
+
+```bash title="Terminal"
+msg: handler: buscar "": não encontrado
+is NotFound? true
+as AppError? true handler
+```
+
+`Is` atraviesa dos capas hasta la sentinela; `As` recupera el tipo con contexto (`Op`). Con `%v` en lugar de `%w`, la primera verificación daría `false` — y ningún retry/mapeo HTTP funcionaría.
+
+### Errores de contexto: causa, no solo síntoma
+
+Timeouts vencidos y cancelaciones manuales llegan como `DeadlineExceeded` y `Canceled` — pero el *porqué* vive en la causa (`WithTimeoutCause`, Go 1.20+):
+
+```go title="main.go" showLineNumbers
+ctx, cancel := context.WithTimeoutCause(context.Background(), 50*time.Millisecond, ErrUpstream)
+defer cancel()
+<-ctx.Done()
+fmt.Println("err:", ctx.Err())
+fmt.Println("cause:", context.Cause(ctx))
+fmt.Println("is upstream?", errors.Is(context.Cause(ctx), ErrUpstream))
+```
+
+```bash title="Terminal"
+err: context deadline exceeded
+cause: upstream falhou
+is upstream? true
+```
+
+`Err()` dice el síntoma (venció el plazo); `Cause()` dice el motivo (falló el upstream). Sin causa registrada, `Cause` repite `Err()` — como en la cancelación manual (`cause: context canceled`). Para la historia con logs: registra la **causa** en el atributo `err`, no solo `ctx.Err()` — es lo que el on-call busca en Datadog cuando el dashboard de `action` se enciende.
+
+### Log estructurado en el borde con `slog`
+
+```go title="main.go"
+log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+log.Error("falha", "op", appErr.Op, "err", err.Error())
+```
+
+```bash title="Terminal"
+{"time":"2026-09-12T17:05:20.133269-03:00","level":"ERROR","msg":"falha","op":"handler","err":"handler: buscar \"\": não encontrado"}
+```
+
+JSON con `time`/`level` automáticos + atributos buscables (`op=handler`). Cambiar el handler por texto (dev) o colector (prod) no cambia ninguna llamada — separación que la string suelta jamás da.
+
+### `action`: el campo que Datadog agradece
+
+Equipos que operan Datadog/Loki estandarizan un atributo `action` en forma `dominio.verbo` — estable, agrupable, alertable:
+
+```go title="main.go" showLineNumbers
+log.Info("checkout concluído",
+	slog.String("action", "order.checkout"),
+	slog.String("order_id", "ord_123"),
+	slog.String("password", "s3cr3t"),
+)
+```
+
+```bash title="Terminal"
+{"time":"...","level":"INFO","msg":"checkout concluído","action":"order.checkout","order_id":"ord_123","password":"[REDACTED]"}
+```
+
+Dos convenciones en una línea. `action` nunca varía para el mismo evento (los dashboards agrupan por él, no por el mensaje). Y `password` salió `[REDACTED]` vía `ReplaceAttr` — redaction en el handler, no en la disciplina de cada desarrollador:
+
+```go title="main.go"
+func redact(_ []string, a slog.Attr) slog.Attr {
+	switch a.Key {
+	case "password", "token", "authorization":
+		return slog.String(a.Key, "[REDACTED]")
+	default:
+		return a
+	}
+}
+
+log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{ReplaceAttr: redact}))
+```
+
+**Regla práctica.** El mensaje describe para humanos; `action` clasifica para máquinas; los secretos nunca cruzan el handler. `user_id` sí, email/documentos/tarjetas nunca.
+
+### ¿`slog` o `zap`?
+
+Default honesto: **`slog` por defecto** (stdlib, sin dependencia, suficiente para la mayoría). **`zap`** cuando el log está en el hot path y la asignación importa — encoder zero-alloc, `Logger` tipado para lo crítico y `SugaredLogger` para el resto. Los benchmarks del propio zap lo favorecen (grano de sal usual); la decisión real es costo de dependencia vs nanosegundos. Evita `log.Printf` interpolado y bibliotecas legadas (`logrus`, `go-logging` de 2016) en código nuevo.
+
+### Struct legible: `String()`
+
+```go title="main.go"
+func (c Car) String() string {
+	return fmt.Sprintf("{make:%s, year:%d}", *c.make, c.year)
+}
+```
+
+```bash title="Terminal"
+{make:Toyota, year:1996}
+```
+
+## 5. Fallas y trade-offs
+
+**`%v` en la envoltura.** Borra la cadena silenciosamente — compila, imprime bonito, rompe `Is/As`. Lint mental: todo `fmt.Errorf` con error dentro termina en `%w`, salvo motivo documentado.
+
+**Filtrar interno en la API.** Envolver con detalles de implementación (`strconv.Atoi: ...`) expone entrañas al consumidor del paquete. En la frontera pública, traduce (lección del post de manejo de errores): mensaje para el usuario fuera, cadena completa en el log dentro.
+
+**`log.Fatal` en bibliotecas.** Termina el proceso de quien llamó — decisión del `main`, nunca del paquete. Las bibliotecas retornan errores; los programas deciden morir.
+
+**Loguear en toda capa.** Cinco líneas por falla, ninguna correlacionada, la alerta dispara cinco veces. Una vez, en el borde, con atributos.
+
+**`panic` como flujo.** `panic`/`recover` no es try/catch: atraviesa goroutines (solo recupera en la misma), mata el programa sin `recover` y esconde el camino feliz. Error esperado → valor; invariante violada → panic.
+
+### Fuentes y nivel de autoridad
+
+| Tema | Fuente principal |
+|---|---|
+| Errores, customs, `errors`, panic | [Lane Wagner, Error Handling in Go](https://www.boot.dev/blog/golang) |
+| Envoltura anidada, `%w` vs `%v` | [Lane Wagner, Wrapping Errors](https://www.boot.dev/blog/golang) |
+| Logging, `String()`, log estándar | [Lane Wagner, Logging Best Practices](https://www.boot.dev/blog/golang) |
+| `slog` estructurado (stdlib) | [pkg.go.dev/log/slog](https://pkg.go.dev/log/slog) |
+| `slog` en producción, redaction, tests | [golang.com.br, slog](https://golang.com.br/) |
+| `zap` rápido, `Logger` vs sugar | [pkg.go.dev/go.uber.org/zap](https://pkg.go.dev/go.uber.org/zap) |
+| Decisiones arquitectónicas de error | [Manejo de errores en Go](/go-error-handling) |
+
+<Summary>
+
+- `%w` preserva la cadena (`Is/As` funcionan); `%v` borra
+- cada capa envuelve con contexto; el log sale una vez, estructurado, en el borde
+- el custom con `Unwrap` carga contexto inspeccionable; `String()` deja structs legibles
+- la biblioteca retorna errores, nunca `log.Fatal`; panic no es flujo
+
+</Summary>
+
+<NextSteps href="/go-error-handling" title="Manejo de errores en Go">
+
+Mecánica dominada, vuelve a las decisiones: cuándo tratar, propagar, traducir o acumular — y dónde `Result[T]` cabe de verdad.
+
+</NextSteps>
+
+<SkillsGained skills={["Errores", "Wrapping", "slog", "Observabilidad"]} />

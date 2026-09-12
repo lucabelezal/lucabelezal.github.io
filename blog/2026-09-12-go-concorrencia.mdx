@@ -2,7 +2,7 @@
 slug: go-concorrencia
 title: "Concorrência em Go: goroutines, channels e o detector de race"
 authors: [lucabelezal]
-tags: [go, backend]
+tags: [go, backend, sistemas-distribuidos]
 date: 2026-09-12T23:30:00
 description: "Concorrência não é paralelismo. Entenda goroutines, channels, WaitGroup, mutex e worker pools — com race real, detector ligado e saídas validadas."
 ---
@@ -74,6 +74,8 @@ Chefe que distribui → scheduler do runtime (GOMAXPROCS)
 
 `go` na frente da chamada não promete três CPUs — promete três tarefas gerenciadas. Havendo cozinheiros (cores) livres, o scheduler paraleliza de verdade.
 
+![Diagrama: 1 cozinheiro alternando pedidos vs 3 cozinheiros em paralelo, com mapeamento para Go](/img/diagramas/go-conc-cozinha.svg)
+
 ## 2. O problema
 
 Cem goroutines incrementando um contador. Roda, imprime 100, parece certo:
@@ -131,6 +133,16 @@ SCHED 0ms: gomaxprocs=2 idleprocs=0 threads=4 runqueue=0 [ 1 0 ]
 Três detalhes do scheduler que valem o modelo: **preempção assíncrona** (desde Go 1.14, ~10ms via SIGURG — loop infinito sem chamada não trava mais o scheduler); **netpoller** (I/O vira evento epoll/kqueue: a goroutine dorme sem prender o P); **syscall bloqueante libera o P** (outra thread assume enquanto uma espera o kernel). Concorrência que escala nasce desses três.
 
 **Regra prática.** Dado compartilhado mutável: mutex e `-race` no CI. Fluxo entre etapas: channels. Nunca os dois para o mesmo problema.
+
+### Por dentro do channel: `hchan` em 30 segundos
+
+Todo `make(chan T, N)` cria um `hchan` no heap: buffer circular (`buf`, `sendx`, `recvx`, `qcount`), flag `closed`, lock interno e duas filas — `sendq` e `recvq` — de goroutines estacionadas (registros `sudog`: qual goroutine, qual valor, qual channel). Três otimizações que explicam o comportamento:
+
+- **Copia direta stack→stack.** Com receptor esperando e channel sem buffer, o runtime copia do frame do sender para o frame do receiver — sem heap no meio. Unbuffered sob baixa contenção pode ser mais rápido que buffered.
+- **Fechar acorda todo mundo.** `close` marca a flag e desestaciona: receptores esvaziam o buffer e depois recebem zero values; senders estacionados entram em pânico. Fechar duas vezes: panic.
+- **Regras happens-before** (modelo de memória): send acontece-antes do receive correspondente; `close` acontece-antes do receive que retorna zero por causa dele. Escreva efeitos colaterais **antes** do send/close — depois dele, nada é garantido.
+
+Para o mergulho completo (ciclo de vida de send/receive, `select` por dentro, reciclagem de sudogs): [Gabor Koos, Go Channels Internals](https://blog.gaborkoos.com/). Catálogo de padrões executáveis: [symonk/go-concurrency-deep-dive](https://github.com/symonk/go-concurrency-deep-dive).
 
 ### `select`: uma escuta, vários channels
 
@@ -325,6 +337,53 @@ pipeline: 30
 
 Cada estágio só conhece channels (`<-chan` no parâmetro documenta "só leio"). Fechar `out` uma vez, pelo dono, após `Wait` — fechar duas vezes ou enviar em fechado: panic. É o padrão [Go Concurrency Patterns](https://go.dev/blog/pipelines) aplicado à risca.
 
+### A `main` real: timeouts, shutdown gracioso, logger
+
+Juntando tudo — `context` da request, timeout por operação, servidor com prazos, desligamento sem derrubar conexões:
+
+```go title="main.go" showLineNumbers
+mux.HandleFunc("/order", func(w http.ResponseWriter, r *http.Request) {
+	// highlight-next-line
+	ctx, cancel := context.WithTimeout(r.Context(), 1500*time.Millisecond)
+	defer cancel()
+	select {
+	case <-time.After(200 * time.Millisecond):
+		fmt.Fprintln(w, `{"status":"shipped"}`)
+	case <-ctx.Done():
+		http.Error(w, "timeout", http.StatusGatewayTimeout)
+	}
+})
+
+srv := &http.Server{
+	Addr:         "127.0.0.1:18099",
+	Handler:      mux,
+	ReadTimeout:  5 * time.Second,
+	WriteTimeout: 5 * time.Second,
+}
+
+// highlight-next-line
+ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+defer stop()
+
+go func() {
+	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+		log.Error("servidor", slog.Any("err", err))
+	}
+}()
+
+<-ctx.Done() // espera Ctrl+C / SIGTERM
+shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+defer cancel()
+srv.Shutdown(shutCtx) // drena conexões, depois sai
+```
+
+```bash title="Terminal"
+{"time":"...","level":"INFO","msg":"servindo","addr":"127.0.0.1:18099"}
+{"status":"shipped"}
+```
+
+Subiu, respondeu, validado de ponta a ponta. As decisões que importam: `r.Context()` como pai (cancelamento do cliente propaga sozinho), timeout **por operação** (não só no servidor), `Read/WriteTimeout` contra Slowloris, `Shutdown` com prazo em vez de morte seca. É o esqueleto de Jones Charles ([Context na prática](https://dev.to)) e do exemplo Google Search de Ajmani ([Go Concurrency Patterns: Context](https://go.dev/blog/context)) — sem framework.
+
 ### Quanto custa sincronizar (Apple M4, Go 1.26)
 
 | Primitiva | ns/op | Use para |
@@ -425,6 +484,8 @@ goroutines depois: 1
 | Guia pt-BR, worker pool, timeout, context | [golang.com.br](https://golang.com.br/) |
 | Goroutines, fan-out/in, boas práticas | [Stream, Goroutines Guide](https://getstream.io/blog/) |
 | Scheduler GMP, memória, GC, produção | [Murat Demirci, Go Runtime Internals](https://muratdemirci.com.tr/en/go-runtime-internals) |
+| `hchan`, `sudog`, select por dentro | [Gabor Koos, Go Channels Internals](https://blog.gaborkoos.com/) |
+| Catálogo de padrões executáveis | [symonk/go-concurrency-deep-dive](https://github.com/symonk/go-concurrency-deep-dive) |
 
 <Summary>
 

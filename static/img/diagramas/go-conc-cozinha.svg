@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 415" role="img" aria-label="Diagrama: analogia da cozinha para concorrência e paralelismo">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .a{fill:none;stroke:#0969da;stroke-width:1.5}
+    .b{fill:none;stroke:#b35900;stroke-width:1.5}
+    .c{fill:none;stroke:#238636;stroke-width:1.5}
+    .lbl{fill:#57606a}
+    .tag{font-weight:bold}
+    .arrow{stroke:#0969da;stroke-width:1.5;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .a{stroke:#58a6ff}
+      .b{stroke:#d29922}
+      .c{stroke:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah18" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <rect x="120" y="15" width="120" height="48" rx="8" class="box"/>
+  <text x="136" y="45" font-size="14">Pedido A</text>
+  <rect x="270" y="15" width="120" height="48" rx="8" class="box"/>
+  <text x="286" y="45" font-size="14">Pedido B</text>
+  <rect x="420" y="15" width="120" height="48" rx="8" class="box"/>
+  <text x="436" y="45" font-size="14">Pedido C</text>
+  <rect x="30" y="95" width="280" height="52" rx="8" class="box"/>
+  <text x="46" y="127" font-size="15" font-weight="bold">1 cozinheiro</text>
+  <rect x="30" y="160" width="110" height="38" class="a"/>
+  <text x="72" y="185" font-size="13">A</text>
+  <rect x="140" y="160" width="80" height="38" class="b"/>
+  <text x="172" y="185" font-size="13">B</text>
+  <rect x="220" y="160" width="50" height="38" class="a"/>
+  <text x="240" y="185" font-size="13">A</text>
+  <rect x="270" y="160" width="40" height="38" class="c"/>
+  <text x="284" y="185" font-size="13">C</text>
+  <text x="30" y="228" font-size="14" class="tag">→ CONCORRÊNCIA</text>
+  <rect x="350" y="95" width="280" height="52" rx="8" class="box"/>
+  <text x="366" y="127" font-size="15" font-weight="bold">3 cozinheiros</text>
+  <rect x="350" y="160" width="280" height="34" class="a"/>
+  <text x="478" y="183" font-size="13">A</text>
+  <rect x="350" y="200" width="280" height="34" class="b"/>
+  <text x="478" y="223" font-size="13">B</text>
+  <rect x="350" y="240" width="280" height="34" class="c"/>
+  <text x="478" y="263" font-size="13">C</text>
+  <text x="350" y="303" font-size="14" class="tag">→ CONCORRÊNCIA + PARALELISMO</text>
+  <line x1="330" y1="63" x2="330" y2="88" class="arrow" marker-end="url(#ah18)"/>
+  <text x="180" y="345" font-size="13" class="lbl">pedidos → goroutines · go processOrder(A)</text>
+  <text x="180" y="368" font-size="13" class="lbl">cozinheiro → thread do SO</text>
+  <text x="180" y="391" font-size="13" class="lbl">chefe → scheduler (GOMAXPROCS)</text>
+</svg>

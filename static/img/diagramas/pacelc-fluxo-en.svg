@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 320" role="img" aria-label="Diagram: PACELC with partition A vs C, else L vs C">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .q{fill:none;stroke:#b35900;stroke-width:2}
+    .lbl{fill:#57606a}
+    .goodtext{fill:#238636;font-weight:bold}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .q{stroke:#d29922}
+      .lbl{fill:#8b949e}
+      .goodtext{fill:#3fb950}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah21" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <rect x="230" y="15" width="200" height="60" rx="10" class="q"/>
+  <text x="252" y="51" font-size="16" font-weight="bold">partition?</text>
+  <line x1="250" y1="75" x2="150" y2="130" class="arrow" marker-end="url(#ah21)"/>
+  <text x="150" y="105" font-size="13" class="lbl">YES</text>
+  <line x1="410" y1="75" x2="510" y2="130" class="arrow" marker-end="url(#ah21)"/>
+  <text x="500" y="105" font-size="13" class="lbl">NO</text>
+  <rect x="30" y="135" width="240" height="120" rx="10" class="box"/>
+  <text x="50" y="167" font-size="15" font-weight="bold">A or C</text>
+  <text x="50" y="193" font-size="13">A: show stale</text>
+  <text x="50" y="215" font-size="13">C: show nothing</text>
+  <text x="50" y="241" font-size="13" class="lbl">Dynamo PA · etcd PC</text>
+  <rect x="390" y="135" width="240" height="120" rx="10" class="box"/>
+  <text x="410" y="167" font-size="15" font-weight="bold">L or C</text>
+  <text x="410" y="193" font-size="13">L: fast, eventual</text>
+  <text x="410" y="215" font-size="13">C: same, with latency</text>
+  <text x="410" y="241" font-size="13" class="lbl">Spanner PC/EC</text>
+  <text x="180" y="295" font-size="14" class="goodtext">CAP = failure case · PACELC = always</text>
+</svg>
