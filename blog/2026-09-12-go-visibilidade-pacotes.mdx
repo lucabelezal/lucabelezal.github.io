@@ -1,0 +1,213 @@
+---
+slug: go-visibilidade-pacotes
+title: "Visibilidade e packages em Go: maiúscula, pacotes e callbacks"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-12T18:00:00
+description: "Go não tem public, private nem internal: tem uma regra — maiúscula exporta. Entenda pacotes como unidade de encapsulamento, construtores, structs aninhadas e callbacks, com código executável."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+Quem chega de Swift, Java ou Kotlin procura as palavras-chave: `public`, `internal`, `private`, `final`. Em Go elas não existem. Existe **uma regra**: começou com maiúscula, é visível fora do pacote; começou com minúscula, só dentro do pacote. E a unidade de encapsulamento não é a classe nem o arquivo — é o **package**.
+
+Este post é avulso (fora da série Go por dentro): visibilidade, construtores, struct dentro de struct e callbacks — o suficiente para ler e escrever Go sem adivinhar o que é público.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- a única regra de visibilidade: exportado (maiúscula) vs não exportado (minúscula)
+- por que o encapsulamento mora no package, não no arquivo nem no tipo
+- o padrão construtor `New`: como criar valores com campos privados
+- struct usando struct: aninhada vs embutida com visibilidade mista
+- callbacks em Go: funções como valores (sem interface de um método só)
+- a armadilha do JSON: campo minúsculo some da serialização em silêncio
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Structs e methods em Go](/go-structs-methods): structs, receivers, embedding
+- Go básico: funções, pacotes, `go run` (Go 1.26 nos exemplos)
+
+</Prerequisites>
+
+## 1. Contexto
+
+Swift tem `public`/`internal`/`fileprivate`/`private` (e `package` em contextos de pacotes Swift), Java tem `public`/`protected`/`private` mais pacotes, Kotlin adiciona `internal` de módulo. Go trocou esse inventário por uma convenção sintática: **a primeira letra do identificador decide**. `User` e `Name` são exportados (visíveis para quem importa o pacote); `password` e `new` só existem dentro do próprio pacote ([especificação, Exported identifiers](https://go.dev/ref/spec#Exported_identifiers)).
+
+Comparação honesta com Swift — alguns termos têm equivalente, outros não:
+
+| Go | Swift | Observação |
+|---|---|---|
+| maiúscula (exportado) | `public` | API acessível fora do módulo |
+| diretório `internal/` | `internal` / `package` | acesso restrito dentro do módulo; em Go é pasta, não modificador |
+| minúscula (não exportado) | `private` / `fileprivate` | restrito; mas em Go a fronteira é o pacote, nunca o arquivo |
+| — | `final` | sem equivalente: Go não tem herança de classes |
+| — | — | `protected` não existe em nenhuma das duas |
+
+O primo mais próximo do `internal` Swift é o diretório `internal/` do Go: pacotes sob `internal/` só são importáveis dentro do módulo que os contém. É restrição de alcance de importação — não um modificador que você escreve no identificador.
+
+A consequência é arquitetural: como não há `private` por tipo, o Go encapsula por **pacote**. Funções do mesmo pacote enxergam os campos minúsculos umas das outras; fora do pacote, só a API em maiúscula. É procedural no melhor sentido: dados + funções que operam sobre eles, com a fronteira desenhada no `package`, não na `class`.
+
+> **Definição (proposta).** Visibilidade em Go é binária e lexical: identificador com inicial maiúscula é exportado do pacote; com minúscula, restrito a ele. Não há níveis intermediários nem modificadores.
+
+## 2. O problema
+
+Você importa um pacote e tenta ler um campo que viu na struct:
+
+```go title="main.go"
+package main
+
+import "govis/user"
+
+func bad() {
+	u := user.User{}
+	_ = u.password
+}
+```
+
+O compilador responde (saída real):
+
+```bash title="Terminal"
+./bad.go:7:8: u.password undefined (cannot refer to unexported field password)
+```
+
+Note o vocabulário do erro: não diz "private", diz **unexported**. O campo existe, está lá — só não atravessa a fronteira do pacote. Quem espera `private` de classe tenta "tornar público" o campo; em Go a pergunta certa é outra: qual é a API que este pacote quer expor?
+
+## 3. Modelo mental
+
+**Pacote é a fronteira; maiúscula é a porta.** Dentro do pacote, tudo se enxerga (qualquer arquivo). Fora, só maiúsculas. Não existe "visível no arquivo mas não no pacote" nem "visível na subclasse".
+
+**Sem construtor da linguagem, com construtor por convenção.** Go não tem `init` controlado nem sobrecarga. O padrão é uma função `New` que monta o valor e devolve pronto — inclusive preenchendo campos privados que o chamador jamais toca:
+
+```go title="user/user.go" showLineNumbers
+package user
+
+type User struct {
+	Name     string
+	password string
+}
+
+// highlight-next-line
+func New(name, password string) User {
+	return User{Name: name, password: password}
+}
+
+func (u User) Check(password string) bool {
+	return u.password == password
+}
+```
+
+Repare no retorno: `User`, não `*User` — este construtor devolve uma **cópia pronta**. Funciona porque `User` é pequeno e `Check` não muta. Quando o tipo cresce, tem lock ou precisa mutar, o idioma é devolver ponteiro (seguro pelo mesmo motivo do `return &c`: escape analysis + GC):
+
+```go title="user/user.go"
+func NewPtr(name, password string) *User {
+	return &User{Name: name, password: password}
+}
+```
+
+```bash title="Terminal"
+valor: main.User | ponteiro: *main.User
+```
+
+**Regra prática.** Construtor devolve valor se o tipo é pequeno, sem lock e sem mutação; devolve ponteiro caso contrário. A assinatura do `New` já documenta a intenção.
+
+**Struct usando struct segue a mesma regra, campo a campo.** Tipo aninhado ou embutido, cada campo tem sua própria visibilidade: `Client` exportado com campo `password` minúsculo expõe a struct, não o segredo. Embedding promove métodos exportados mesmo de tipo embutido minúsculo — a porta continua sendo a maiúscula, nunca o contexto.
+
+**Callback é valor de função, não interface.** Swift passa closures, Java criava interface de um método (hoje lambdas), Kotlin usa lambdas. Go passa `func` como qualquer valor: parâmetro, retorno, variável. Sem cerimônia — e sem hierarquia para algo que só precisa ser chamado.
+
+**Regra prática.** Para decidir a visibilidade, pergunte "este pacote exportaria isso?" — nunca "esta classe permitiria?".
+
+## 4. Implementação
+
+Módulo real com dois pacotes (`govis/user` + `main`), saídas reais (Go 1.26):
+
+```go title="main.go" showLineNumbers
+package main
+
+import (
+	"fmt"
+
+	"govis/user"
+)
+
+func notify(msg string, send func(string) bool) bool {
+	return send("ola, " + msg)
+}
+
+func main() {
+	u := user.New("ada", "s3cr3t")
+	fmt.Println("nome:", u.Name, "| confere:", u.Check("s3cr3t"))
+
+	sent := notify("ada", func(m string) bool {
+		fmt.Println("enviando:", m)
+		return true
+	})
+	fmt.Println("callback:", sent)
+}
+```
+
+```bash title="Terminal"
+nome: ada | confere: true
+enviando: ola, ada
+callback: true
+```
+
+Três mecanismos numa saída só. `New` constrói com campo privado; `Check` compara sem expor; `notify` recebe o callback como `func(string) bool` e o invoca — a closure captura nada aqui, mas poderia capturar variáveis do `main` (e nesse caso o compilador move a captura para o heap via escape analysis, como no Post 1).
+
+## 5. Falhas e trade-offs
+
+**JSON come campos minúsculos em silêncio.** `encoding/json` só enxerga exportados. Sem erro, sem aviso:
+
+```go title="main.go" showLineNumbers
+type user struct {
+	name string
+	Age  int
+}
+
+b, _ := json.Marshal(user{name: "ada", Age: 36})
+fmt.Println(string(b))
+```
+
+```bash title="Terminal"
+{"Age":36}
+```
+
+`name` evaporou. É a mesma regra de visibilidade atravessando a biblioteca padrão: reflexão respeita exportação. Struct de API com campo minúsculo serializa "faltando campo" — bug que só aparece em produção, no payload.
+
+**"Privado no arquivo".** Não existe. Dois arquivos do mesmo pacote se enxergam por inteiro. Fronteira menor que pacote, só com pacote novo (inclusive `internal/`, que restringe *quem importa*, não o que se vê).
+
+**Callback como interface de um método.** Funciona, mas é Java em Go: verboso sem ganho. Prefira `func` como tipo de parâmetro; reserve interface para comportamento com múltiplos métodos ou múltiplas implementações (tema do Post 3 da série).
+
+**Tudo exportado "por praticidade".** Resolve o atrito de hoje, cria a API eterna de amanhã: exportado é contrato — quem usa fora do pacote quebra se mudar. Exporte o mínimo que conta a história do pacote.
+
+### Fontes e nível de autoridade
+
+| Assunto | Fonte principal |
+|---|---|
+| Identificadores exportados | [Especificação do Go](https://go.dev/ref/spec#Exported_identifiers) |
+| Packages, módulos, visibilidade | [Documentação do Go](https://go.dev/doc/) |
+| Organização de código | [Effective Go](https://go.dev/doc/effective_go) |
+
+<Summary>
+
+- visibilidade é binária: maiúscula exporta do pacote, minúscula restringe a ele
+- encapsulamento mora no package; construtor `New` monta valores com campos privados
+- struct em struct segue a mesma regra campo a campo; callback é `func` como valor
+- `encoding/json` ignora campos minúsculos em silêncio — confira o payload
+
+</Summary>
+
+<NextSteps href="/go-structs-methods" title="Structs e methods em Go">
+
+Visibilidade decidida, volte aos receivers e ao embedding: method sets (`T` vs `*T`) são a ponte para interfaces, o próximo post da série.
+
+</NextSteps>
+
+<SkillsGained skills={["Packages", "Visibilidade", "Construtores", "Callbacks", "JSON"]} />

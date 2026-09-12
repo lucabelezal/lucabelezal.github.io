@@ -27,6 +27,7 @@ Esa frase decide casi todo en este post: cuándo el método muta o no, cuándo e
 - method sets: qué ven `T` y `*T` (base para interfaces del próximo post)
 - layout de memoria: orden de campos, padding y cómo medir con `reflect`
 - embedding vs herencia: composición con promoción de campos y métodos
+- el mapa POO→Go: clase, herencia, override y constructor traducidos (y dónde termina el mapa)
 - por qué `context.Context` se pasa por valor a propósito
 
 </WhatYouWillLearn>
@@ -121,6 +122,39 @@ El coche sigue blanco. Sin error, sin aviso — el método corrió, mutó **una 
 ![Diagrama: Client compone Person, campos promovidos](/img/diagramas/go-structs-embedding-es.svg)
 
 > **Definición (propuesta).** Embedding es un campo embebido cuyo nombre es el tipo, con promoción de campos y métodos al tipo externo. Nada se hereda; todo se compone y se accede por atajo.
+
+### Si vienes de POO: mapa de analogías
+
+Si tu repertorio es Java/Kotlin/Swift, traduce así — notando dónde termina el mapa:
+
+| Concepto | Java | Kotlin | Swift | Go |
+|---|---|---|---|---|
+| clase con estado | `class` (referencia) | `class` (referencia) | `class`/`struct` | `struct` (valor, sin herencia) |
+| herencia | `extends` | `: Super()` (exige `open`) | `: Super` | embedding (composición, sin jerarquía) |
+| `override` | `@Override` | `override` (solo si `open`) | `override` | sombreado (sin despacho por jerarquía) |
+| `interface` | `implements` | `: Interface` | `: Protocol` | satisfacción implícita (method set, Post 3) |
+| constructor | constructor | primario/secundario | `init` | literal compuesta / `New` (sin sobrecarga) |
+| visibilidad | `private`/`protected` | `private`/`protected`/`internal` | `private`/`fileprivate`/`internal` | minúscula/mayúscula por paquete |
+| `static` | `static` | `companion object` | `static`/`class` | función de paquete (sin dueño) |
+| `abstract` | `abstract` | `abstract` | `protocol` | la interface pequeña cumple el papel |
+
+Sombreado no es override — prueba:
+
+```go title="main.go" showLineNumbers
+func (p Person) Greet() string { return "oi, " + p.Name }
+func (c Client) Greet() string { return "ola, " + c.Name + " (" + c.Plan + ")" }
+
+c := Client{Person: Person{Name: "ada"}, Plan: "pro"}
+fmt.Println("externo:", c.Greet())
+fmt.Println("embutido:", c.Person.Greet())
+```
+
+```bash title="Terminal"
+externo: ola, ada (pro)
+embutido: oi, ada
+```
+
+El método externo gana la llamada `c.Greet()`, pero el embebido sigue intacto y alcanzable por ruta explícita. En una jerarquía con override, el método de la subclase *reemplaza* el de la superclase en el despacho dinámico; aquí no hay despacho por jerarquía — dos métodos, dos rutas, y el atajo resuelve al más externo. Guarda la diferencia: vuelve en el Post 3, cuando las interfaces abandonan la jerarquía del todo.
 
 **Regla práctica.** Que `cl.Name` funcione no significa que `Client` sea un `Person`. Significa que `Client` tiene un `Person` — y el compilador te ahorra teclear.
 

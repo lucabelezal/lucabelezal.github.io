@@ -27,6 +27,7 @@ That sentence decides almost everything in this post: when a method mutates or n
 - method sets: what `T` and `*T` see (foundation for interfaces in the next post)
 - memory layout: field order, padding, and measuring with `reflect`
 - embedding vs inheritance: composition with field and method promotion
+- the OOP→Go map: class, inheritance, override, and constructors translated (and where the map ends)
 - why `context.Context` is passed by value on purpose
 
 </WhatYouWillLearn>
@@ -121,6 +122,39 @@ The car stays white. No error, no warning — the method ran, mutated **a copy**
 ![Diagram: Client composes Person, promoted fields](/img/diagramas/go-structs-embedding-en.svg)
 
 > **Definition (proposed).** Embedding is an embedded field named after its type, with field and method promotion to the outer type. Nothing is inherited; everything is composed and reachable by shortcut.
+
+### Coming from OOP: analogy map
+
+If your background is Java/Kotlin/Swift, translate like this — noting where the map ends:
+
+| Concept | Java | Kotlin | Swift | Go |
+|---|---|---|---|---|
+| stateful class | `class` (reference) | `class` (reference) | `class`/`struct` | `struct` (value, no inheritance) |
+| inheritance | `extends` | `: Super()` (requires `open`) | `: Super` | embedding (composition, no hierarchy) |
+| override | `@Override` | `override` (only if `open`) | `override` | shadowing (no hierarchy dispatch) |
+| interface | `implements` | `: Interface` | `: Protocol` | implicit satisfaction (method set, Post 3) |
+| constructor | constructor | primary/secondary | `init` | composite literal / `New` (no overloading) |
+| visibility | `private`/`protected` | `private`/`protected`/`internal` | `private`/`fileprivate`/`internal` | lowercase/uppercase by package |
+| `static` | `static` | `companion object` | `static`/`class` | package function (no owner) |
+| `abstract` | `abstract` | `abstract` | `protocol` | small interfaces fill the role |
+
+Shadowing is not overriding — proof:
+
+```go title="main.go" showLineNumbers
+func (p Person) Greet() string { return "oi, " + p.Name }
+func (c Client) Greet() string { return "ola, " + c.Name + " (" + c.Plan + ")" }
+
+c := Client{Person: Person{Name: "ada"}, Plan: "pro"}
+fmt.Println("externo:", c.Greet())
+fmt.Println("embutido:", c.Person.Greet())
+```
+
+```bash title="Terminal"
+externo: ola, ada (pro)
+embutido: oi, ada
+```
+
+The outer method wins the `c.Greet()` call, but the embedded one stays intact and reachable by explicit path. In an override hierarchy, the subclass method *replaces* the superclass one in dynamic dispatch; here there is no hierarchy dispatch — two methods, two paths, and the shortcut resolves to the outermost. Keep the difference: it returns in Post 3, when interfaces drop hierarchy for good.
 
 **Rule of thumb.** `cl.Name` working doesn't mean `Client` is a `Person`. It means `Client` has a `Person` — and the compiler saves your typing.
 

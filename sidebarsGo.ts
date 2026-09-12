@@ -102,6 +102,13 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'link',
+          label: 'Visibilidade e packages em Go',
+          href: '/go-visibilidade-pacotes',
+          description: 'Maiúscula exporta: pacotes, construtores e callbacks.',
+          customProps: {date: '12 set 2026'},
+        },
+        {
+          type: 'link',
           label: 'Structs e methods em Go',
           href: '/go-structs-methods',
           description: 'Semântica de valor, receivers, layout e composição.',

@@ -81,6 +81,11 @@ const config: Config = {
           label: 'Go',
         },
         {
+          to: '/posts',
+          position: 'left',
+          label: 'Posts',
+        },
+        {
           type: 'localeDropdown',
           position: 'right',
         },

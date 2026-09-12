@@ -3,6 +3,12 @@ import styles from './styles.module.css';
 
 const contents = [
   {
+    title: 'Visibilidade e packages em Go',
+    description: 'Maiúscula exporta: pacotes, construtores, structs aninhadas e callbacks.',
+    href: '/go-visibilidade-pacotes',
+    date: '12 set 2026',
+  },
+  {
     title: 'Structs e methods em Go',
     description: 'Struct tem semântica de valor: receivers, method sets, layout de memória e composição.',
     href: '/go-structs-methods',
