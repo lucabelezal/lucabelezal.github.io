@@ -44,6 +44,42 @@
   --ifm-pre-line-height: 1.65;
 
   --docusaurus-highlighted-code-line-bg: rgba(9, 105, 218, 0.12);
+
+  /* Tags — cor por tag (light). Uso em src/components/Tag. */
+  --tag-go: #007d9c;
+  --tag-go-bg: rgba(0, 125, 156, 0.08);
+  --tag-go-bg-strong: rgba(0, 125, 156, 0.16);
+  --tag-go-border: rgba(0, 125, 156, 0.35);
+
+  --tag-backend: #8250df;
+  --tag-backend-bg: rgba(130, 80, 223, 0.08);
+  --tag-backend-bg-strong: rgba(130, 80, 223, 0.16);
+  --tag-backend-border: rgba(130, 80, 223, 0.35);
+
+  --tag-eng: #1a7f37;
+  --tag-eng-bg: rgba(26, 127, 55, 0.08);
+  --tag-eng-bg-strong: rgba(26, 127, 55, 0.16);
+  --tag-eng-border: rgba(26, 127, 55, 0.35);
+
+  --tag-arq: #bf8700;
+  --tag-arq-bg: rgba(191, 135, 0, 0.1);
+  --tag-arq-bg-strong: rgba(191, 135, 0, 0.18);
+  --tag-arq-border: rgba(191, 135, 0, 0.4);
+
+  --tag-db: #cf222e;
+  --tag-db-bg: rgba(207, 34, 46, 0.08);
+  --tag-db-bg-strong: rgba(207, 34, 46, 0.16);
+  --tag-db-border: rgba(207, 34, 46, 0.35);
+
+  --tag-dist: #0969da;
+  --tag-dist-bg: rgba(9, 105, 218, 0.08);
+  --tag-dist-bg-strong: rgba(9, 105, 218, 0.16);
+  --tag-dist-border: rgba(9, 105, 218, 0.35);
+
+  --tag-ios: #bf3989;
+  --tag-ios-bg: rgba(191, 57, 137, 0.08);
+  --tag-ios-bg-strong: rgba(191, 57, 137, 0.16);
+  --tag-ios-border: rgba(191, 57, 137, 0.35);
 }
 
 /* Leitura mais confortável dentro do conteúdo */
@@ -163,6 +199,42 @@ code {
   --ifm-pre-background: #161b22;
 
   --docusaurus-highlighted-code-line-bg: rgba(88, 166, 255, 0.18);
+
+  /* Tags — cor por tag (dark, tons mais claros p/ contraste). */
+  --tag-go: #39c5cf;
+  --tag-go-bg: rgba(57, 197, 207, 0.12);
+  --tag-go-bg-strong: rgba(57, 197, 207, 0.2);
+  --tag-go-border: rgba(57, 197, 207, 0.4);
+
+  --tag-backend: #a371f7;
+  --tag-backend-bg: rgba(163, 113, 247, 0.12);
+  --tag-backend-bg-strong: rgba(163, 113, 247, 0.2);
+  --tag-backend-border: rgba(163, 113, 247, 0.4);
+
+  --tag-eng: #3fb950;
+  --tag-eng-bg: rgba(63, 185, 80, 0.12);
+  --tag-eng-bg-strong: rgba(63, 185, 80, 0.2);
+  --tag-eng-border: rgba(63, 185, 80, 0.4);
+
+  --tag-arq: #d29922;
+  --tag-arq-bg: rgba(210, 153, 34, 0.12);
+  --tag-arq-bg-strong: rgba(210, 153, 34, 0.22);
+  --tag-arq-border: rgba(210, 153, 34, 0.4);
+
+  --tag-db: #f85149;
+  --tag-db-bg: rgba(248, 81, 73, 0.12);
+  --tag-db-bg-strong: rgba(248, 81, 73, 0.2);
+  --tag-db-border: rgba(248, 81, 73, 0.4);
+
+  --tag-dist: #58a6ff;
+  --tag-dist-bg: rgba(88, 166, 255, 0.12);
+  --tag-dist-bg-strong: rgba(88, 166, 255, 0.2);
+  --tag-dist-border: rgba(88, 166, 255, 0.4);
+
+  --tag-ios: #db61a2;
+  --tag-ios-bg: rgba(219, 97, 162, 0.12);
+  --tag-ios-bg-strong: rgba(219, 97, 162, 0.2);
+  --tag-ios-border: rgba(219, 97, 162, 0.4);
 }
 
 [data-theme='dark'] code {
@@ -238,6 +310,11 @@ code {
     grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
     column-gap: 3rem;
     align-items: start;
+  }
+
+  /* Home /go (sem TOC/Progress): coluna única, conteúdo centralizado */
+  html.docs-wrapper .container > .row.rowFull {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   /* Quebra caps do DocItem swizzlado (docItemCol 75%) e do Infima */
@@ -351,6 +428,281 @@ code {
     text-align: left;
   }
 }
+
+/* ── Homes de listagem (/, /posts, /go) — shell + controles ── */
+.contentPage {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 2.5rem 1rem 4rem;
+}
+
+.searchInput {
+  width: 100%;
+  margin-top: 1.5rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  background: var(--ifm-background-color);
+  color: inherit;
+  font-size: 1rem;
+}
+
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.tagPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  cursor: pointer;
+  background: transparent;
+  color: inherit;
+}
+
+.tagPill:hover {
+  border-color: var(--ifm-color-primary);
+}
+
+.tagPill--active {
+  background: var(--ifm-color-emphasis-200);
+  border-color: var(--ifm-color-emphasis-400);
+  font-weight: 600;
+}
+
+.filterCount {
+  margin-top: 1rem;
+  font-size: 0.9rem;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.filterClear {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--ifm-color-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.pagerButton {
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 8px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.pagerButton:hover:not(:disabled) {
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary);
+}
+
+.pagerButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.pagerInfo {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.75rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 2.5rem 0 1rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.sectionHeading h2 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+.sectionHint {
+  color: var(--ifm-color-emphasis-600);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.75rem;
+}
+
+.yearHeading {
+  margin: 1.75rem 0 0.25rem;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.cta {
+  display: inline-block;
+  margin-top: 2rem;
+  font-weight: 600;
+}
+
+/* Gráfico SVG inline gerado por scripts/blog-chart (claude-blog, MIT).
+   O SVG usa currentColor; aqui só damos moldura de superfície. */
+.blog-chart {
+  margin: 2rem 0;
+  padding: 1rem;
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 10px;
+  background: var(--ifm-background-surface-color);
+}
+
+.blog-chart svg {
+  display: block;
+  margin: 0 auto;
+}
+
+.blog-chart figcaption {
+  margin-top: 0.75rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.blog-chart figcaption a {
+  color: inherit;
+}
+
+/* ── Shell de listagem em 3 colunas (/, /posts): nav | conteúdo | contexto ── */
+.pageGrid {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 2.5rem 1rem 4rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+
+.pageMain {
+  min-width: 0;
+}
+
+.rail {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.railCard {
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-radius: 10px;
+  padding: 1rem;
+  background: var(--ifm-background-surface-color);
+}
+
+.railTitle {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ifm-color-emphasis-600);
+  margin: 0 0 0.6rem;
+}
+
+.railNav {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.railNav a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  color: var(--ifm-font-color-base);
+  font-size: 0.92rem;
+}
+
+.railNav a:hover {
+  background: var(--ifm-color-emphasis-100);
+  text-decoration: none;
+}
+
+.railNav a[aria-current='page'] {
+  background: var(--ifm-color-emphasis-200);
+  color: var(--ifm-color-primary);
+  font-weight: 600;
+}
+
+.railCount {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.72rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.railTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.railCard .searchInput {
+  margin-top: 0;
+}
+
+.rail--left {
+  display: none;
+}
+
+@media (min-width: 1100px) {
+  .pageGrid {
+    grid-template-columns: 190px minmax(0, 1fr) 260px;
+    gap: 2.5rem;
+  }
+
+  .rail {
+    position: sticky;
+    top: calc(var(--ifm-navbar-height) + 1rem);
+  }
+
+  .rail--left {
+    display: flex;
+  }
+}
+
+@media (max-width: 1099px) {
+  .pageGrid {
+    max-width: 860px;
+  }
+
+  .rail--right {
+    order: -1;
+  }
+}
+
 .prism-code {
   tab-size: 4;
 }

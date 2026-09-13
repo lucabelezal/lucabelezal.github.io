@@ -1,0 +1,48 @@
+.goTrack {
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-left: 4px solid var(--ifm-color-primary);
+  border-radius: 10px;
+  padding: 1rem;
+  background: var(--ifm-background-surface-color);
+}
+
+.kicker {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--ifm-color-primary);
+  margin: 0 0 0.35rem;
+}
+
+.title {
+  margin: 0 0 0.8rem;
+  font-size: 1rem;
+  line-height: 1.35;
+}
+
+.track {
+  height: 0.4rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ifm-color-emphasis-200);
+}
+
+.fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--ifm-color-primary);
+  transition: width 180ms ease-out;
+}
+
+.meta {
+  margin: 0.5rem 0 0.75rem;
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.72rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.cta {
+  font-weight: 600;
+  font-size: 0.88rem;
+}

@@ -1,0 +1,83 @@
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  cursor: pointer;
+  background: var(--tag-bg, transparent);
+  border-color: var(--tag-border, var(--ifm-color-emphasis-300));
+  color: inherit;
+}
+
+.tag:hover {
+  border-color: var(--tag, var(--ifm-color-primary));
+}
+
+.tagActive {
+  background: var(--tag-bg-strong, var(--ifm-color-emphasis-200));
+  border-color: var(--tag, var(--ifm-color-emphasis-400));
+  font-weight: 600;
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--tag, var(--ifm-color-emphasis-500));
+  flex-shrink: 0;
+}
+
+/* Cor por tag — mesma em filtro e lista, light + dark */
+.tag[data-tag='go'] {
+  --tag: var(--tag-go);
+  --tag-bg: var(--tag-go-bg);
+  --tag-bg-strong: var(--tag-go-bg-strong);
+  --tag-border: var(--tag-go-border);
+}
+.tag[data-tag='backend'] {
+  --tag: var(--tag-backend);
+  --tag-bg: var(--tag-backend-bg);
+  --tag-bg-strong: var(--tag-backend-bg-strong);
+  --tag-border: var(--tag-backend-border);
+}
+.tag[data-tag='engenharia-de-software'] {
+  --tag: var(--tag-eng);
+  --tag-bg: var(--tag-eng-bg);
+  --tag-bg-strong: var(--tag-eng-bg-strong);
+  --tag-border: var(--tag-eng-border);
+}
+.tag[data-tag='arquitetura'] {
+  --tag: var(--tag-arq);
+  --tag-bg: var(--tag-arq-bg);
+  --tag-bg-strong: var(--tag-arq-bg-strong);
+  --tag-border: var(--tag-arq-border);
+}
+.tag[data-tag='banco-de-dados'] {
+  --tag: var(--tag-db);
+  --tag-bg: var(--tag-db-bg);
+  --tag-bg-strong: var(--tag-db-bg-strong);
+  --tag-border: var(--tag-db-border);
+}
+.tag[data-tag='sistemas-distribuidos'] {
+  --tag: var(--tag-dist);
+  --tag-bg: var(--tag-dist-bg);
+  --tag-bg-strong: var(--tag-dist-bg-strong);
+  --tag-border: var(--tag-dist-border);
+}
+.tag[data-tag='ios'] {
+  --tag: var(--tag-ios);
+  --tag-bg: var(--tag-ios-bg);
+  --tag-bg-strong: var(--tag-ios-bg-strong);
+  --tag-border: var(--tag-ios-border);
+}

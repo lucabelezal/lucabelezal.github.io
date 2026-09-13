@@ -1,9 +1,14 @@
-import {useMemo, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import Link from '@docusaurus/Link';
 import {useLocation} from '@docusaurus/router';
 import Layout from '@theme/Layout';
+import PageShell from '@site/src/components/PageShell';
+import YearNav from '@site/src/components/YearNav';
+import PageHeader from '@site/src/components/PageHeader';
+import Pager from '@site/src/components/Pager';
+import ContentList, {type ContentItem} from '@site/src/components/ContentList';
+import Tag, {tagLabel} from '@site/src/components/Tag';
 import entries from '@site/src/data/all-posts.json';
-import styles from './posts.module.css';
 
 type Entry = {
   kind: 'blog' | 'go';
@@ -17,12 +22,8 @@ type Entry = {
 
 const all = entries as Entry[];
 
-function fmtDayMonth(iso: string): string {
-  const d = new Date(iso);
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${mm}-${dd}`;
-}
+const BLOG_PER_PAGE = 10;
+const GO_PER_PAGE = 25;
 
 function byYear(list: Entry[]): Map<string, Entry[]> {
   const map = new Map<string, Entry[]>();
@@ -45,12 +46,33 @@ function matchesQuery(p: Entry, q: string): boolean {
     .every((term) => hay.includes(term));
 }
 
+function toItem(p: Entry): ContentItem {
+  return {
+    href: p.url,
+    title: p.title,
+    description: p.description,
+    date: p.date,
+    tags: p.tags,
+  };
+}
+
 export default function AllPosts() {
   const location = useLocation();
   const [query, setQuery] = useState('');
   const [tag, setTag] = useState(
     () => new URLSearchParams(location.search).get('tag') ?? '',
   );
+  const [year, setYear] = useState(
+    () => new URLSearchParams(location.search).get('year') ?? '',
+  );
+  const [blogPage, setBlogPage] = useState(1);
+  const [goPage, setGoPage] = useState(1);
+
+  // Qualquer mudança de filtro volta para a primeira página.
+  useEffect(() => {
+    setBlogPage(1);
+    setGoPage(1);
+  }, [tag, year, query]);
 
   const tagCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -63,129 +85,147 @@ export default function AllPosts() {
   const filtered = useMemo(
     () =>
       all.filter(
-        (p) => (!tag || p.tags.includes(tag)) && matchesQuery(p, query),
+        (p) =>
+          (!tag || p.tags.includes(tag)) &&
+          (!year || (p.date && new Date(p.date).getFullYear().toString() === year)) &&
+          matchesQuery(p, query),
       ),
-    [tag, query],
+    [tag, year, query],
   );
 
   const blog = filtered.filter((p) => p.kind === 'blog');
   const go = filtered.filter((p) => p.kind === 'go');
-  const grouped = byYear(blog);
+
+  const blogTotalPages = Math.max(1, Math.ceil(blog.length / BLOG_PER_PAGE));
+  const safeBlogPage = Math.min(blogPage, blogTotalPages);
+  const blogSlice = blog.slice(
+    (safeBlogPage - 1) * BLOG_PER_PAGE,
+    safeBlogPage * BLOG_PER_PAGE,
+  );
+  const grouped = byYear(blogSlice);
+
+  const goTotalPages = Math.max(1, Math.ceil(go.length / GO_PER_PAGE));
+  const safeGoPage = Math.min(goPage, goTotalPages);
+  const goSlice = go.slice((safeGoPage - 1) * GO_PER_PAGE, safeGoPage * GO_PER_PAGE);
+
+  const filters = (
+    <section className="railCard" aria-label="Filtrar">
+      <p className="railTitle">Filtrar</p>
+      <input
+        className="searchInput"
+        type="search"
+        placeholder="Buscar por título, descrição…"
+        aria-label="Buscar conteúdo"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <div className="filterRow" role="group" aria-label="Filtrar por tag">
+        <button
+          type="button"
+          className={tag === '' && year === '' ? 'tagPill tagPill--active' : 'tagPill'}
+          onClick={() => {
+            setTag('');
+            setYear('');
+          }}
+          aria-pressed={tag === '' && year === ''}>
+          Todos ({all.length})
+        </button>
+        {tagCounts.map(([t, n]) => (
+          <Tag
+            key={t}
+            tag={t}
+            count={n}
+            active={tag === t}
+            onClick={() => setTag(tag === t ? '' : t)}
+          />
+        ))}
+      </div>
+      <p className="filterCount" aria-live="polite">
+        {filtered.length} resultado{filtered.length === 1 ? '' : 's'}
+        {year ? (
+          <>
+            {' '}em <strong>{year}</strong>{' '}
+            <button type="button" className="filterClear" onClick={() => setYear('')}>
+              limpar
+            </button>
+          </>
+        ) : null}
+        {tag ? (
+          <>
+            {' '}com a tag <Link to={`/tags/${tag}`}>{tagLabel(tag)}</Link>
+          </>
+        ) : null}
+      </p>
+    </section>
+  );
 
   return (
     <Layout
       title="Posts"
       description="Arquivo de todo o conteúdo: posts do blog e trilha Go-by-Example, com filtro por tag">
-      <main className={styles.page}>
-        <h1>Posts</h1>
-        <p className={styles.lead}>
-          Todo o conteúdo num lugar só — blog e{' '}
-          <Link to="/go">Go-by-Example</Link>. Filtre por tag
-          {tag === 'go' ? (
+      <PageShell left={<YearNav />} right={filters}>
+        <PageHeader
+          kicker="Arquivo"
+          title="Posts"
+          lead={
             <>
-              {' '}(vendo <strong>Go</strong>)
+              Todo o conteúdo num lugar só — blog e{' '}
+              <Link to="/go">Go-by-Example</Link>. Filtre por tag à direita.
             </>
-          ) : null}
-          .
-        </p>
-
-        <input
-          className={styles.search}
-          type="search"
-          placeholder="Buscar por título, descrição…"
-          aria-label="Buscar conteúdo"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          }
         />
-
-        <div className={styles.pills} role="group" aria-label="Filtrar por tag">
-          <button
-            type="button"
-            className={tag === '' ? styles.pillActive : styles.pill}
-            onClick={() => setTag('')}
-            aria-pressed={tag === ''}>
-            Todos ({all.length})
-          </button>
-          {tagCounts.map(([t, n]) => (
-            <button
-              type="button"
-              key={t}
-              className={tag === t ? styles.pillActive : styles.pill}
-              onClick={() => setTag(tag === t ? '' : t)}
-              aria-pressed={tag === t}>
-              {t} ({n})
-            </button>
-          ))}
-        </div>
-
-        <p className={styles.count} aria-live="polite">
-          {filtered.length} resultado{filtered.length === 1 ? '' : 's'}
-          {tag ? (
-            <>
-              {' '}com a tag <Link to={`/tags/${tag}`}>{tag}</Link>
-            </>
-          ) : null}
-        </p>
 
         {blog.length > 0 && (
           <section aria-label="Blog">
-            <h2>Blog</h2>
+            <div className="sectionHeading">
+              <h2>Blog</h2>
+              <span className="sectionHint">{blog.length} posts</span>
+            </div>
             {[...grouped.entries()].map(([year, items]) => (
               <section key={year} aria-label={year}>
-                <h3 className={styles.year}>{year}</h3>
-                <ul className={styles.list}>
-                  {items.map((p) => (
-                    <li key={p.url} className={styles.item}>
-                      <span>
-                        <Link to={p.url}>{p.title}</Link>
-                        <span className={styles.tags}>
-                          {p.tags.map((t) => (
-                            <button
-                              type="button"
-                              key={t}
-                              className={styles.miniTag}
-                              onClick={() => setTag(t)}
-                              title={`Filtrar por ${t}`}>
-                              {t}
-                            </button>
-                          ))}
-                        </span>
-                      </span>
-                      {p.date && (
-                        <span className={styles.date}>
-                          {fmtDayMonth(p.date)}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+                <h3 className="yearHeading" id={`ano-${year}`}>
+                  {year}
+                </h3>
+                <ContentList
+                  items={items.map(toItem)}
+                  activeTag={tag}
+                  onTagSelect={(t) => setTag(t)}
+                />
               </section>
             ))}
+            <Pager
+              page={safeBlogPage}
+              totalPages={blogTotalPages}
+              onChange={setBlogPage}
+              label="Paginação dos posts do blog"
+            />
           </section>
         )}
 
         {go.length > 0 && (
           <section aria-label="Go-by-Example">
-            <h2>
-              Go-by-Example <span className={styles.hint}>(trilha /go)</span>
-            </h2>
-            <ul className={styles.list}>
-              {go.map((p) => (
-                <li key={p.url} className={styles.item}>
-                  <Link to={p.url}>{p.title}</Link>
-                  <span className={styles.date}>go</span>
-                </li>
-              ))}
-            </ul>
+            <div className="sectionHeading">
+              <h2>Go-by-Example</h2>
+              <span className="sectionHint">trilha /go</span>
+            </div>
+            <ContentList
+              items={goSlice.map((p) => ({href: p.url, title: p.title}))}
+            />
+            <Pager
+              page={safeGoPage}
+              totalPages={goTotalPages}
+              onChange={setGoPage}
+              label="Paginação do Go-by-Example"
+            />
           </section>
         )}
 
         {filtered.length === 0 && (
-          <p className={styles.empty}>
+          <p className="filterCount">
             Nada por aqui. Limpe a busca ou escolha outra tag.
           </p>
         )}
-      </main>
+      </PageShell>
     </Layout>
   );
 }

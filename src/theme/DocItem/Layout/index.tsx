@@ -41,7 +41,7 @@ export default function DocItemLayout({children}: Props): ReactNode {
   const isHome = isGoHome(pathname);
 
   return (
-    <div className={clsx('row', styles.docItemRow)}>
+    <div className={clsx('row', styles.docItemRow, isHome && 'rowFull')}>
       <div className={clsx('col', !docTOC.hidden && styles.docItemCol)}>
         <ContentVisibility metadata={metadata} />
         <DocVersionBanner />
@@ -56,10 +56,12 @@ export default function DocItemLayout({children}: Props): ReactNode {
           {!isHome && <DocItemPaginator />}
         </div>
       </div>
-      <div className={clsx('col col--3', styles.docItemAside)}>
-        <ProgressIndicator />
-        {docTOC.desktop}
-      </div>
+      {!isHome && (
+        <div className={clsx('col col--3', styles.docItemAside)}>
+          <ProgressIndicator />
+          {docTOC.desktop}
+        </div>
+      )}
     </div>
   );
 }

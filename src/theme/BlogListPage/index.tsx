@@ -1,40 +1,101 @@
-import React from 'react';
 import Link from '@docusaurus/Link';
 import Layout from '@theme/Layout';
 import OriginalBlogListPage from '@theme-original/BlogListPage';
 import type {Props} from '@theme/BlogListPage';
+import ContentList, {type ContentItem} from '@site/src/components/ContentList';
+import PageShell from '@site/src/components/PageShell';
+import YearNav from '@site/src/components/YearNav';
+import GoTrack from '@site/src/components/GoTrack';
+import Tag from '@site/src/components/Tag';
 import posts from '@site/src/data/all-posts.json';
 import styles from './styles.module.css';
 
-type Post = {slug: string; title: string; date: string; description: string};
+type Post = {
+  kind: 'blog' | 'go';
+  slug: string;
+  title: string;
+  date: string | null;
+  description: string;
+  tags: string[];
+  url: string;
+};
 
-const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+const all = posts as Post[];
+const blog = all.filter((p) => p.kind === 'blog');
 
-function fmtData(iso: string): string {
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, '0')} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+const CURATED = ['go-slices', 'go-socket-ao-handler', 'cap-pacelc'];
+
+function toItem(p: Post): ContentItem {
+  return {
+    href: p.url,
+    title: p.title,
+    description: p.description,
+    date: p.date,
+    tags: p.tags,
+  };
 }
 
-function Vitrine() {
-  const recentes = (posts as Post[]).slice(0, 6);
+const curated = CURATED.map((slug) => all.find((p) => p.slug === slug)).filter(
+  (p): p is Post => Boolean(p),
+);
+
+const recentes = blog.slice(0, 6).map(toItem);
+
+const tagCounts = (() => {
+  const counts = new Map<string, number>();
+  for (const p of all) for (const t of p.tags) counts.set(t, (counts.get(t) ?? 0) + 1);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+})();
+
+function TagCloud() {
   return (
-    <Layout title="Aprendizados em engenharia de software" description="Posts recentes do blog">
-      <main className={styles.page}>
-        <p className={styles.kicker}>Aprendizados em engenharia de software</p>
-        <h1 className={styles.title}>Recentes</h1>
-        <div className={styles.list}>
-          {recentes.map((p) => (
-            <Link className={styles.card} to={`/${p.slug}`} key={p.slug}>
-              <span className={styles.date}>{fmtData(p.date)}</span>
-              <strong>{p.title}</strong>
-              {p.description ? <span className={styles.desc}>{p.description}</span> : null}
+    <section className="railCard" aria-label="Explorar por tag">
+      <p className="railTitle">Explorar por tag</p>
+      <div className="railTags">
+        {tagCounts.map(([t, n]) => (
+          <Tag key={t} tag={t} count={n} href={`/tags/${t}`} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function Home() {
+  return (
+    <Layout
+      title="Aprendizados em engenharia de software"
+      description="Go, backend e arquitetura — notas, exemplos e projetos de Lucas Nascimento.">
+      <PageShell left={<YearNav />} right={<><GoTrack /><TagCloud /></>}>
+        <header className={styles.hero}>
+          <p className={styles.kicker}>Aprendizados em engenharia de software</p>
+          <h1 className={styles.heroTitle}>Posts</h1>
+          <p className={styles.heroLead}>
+            Documento o que aprendo em Go, backend e arquitetura — e mantenho aqui
+            como material de consulta, com código que roda.
+          </p>
+        </header>
+
+        <section aria-label="Comece por aqui">
+          <div className="sectionHeading">
+            <h2>Comece por aqui</h2>
+          </div>
+          <ContentList items={curated.map(toItem)} />
+        </section>
+
+        <section aria-label="Recentes">
+          <div className="sectionHeading">
+            <h2>Recentes</h2>
+            <Link className="sectionHint" to="/posts">
+              todos os posts
             </Link>
-          ))}
-        </div>
-        <Link className={styles.cta} to="/posts">
+          </div>
+          <ContentList items={recentes} />
+        </section>
+
+        <Link className="cta" to="/posts">
           Ver todos os posts -&gt;
         </Link>
-      </main>
+      </PageShell>
     </Layout>
   );
 }
@@ -44,5 +105,5 @@ export default function BlogListPage(props: Props): React.JSX.Element {
   if (page !== 1) {
     return <OriginalBlogListPage {...props} />;
   }
-  return <Vitrine />;
+  return <Home />;
 }

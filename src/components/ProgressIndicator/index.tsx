@@ -1,4 +1,5 @@
 import {useLocation} from '@docusaurus/router';
+import {GO_TRACK_TOTAL, isGoTrackPath} from '@site/src/data/goTrack';
 import {isGoHome, isGoRoute, useProgress} from '../CompletionTracker/progress';
 import styles from './styles.module.css';
 
@@ -8,8 +9,8 @@ export default function ProgressIndicator() {
 
   if (!isGoRoute(pathname) || isGoHome(pathname)) return null;
 
-  const total = 87;
-  const completed = Object.keys(progress).filter(isGoRoute).length;
+  const total = GO_TRACK_TOTAL;
+  const completed = Object.keys(progress).filter(isGoTrackPath).length;
   const percentage = Math.min(100, Math.round((completed / total) * 100));
 
   function resetProgress() {

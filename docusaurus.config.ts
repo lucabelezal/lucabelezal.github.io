@@ -76,13 +76,8 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'Lucas Nascimento',
+      title: 'Posts',
       items: [
-        {
-          to: '/posts',
-          position: 'left',
-          label: 'Posts',
-        },
         {
           to: '/go',
           position: 'left',
