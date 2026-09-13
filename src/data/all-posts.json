@@ -1,6 +1,19 @@
 [
   {
     "kind": "blog",
+    "slug": "arquitetura-hexagonal-go",
+    "title": "Arquitetura hexagonal em Go: o domínio no centro, o resto plugável",
+    "date": "2026-09-14T12:00:00",
+    "description": "Ports & Adapters sem cerimônia: o que é hexagonal de verdade, como a comunidade Go estrutura projetos (por tipo ou por domínio) e um exemplo completo com repositório, clock, notifier, publisher e dois adapters.",
+    "tags": [
+      "go",
+      "arquitetura",
+      "backend"
+    ],
+    "url": "/arquitetura-hexagonal-go"
+  },
+  {
+    "kind": "blog",
     "slug": "go-testes-http",
     "title": "Testes de API HTTP em Go: handler, rotas, client e adapters",
     "date": "2026-09-14T11:00:00",

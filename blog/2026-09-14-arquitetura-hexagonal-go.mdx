@@ -1,0 +1,919 @@
+---
+slug: arquitetura-hexagonal-go
+title: "Arquitetura hexagonal em Go: o domínio no centro, o resto plugável"
+authors: [lucabelezal]
+tags: [go, arquitetura, backend]
+date: 2026-09-14T12:00:00
+description: "Ports & Adapters sem cerimônia: o que é hexagonal de verdade, como a comunidade Go estrutura projetos (por tipo ou por domínio) e um exemplo completo com repositório, clock, notifier, publisher e dois adapters."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+Toda vez que a regra de negócio encosta no `net/http` ou no driver do banco, duas coisas quebram juntas: o teste passa a exigir infraestrutura, e a troca de tecnologia passa a mexer na regra. A arquitetura hexagonal existe para cortar esse acoplamento — e em Go ela não precisa de framework, container de injeção nem doze pastas. Precisa de uma direção de dependência e de interfaces pequenas.
+
+Este post separa as duas perguntas que a comunidade costuma misturar: **qual é a direção das dependências** (arquitetura) e **onde ficam os arquivos** (layout). A primeira tem resposta técnica; a segunda tem história, debate e consenso parcial. Vamos das duas, com código que roda.
+
+Continuação de [API HTTP em Go](/go-http-api). Go 1.26, biblioteca padrão, saídas reais.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- o que é Ports & Adapters (Cockburn, 2005) e por que o hexágono não tem seis lados por acaso
+- port vs adapter, inbound (driving) vs outbound (driven)
+- por que Go já implementa hexagonal sem framework: interface definida onde é consumida
+- um domínio de transferência entre contas, puro e testável
+- cinco portas de saída na prática: `AccountRepository`, `Clock`, `Notifier`, `EventPublisher`, `IDGenerator`
+- duas portas de entrada (`HTTP` e `CLI`) chamando o mesmo caso de uso
+- trocar o adapter de persistência sem tocar no domínio
+- como a comunidade estrutura projeto Go: por tipo vs por domínio
+- o que a documentação oficial diz, o que o `golang-standards/project-layout` erra, o que os scaffolds fazem
+- 12-factor como checklist operacional do layout
+- os erros que aparecem no caminho: hexagonal prematuro, erro tipado por camada, config global
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go básico: structs, métodos, interfaces, pacotes
+- [API HTTP em Go](/go-http-api): `net/http`, handler, middleware, layout `cmd/` + `internal/`
+- [Interfaces em Go](/go-interfaces): a satisfação implícita é a base de tudo aqui
+- [Erros e logs](/go-erros-logs): `errors.Is`, `errors.As`, `slog` (usados na seção 4)
+
+</Prerequisites>
+
+## 1. Contexto
+
+No post de API HTTP você montou `cmd/api` + `internal/`, com handler fino e middleware em cebola. Aquilo resolve o transporte. Agora a pergunta muda: **onde mora a regra de negócio, e quem pode depender de quem?**
+
+Go não responde isso por você. Não existe um Spring do Go, nem uma pasta obrigatória, nem um `rails new`. Essa ausência é intencional. Rob Pike descreve a filosofia em [Less is exponentially more](https://commandcenter.blogspot.com/2012/06/less-is-exponentially-more.html): a linguagem cresce devagar de propósito. Ken Thompson conta, na [oral history do Computer History Museum](https://youtu.be/OmVHkL0IWk4), que a motivação para criar Go veio de um talk sobre C++ em que "as novidades eram maiores que a linguagem". A reação dos três — Pike, Griesemer e Thompson — foi direta: *let's write a language*.
+
+A consequência aparece no dia a dia. Sem framework que imponha estrutura, cada time inventa a sua, e a pergunta "qual o layout idiomático?" nunca tem uma resposta única. Este post resolve a parte que **tem** resposta técnica (direção de dependência) e mapeia a parte que é convenção (layout), com o debate real da comunidade.
+
+O que vamos construir, um passo por vez:
+
+```text title="Layout final"
+wallet/
+  go.mod
+  cmd/api/main.go                     // monta tudo e sobe o servidor
+  internal/
+    domain/                           // regra pura, sem infra
+      account.go                      // Account, Money, débito/crédito
+      errors.go                       // erros sentinela
+      ports.go                        // as interfaces (portas de saída)
+      transfer.go                     // o caso de uso (porta de entrada)
+    adapter/
+      memory/account.go               // AccountRepository em memória
+      postgres/account.go             // AccountRepository em SQL
+      systemclock/clock.go            // Clock
+      lognotifier/notifier.go         // Notifier
+      membus/bus.go                   // EventPublisher
+      idgen/id.go                     // IDGenerator
+      http/handler.go                 // porta de entrada HTTP
+      cli/transfer.go                 // porta de entrada CLI
+```
+
+![Filosofia: regra presa à tecnologia versus domínio no centro](/img/diagramas/go-hex-filosofia.svg)
+
+## 2. O problema
+
+Comece pelo que dói. Um handler que faz tudo — o "handler gordo" que o post anterior já sinalizou:
+
+```go title="internal/handler/transfer.go (o problema)"
+func Transfer(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		From   string `json:"from"`
+		To     string `json:"to"`
+		Amount int64  `json:"amount"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "json inválido", http.StatusBadRequest)
+		return
+	}
+
+	// Regra de negócio no meio do handler.
+	var fromBalance int64
+	err := db.QueryRow(`SELECT balance FROM accounts WHERE id = $1`, body.From).Scan(&fromBalance)
+	if err != nil {
+		http.Error(w, "erro interno", http.StatusInternalServerError)
+		return
+	}
+	if fromBalance < body.Amount {
+		http.Error(w, "saldo insuficiente", http.StatusUnprocessableEntity)
+		return
+	}
+	_, _ = db.Exec(`UPDATE accounts SET balance = balance - $1 WHERE id = $2`, body.Amount, body.From)
+	_, _ = db.Exec(`UPDATE accounts SET balance = balance + $1 WHERE id = $2`, body.Amount, body.To)
+
+	w.WriteHeader(http.StatusNoContent)
+}
+```
+
+Funciona. Até a primeira mudança de requisito. Quatro coisas quebram:
+
+1. **Testar a regra exige banco.** O `if fromBalance < amount` está preso ao `db.QueryRow`. Não há como testar "saldo insuficiente" sem subir Postgres e semear dados.
+2. **Trocar de banco toca no transporte.** Migrar para outro driver mexe no mesmo arquivo que lê JSON e escreve status HTTP.
+3. **A regra não é reaproveitável.** O mesmo "debitar e creditar" precisa existir no worker de estornos, no CLI de operações e no job noturno — e não existe em lugar nenhum que dê para importar.
+4. **O mapeamento de erro se espalha.** `saldo insuficiente` vira 422 aqui; no CLI vira texto; no worker vira retry. Cada transporte reinventa a decisão.
+
+![Handler gordo: HTTP, regra e SQL no mesmo lugar; handler fino delega ao caso de uso](/img/diagramas/go-hex-problema.svg)
+
+O outro extremo também é armadilha. Copiar um layout de vinte pastas antes de ter regra nenhuma: `handlers/`, `services/`, `repositories/`, `models/`, `dto/`, `utils/`, `constants/`. Tudo vazio, tudo público, nada testável. O leitor gasta energia navegando estrutura que não significa nada ainda.
+
+**Regra prática.** Estrutura existe para servir à regra, não para preencher um organograma. Primeiro a dor; depois a pasta.
+
+## 3. Filosofia e modelo mental
+
+### O problema que Cockburn descreveu
+
+Alistair Cockburn publicou o padrão em 2005, no artigo [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/). O incômodo original não era código bonito. Era operacional:
+
+- lógica de negócio infiltrava a interface gráfica, e testá-la exigia clicar em botões;
+- o sistema não podia rodar sem banco, então banco fora do ar travava o desenvolvimento;
+- o mesmo comportamento não podia ser acionado por um humano, por um teste automatizado e por outro programa.
+
+A solução parte de uma inversão de olhar. A assimetria importante **não é esquerda/direita** (UI de um lado, banco do outro). É **dentro/fora**. A regra que Cockburn escreveu:
+
+> **Regra (Cockburn).** Código que pertence ao **dentro** não pode vazar para o **fora**.
+
+O fora é tudo que é detalhe de tecnologia: HTTP, SQL, fila, sistema de arquivos, linha de comando. O dentro é o que o software *faz*, independente de como é acionado ou onde persiste.
+
+### Porta e adapter
+
+> **Definição (proposta): Porta.** Uma conversa com propósito, expressa como interface. Diz *o que* o domínio precisa ou oferece, sem dizer *como*. Ex.: `AccountRepository` diz "consigo buscar e salvar contas"; não diz SQL, nem memória, nem HTTP.
+
+> **Definição (proposta): Adapter.** A implementação de uma porta para uma tecnologia específica. `memory.AccountRepo` e `postgres.AccountRepo` são adapters da mesma porta `AccountRepository`.
+
+A palavra "porta" vem de portas de sistema operacional e de conectores eletrônicos: qualquer aparelho que respeite o protocolo encaixa. O protocolo da porta é a interface. O adapter converte o mundo para essa interface.
+
+E o hexágono? Cockburn é explícito: **não são seis lados**. O desenho hexagonal existe só para dar espaço a várias portas, em vez de forçar o modelo unidimensional de "camadas empilhadas". Na prática, ele encontrou de dois a quatro portas na maioria dos sistemas.
+
+![Hexágono: aplicação no centro, portas de entrada à esquerda e de saída à direita, adapters plugáveis](/img/diagramas/go-hex-hexagono.svg)
+
+### Inbound e outbound
+
+Cockburn divide as portas em dois tipos, pela direção de quem controla a conversa:
+
+- **Primária / inbound / driving**: quem *dirige* a aplicação. O adapter chama o domínio. Exemplos: HTTP, CLI, consumidor de fila, teste.
+- **Secundária / outbound / driven**: quem a aplicação *dirige*. O domínio chama a porta, o adapter resolve. Exemplos: repositório, cache, publicador de eventos, cliente HTTP.
+
+O teste automatizado é o adapter primário natural (ele aciona o sistema). O mock é o adapter secundário natural (ele responde ao sistema). Essa simetria é o que permite rodar a aplicação inteira sem UI e sem banco.
+
+### Por que Go já faz isso sem framework
+
+Em Java, a inversão de dependência costuma vir com container e anotação. Em Go, ela é a linguagem:
+
+- **interfaces são satisfeitas implicitamente**: `memory.AccountRepo` implementa `domain.AccountRepository` só por ter os métodos. Sem `implements`, sem registro.
+- **`accept interfaces, return structs`**: consuma abstração, entregue concreto. É o oposto de acoplar.
+- **a interface pertence a quem consome**: a porta outbound `AccountRepository` é definida no pacote do domínio, porque é o domínio que a consome. O adapter importa o domínio; o domínio não importa o adapter.
+
+Ian Lance Taylor resumiu o viés da linguagem em [um comentário sobre o sistema de tipos](https://github.com/golang/go/issues/29649#issuecomment-454820179): Go "encoraja programar escrevendo código em vez de programar escrevendo tipos". Traduzido para arquitetura: use interfaces pequenas, só onde há uma fronteira real. Não modele o sistema inteiro em tipos antes de escrever a regra.
+
+> **Definição (proposta): direção de dependência.** A regra única do hexagonal: as dependências apontam para dentro. O domínio não conhece HTTP, SQL nem fila. As setas de `import` vão do adapter para o domínio, nunca o contrário.
+
+![Dependências apontam para dentro no hexagonal; em camadas, a regra aponta para o banco](/img/diagramas/go-hex-dependencia.svg)
+
+### Glossário
+
+| Termo | Significado |
+|---|---|
+| Domínio | Regra de negócio pura. Não importa infraestrutura. |
+| Caso de uso | Orquestração de um fluxo: busca, aplica regra, salva, publica. |
+| Porta | Interface com propósito. Inbound (driving) ou outbound (driven). |
+| Adapter | Implementação de uma porta para uma tecnologia. |
+| Driving / inbound | Quem aciona a aplicação (HTTP, CLI, fila, teste). |
+| Driven / outbound | Quem a aplicação aciona (repositório, cache, publisher). |
+| Backing service | Recurso externo trocável: banco, cache, broker (termo do 12-factor). |
+
+### Hexagonal e os primos
+
+Hexagonal não é a única escola. As outras se sobrepõem bastante, e vale saber o que muda.
+
+| Abordagem | Ideia central | Diferença prática |
+|---|---|---|
+| Hexagonal (Cockburn) | Portas e adapters; dentro/fora | Menos opinionada; só a direção de dependência |
+| Clean Architecture | Camadas concêntricas com regra no centro | Prescreve mais camadas e nomes |
+| Onion | Idem, com foco em objetos de domínio | Muito próxima de Clean |
+| DDD tático | Entidades, valores, agregados, repositórios | Filosofia de modelagem, não só pastas |
+| Modular (Kat Zień) | Pacotes por caso de uso | Organiza por domínio; infra junto ([GopherCon 2018](https://www.youtube.com/watch?v=oL6JBUk6tj0)) |
+| Camadas / MVC | UI, serviço, domínio, banco empilhados | Tende a acoplar regra à infra |
+
+A escolha de muitos times Go, inclusive a que o Aviv Carmi relata na série sobre estrutura da HUMAN Security, é hexagonal justamente por ser a **menos opinionada**: dá a regra de dependência e deixa o resto com o time.
+
+**Regra prática.** Hexagonal é uma direção, não um organograma. Se você lembrar só de uma frase, lembre desta: *o domínio não conhece o mundo*.
+
+## 4. Implementação
+
+O domínio é uma transferência entre contas. A regra cabe em poucas linhas, e é por isso que serve: dá para ver o acoplamento sumir sem o exemplo virar um sistema.
+
+Go 1.26, sem dependência externa. Rode com `go run ./cmd/api`.
+
+### 4.1 O domínio puro
+
+Nada aqui importa `net/http`, `database/sql` ou qualquer driver. Só a regra.
+
+```go title="internal/domain/account.go" showLineNumbers
+package domain
+
+import "fmt"
+
+type AccountID string
+
+type Money int64 // centavos
+
+func (m Money) String() string {
+	return fmt.Sprintf("R$ %.2f", float64(m)/100)
+}
+
+type Account struct {
+	ID      AccountID
+	Balance Money
+}
+
+func NewAccount(id AccountID, balance Money) *Account {
+	return &Account{ID: id, Balance: balance}
+}
+
+// Debit tira dinheiro da conta. Recusa valor não-positivo e saldo insuficiente.
+func (a *Account) Debit(m Money) error {
+	if m <= 0 {
+		return ErrValorInvalido
+	}
+	if a.Balance < m {
+		return ErrSaldoInsuficiente
+	}
+	a.Balance -= m
+	return nil
+}
+
+func (a *Account) Credit(m Money) {
+	a.Balance += m
+}
+```
+
+```go title="internal/domain/errors.go" showLineNumbers
+package domain
+
+import "errors"
+
+// Erros sentinela: o domínio fala a sua língua, não a do HTTP.
+var (
+	ErrSaldoInsuficiente  = errors.New("saldo insuficiente")
+	ErrContaNaoEncontrada = errors.New("conta não encontrada")
+	ErrValorInvalido      = errors.New("valor inválido")
+)
+```
+
+Dois detalhes que decidem o resto do post:
+
+- **Erros sentinela pertencem ao domínio.** `ErrSaldoInsuficiente` é vocabulário de negócio. Quem traduz para `422` é o adapter HTTP, na borda.
+- **`Money` tem método, não getter.** A regra opera sobre o valor; a formatação é detalhe.
+
+### 4.2 As portas na prática
+
+Aqui está o coração do hexagonal em Go. Cinco portas de **saída** (o domínio precisa delas) e uma de **entrada** (o mundo aciona o domínio).
+
+```go title="internal/domain/ports.go" showLineNumbers
+package domain
+
+import (
+	"context"
+	"time"
+)
+
+// Outbound: o domínio precisa destas. As interfaces moram aqui,
+// no lado que consome — não no adapter que implementa.
+type AccountRepository interface {
+	Get(ctx context.Context, id AccountID) (*Account, error)
+	Save(ctx context.Context, a *Account) error
+}
+
+type Clock interface {
+	Now() time.Time
+}
+
+type Notifier interface {
+	Notify(ctx context.Context, to AccountID, msg string) error
+}
+
+type EventPublisher interface {
+	Publish(ctx context.Context, e Event) error
+}
+
+type IDGenerator interface {
+	NewID() string
+}
+```
+
+Cada porta resolve um problema concreto:
+
+| Porta | Por que existe | Adapters neste post |
+|---|---|---|
+| `AccountRepository` | Persistência sem acoplar ao SQL | `memory`, `postgres` |
+| `Clock` | Tempo determinístico no teste | `systemclock`, fake fixo no teste |
+| `Notifier` | Avisar sem acoplar a e-mail/SMS/push | `lognotifier` |
+| `EventPublisher` | Publicar evento sem acoplar ao broker | `membus` |
+| `IDGenerator` | Id determinístico no teste | `idgen` |
+
+Uma porta por motivo de mudança. Se dois adapters compartilham lógica que não é de infraestrutura (ex.: calcular timeout), essa lógica é de domínio e sobe para o centro — regra que o Carmi aplica ao propor pacotes `infra/<tecnologia>`.
+
+A porta de **entrada** é o method set do caso de uso. Em Go, quase sempre basta o struct com métodos exportados; vira interface só quando há um segundo driver ou necessidade de substituí-lo no teste.
+
+```go title="internal/domain/transfer.go" showLineNumbers
+package domain
+
+import (
+	"context"
+	"fmt"
+	"time"
+)
+
+type Transfer struct {
+	accounts AccountRepository
+	clock    Clock
+	notifier Notifier
+	events   EventPublisher
+	ids      IDGenerator
+}
+
+// As dependências entram pelo construtor. Sem global, sem container.
+func NewTransfer(
+	accounts AccountRepository,
+	clock Clock,
+	notifier Notifier,
+	events EventPublisher,
+	ids IDGenerator,
+) *Transfer {
+	return &Transfer{accounts: accounts, clock: clock, notifier: notifier, events: events, ids: ids}
+}
+
+type TransferCommand struct {
+	From   AccountID
+	To     AccountID
+	Amount Money
+}
+
+type Event struct {
+	ID        string
+	Type      string
+	At        time.Time
+	AccountID AccountID
+	Amount    Money
+}
+
+// Execute é a porta de entrada: o mundo chama isto, sem saber de HTTP.
+func (t *Transfer) Execute(ctx context.Context, cmd TransferCommand) error {
+	from, err := t.accounts.Get(ctx, cmd.From)
+	if err != nil {
+		return fmt.Errorf("buscar origem: %w", err)
+	}
+	to, err := t.accounts.Get(ctx, cmd.To)
+	if err != nil {
+		return fmt.Errorf("buscar destino: %w", err)
+	}
+
+	if err := from.Debit(cmd.Amount); err != nil {
+		return err // ErrSaldoInsuficiente sobe intacto
+	}
+	to.Credit(cmd.Amount)
+
+	if err := t.accounts.Save(ctx, from); err != nil {
+		return fmt.Errorf("salvar origem: %w", err)
+	}
+	if err := t.accounts.Save(ctx, to); err != nil {
+		return fmt.Errorf("salvar destino: %w", err)
+	}
+
+	if err := t.notifier.Notify(ctx, cmd.From, fmt.Sprintf("transferência de %s", cmd.Amount)); err != nil {
+		return fmt.Errorf("notificar: %w", err)
+	}
+
+	return t.events.Publish(ctx, Event{
+		ID:        t.ids.NewID(),
+		Type:      "transferencia",
+		At:        t.clock.Now(),
+		AccountID: cmd.From,
+		Amount:    cmd.Amount,
+	})
+}
+```
+
+Repare no que **não** aparece: nenhum `http`, nenhum `sql`, nenhum `slog`. O caso de uso conhece cinco interfaces e nada mais. O `%w` preserva o erro sentinela para `errors.Is` lá na borda.
+
+![As portas na prática: caso de uso no centro, duas portas de entrada e cinco de saída](/img/diagramas/go-hex-portas.svg)
+
+### 4.3 O teste roda sem infraestrutura
+
+O domínio é testável porque as portas são interfaces. No teste, substituímos por fakes em memória — sem banco, sem rede, sem relógio real.
+
+```go title="internal/domain/transfer_test.go" showLineNumbers
+package domain_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"example.com/wallet/internal/domain"
+)
+
+type fakeRepo struct{ accounts map[domain.AccountID]*domain.Account }
+
+func (f *fakeRepo) Get(_ context.Context, id domain.AccountID) (*domain.Account, error) {
+	a, ok := f.accounts[id]
+	if !ok {
+		return nil, domain.ErrContaNaoEncontrada
+	}
+	clone := *a
+	return &clone, nil
+}
+
+func (f *fakeRepo) Save(_ context.Context, a *domain.Account) error {
+	clone := *a
+	f.accounts[a.ID] = &clone
+	return nil
+}
+
+type fixedClock struct{}
+
+func (fixedClock) Now() time.Time { return time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC) }
+
+type noopNotifier struct{}
+
+func (noopNotifier) Notify(context.Context, domain.AccountID, string) error { return nil }
+
+type noopEvents struct{}
+
+func (noopEvents) Publish(context.Context, domain.Event) error { return nil }
+
+type fixedID struct{}
+
+func (fixedID) NewID() string { return "evt-1" }
+
+func TestTransferSaldoInsuficiente(t *testing.T) {
+	repo := &fakeRepo{accounts: map[domain.AccountID]*domain.Account{
+		"a": domain.NewAccount("a", 100),
+		"b": domain.NewAccount("b", 0),
+	}}
+	tx := domain.NewTransfer(repo, fixedClock{}, noopNotifier{}, noopEvents{}, fixedID{})
+
+	err := tx.Execute(context.Background(), domain.TransferCommand{From: "a", To: "b", Amount: 500})
+
+	if !errors.Is(err, domain.ErrSaldoInsuficiente) {
+		t.Fatalf("esperava ErrSaldoInsuficiente, veio %v", err)
+	}
+}
+```
+
+```bash title="Terminal"
+$ go test ./internal/domain/
+ok  	example.com/wallet/internal/domain
+```
+
+Nenhuma linha deste teste toca no banco. É esse o retorno de separar regra de infraestrutura: o teste roda em milissegundos e falha pelo motivo certo.
+
+### 4.4 Os adapters de saída
+
+Cada porta ganha um adapter. Repare que todos importam `domain` — a seta aponta para dentro.
+
+```go title="internal/adapter/memory/account.go" showLineNumbers
+package memory
+
+import (
+	"context"
+	"sync"
+
+	"example.com/wallet/internal/domain"
+)
+
+type AccountRepo struct {
+	mu       sync.Mutex
+	accounts map[domain.AccountID]*domain.Account
+}
+
+func NewAccountRepo() *AccountRepo {
+	return &AccountRepo{accounts: map[domain.AccountID]*domain.Account{}}
+}
+
+func (r *AccountRepo) Get(_ context.Context, id domain.AccountID) (*domain.Account, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	a, ok := r.accounts[id]
+	if !ok {
+		return nil, domain.ErrContaNaoEncontrada
+	}
+	clone := *a
+	return &clone, nil
+}
+
+func (r *AccountRepo) Save(_ context.Context, a *domain.Account) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	clone := *a
+	r.accounts[a.ID] = &clone
+	return nil
+}
+```
+
+Os outros quatro são igualmente curtos: `systemclock` devolve `time.Now()`; `lognotifier` escreve com `slog`; `membus` acumula eventos; `idgen` gera hex com `crypto/rand`. O importante não é o corpo, é o formato: cada um implementa **uma** interface do domínio e não sabe nada além dela.
+
+### 4.5 As portas de entrada
+
+O adapter HTTP não contém regra. Ele decodifica, chama a porta de entrada e traduz erro para status — uma vez, na borda.
+
+```go title="internal/adapter/http/handler.go" showLineNumbers
+package httpadapter
+
+import (
+	"encoding/json"
+	"errors"
+	"net/http"
+
+	"example.com/wallet/internal/domain"
+)
+
+type Handler struct{ transfer *domain.Transfer }
+
+func New(transfer *domain.Transfer) *Handler { return &Handler{transfer: transfer} }
+
+func (h *Handler) Transfer(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		From   string `json:"from"`
+		To     string `json:"to"`
+		Amount int64  `json:"amount"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "json inválido", http.StatusBadRequest)
+		return
+	}
+
+	err := h.transfer.Execute(r.Context(), domain.TransferCommand{
+		From:   domain.AccountID(body.From),
+		To:     domain.AccountID(body.To),
+		Amount: domain.Money(body.Amount),
+	})
+
+	// O mapeamento de erro vive só aqui, na fronteira.
+	switch {
+	case errors.Is(err, domain.ErrSaldoInsuficiente):
+		http.Error(w, "saldo insuficiente", http.StatusUnprocessableEntity)
+	case errors.Is(err, domain.ErrContaNaoEncontrada):
+		http.Error(w, "conta não encontrada", http.StatusNotFound)
+	case errors.Is(err, domain.ErrValorInvalido):
+		http.Error(w, "valor inválido", http.StatusBadRequest)
+	case err != nil:
+		http.Error(w, "erro interno", http.StatusInternalServerError)
+	default:
+		w.WriteHeader(http.StatusNoContent)
+	}
+}
+```
+
+O CLI chama **a mesma porta**, com outra sintaxe de entrada. Nenhuma linha de regra é duplicada.
+
+```go title="internal/adapter/cli/transfer.go" showLineNumbers
+package cliadapter
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"os"
+
+	"example.com/wallet/internal/domain"
+)
+
+func Run(ctx context.Context, t *domain.Transfer, args []string) error {
+	fs := flag.NewFlagSet("transfer", flag.ExitOnError)
+	from := fs.String("from", "", "conta de origem")
+	to := fs.String("to", "", "conta de destino")
+	amount := fs.Int64("amount", 0, "valor em centavos")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+
+	err := t.Execute(ctx, domain.TransferCommand{
+		From:   domain.AccountID(*from),
+		To:     domain.AccountID(*to),
+		Amount: domain.Money(*amount),
+	})
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "erro:", err)
+		return err
+	}
+	fmt.Println("ok")
+	return nil
+}
+```
+
+![Fluxo de um request atravessando adapter, porta, caso de uso e adapter de saída](/img/diagramas/go-hex-fluxo.svg)
+
+### 4.6 A montagem no `main`
+
+Toda a fiação acontece em um lugar só. O `main` é o único que conhece o concreto; o domínio nunca soube que ele existe.
+
+```go title="cmd/api/main.go" showLineNumbers
+package main
+
+import (
+	"context"
+	"errors"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"time"
+
+	cliadapter "example.com/wallet/internal/adapter/cli"
+	httpadapter "example.com/wallet/internal/adapter/http"
+	"example.com/wallet/internal/adapter/idgen"
+	"example.com/wallet/internal/adapter/lognotifier"
+	"example.com/wallet/internal/adapter/membus"
+	"example.com/wallet/internal/adapter/memory"
+	"example.com/wallet/internal/adapter/systemclock"
+	"example.com/wallet/internal/domain"
+)
+
+func main() {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	// Composição: escolhemos os adapters e injetamos no caso de uso.
+	accounts := memory.NewAccountRepo()
+	transfer := domain.NewTransfer(
+		accounts,
+		systemclock.Clock{},
+		lognotifier.New(log),
+		membus.New(),
+		idgen.UUID{},
+	)
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /transfers", httpadapter.New(transfer).Transfer)
+
+	srv := &http.Server{
+		Addr:         "127.0.0.1:18099",
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	go func() {
+		log.Info("listen", slog.String("addr", srv.Addr))
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("serve", slog.Any("err", err))
+			os.Exit(1)
+		}
+	}()
+
+	<-ctx.Done()
+	shutCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_ = srv.Shutdown(shutCtx)
+
+	_ = cliadapter.Run // o CLI reusa o mesmo caso de uso
+}
+```
+
+O mesmo `transfer` alimenta HTTP e CLI. Um caso de uso, dois drivers.
+
+### 4.7 Trocar o adapter sem tocar no domínio
+
+Aqui está a prova. O adapter Postgres implementa `AccountRepository` com `database/sql`. O domínio não muda uma vírgula.
+
+```go title="internal/adapter/postgres/account.go" showLineNumbers
+package postgres
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+
+	"example.com/wallet/internal/domain"
+)
+
+type AccountRepo struct{ db *sql.DB }
+
+func NewAccountRepo(db *sql.DB) *AccountRepo { return &AccountRepo{db: db} }
+
+func (r *AccountRepo) Get(ctx context.Context, id domain.AccountID) (*domain.Account, error) {
+	var balance int64
+	err := r.db.QueryRowContext(ctx,
+		`SELECT balance FROM accounts WHERE id = $1`, string(id)).Scan(&balance)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, domain.ErrContaNaoEncontrada
+	}
+	if err != nil {
+		return nil, err
+	}
+	return domain.NewAccount(id, domain.Money(balance)), nil
+}
+
+func (r *AccountRepo) Save(ctx context.Context, a *domain.Account) error {
+	_, err := r.db.ExecContext(ctx,
+		`UPDATE accounts SET balance = $1 WHERE id = $2`, int64(a.Balance), string(a.ID))
+	return err
+}
+```
+
+A troca é uma linha no `main`:
+
+```go title="cmd/api/main.go (diff)"
+-	accounts := memory.NewAccountRepo()
++	accounts := postgres.NewAccountRepo(db)
+```
+
+Nada em `internal/domain/` mudou. Nada em `internal/adapter/http/` mudou. Esse é o teste de fogo do hexagonal: **trocar o detalhe não vaza para a regra**.
+
+**Regra prática.** Se trocar banco, UI ou broker exige editar o domínio, a fronteira está furada. O adapter importa o domínio; o domínio nunca importa o adapter.
+
+## 5. Como a comunidade estrutura projeto Go
+
+Aqui começa a segunda pergunta. Diferente da direção de dependência, o layout **não tem resposta única**. Tem documentação oficial, tem consenso parcial e tem um repositório famoso que a comunidade passou a contestar.
+
+### O que a documentação oficial diz
+
+A página [Organizing a Go module](https://go.dev/doc/modules/layout) é o mais perto de "oficial". Ela não prescreve layout; descreve casos:
+
+- **Pacote básico**: tudo na raiz do módulo, um pacote, nome igual ao último componente do caminho do módulo.
+- **Comando básico**: `package main`, um ou vários arquivos; `main.go` é convenção, não regra.
+- **Com suporte**: jogue os pacotes internos em `internal/`. O compilador impede import de fora; você pode refatorar à vontade.
+- **Vários comandos**: cada binário no seu diretório; `cmd/` é a convenção.
+- **Pacotes + comandos**: `cmd/` para binários, `internal/` para o resto.
+- **Servidor**: sem pacotes para exportar; lógica em `internal/`, comandos em `cmd/`. Se algo virar reutilizável, extraia para um módulo separado.
+
+Repare no que **não** aparece: `pkg/`. A própria documentação oficial não usa esse diretório.
+
+### O conselho que a comunidade repete
+
+Perguntado "como estruturar código Go?", Robert Griesemer — um dos criadores da linguagem — respondeu **"I don't know"**, e completou que sempre começa com estrutura plana e cria pacotes quando precisa. É a resposta mais honesta do ecossistema: não há receita, há evolução.
+
+Na prática, isso vira o consenso que aparece em quase toda thread do r/golang: comece com `go.mod` e `main.go`, refatore quando doer. Foi o que o usuário `drvd` respondeu numa das threads clássicas de estrutura de projeto, e o que o Ben Johnson defende desde 2014.
+
+### Por tipo vs por domínio
+
+O eixo que realmente decide o layout não é a quantidade de pastas. É **como** você agrupa.
+
+**Por tipo** (technical layering): `handlers/`, `services/`, `repositories/`, `models/`, `errors/`. Cada pasta reúne coisas da mesma categoria.
+
+**Por domínio** (feature/component): `user/`, `order/`, `payment/`. Cada pacote reúne tudo daquele assunto — handler, serviço, repositório.
+
+O problema do "por tipo" é a regra do compilador Go: **não existem ciclos de import**. O usuário `jerf` explicou isso melhor do que qualquer livro numa das threads clássicas do r/golang: pacotes agrupados por tipo tendem a se referenciar mutuamente — `service` precisa de `migration`, `handler` precisa de `error`, `error` precisa de `service` — e o compilador recusa. Você contorna com interfaces desnecessárias ou extrai "tipos base", e a coisa fica pior. A solução é **camadas por domínio**: um pacote `user`, um `user management` em cima, os handlers HTTP por cima disso.
+
+![Por tipo gera ciclos de import; por domínio, cada pacote conta uma história](/img/diagramas/go-hex-tipo-vs-dominio.svg)
+
+O mesmo `jerf` dá a regra prática do SQL: amarre o código SQL a quem usa. O SQL de usuários mora no pacote de usuários, não num `repositories/` global. A promessa de "todos os SQLs num lugar só" é ficção — na prática, as mudanças de schema aparecem nos testes.
+
+`utils`, `helpers`, `common`, `constants` merecem o mesmo veredito: viram gaveta de tranqueira porque não expressam um conceito. Nomeie pelo que o pacote faz (`validator`, `cache`), não pelo que ele contém.
+
+### `internal/` e o fim do GOPATH
+
+Antes de Go 1.11, o código precisava morar em `$GOPATH/src/...`, e o caminho importava de verdade. Módulos mataram a exigência: `go mod init nome` e o projeto mora onde você quiser. É por isso que `src/` é um fóssil no Go — herança de GOPATH e de hábito vindo do Java.
+
+`internal/` é o único diretório com significado imposto pelo **compilador**, desde Go 1.4: nada fora do módulo pode importar o que está lá dentro. É o diretório mais importante da lista, e a documentação oficial nem o coloca em destaque. Ironia útil: não existe receita, nem na fonte.
+
+### As quatro regras do Ben Johnson
+
+O texto [Structuring Applications in Go](https://www.gobeyond.dev/structuring-applications/) (2014) continua atual. Quatro regras:
+
+1. **Sem variáveis globais.** O exemplo `http.HandleFunc` da stdlib ensina um vício: para acessar estado, só via global. Faça tipos de handler com dependências injetadas; o teste passa a ser uma chamada direta, sem servidor.
+2. **Separe o binário da aplicação.** `cmd/` para os binários; a lógica vira biblioteca. Você ganha múltiplos executáveis e uma aplicação testável.
+3. **Embale tipos com contexto.** `DB` e `Tx` que embrulham `database/sql` e adicionam operações do seu domínio (`Tx.CreateUser`). Compõe transações e troca de banco sem vazar.
+4. **Não exagere em subpacotes.** Go só exige ausência de ciclos. Muitos projetos vivem bem num pacote raiz, arquivos de 200–500 linhas, até umas 10 mil linhas antes de repensar.
+
+### Três abordagens, uma retrospectiva
+
+O Aviv Carmi documentou a jornada da HUMAN Security em duas partes. A Parte 1 compara três arranjos:
+
+- **Single package**: tudo num diretório. Simples, mas sem símbolos privados e com acoplamento total.
+- **Coupled packages**: pacotes separados que compartilham um pacote de definições. Foi o escolhido por anos.
+- **Independent packages**: cada pacote define as interfaces que precisa; tudo ligado por injeção de dependência.
+
+A retrospectiva trouxe um bug real que justifica o terceiro. Configuração em variáveis globais (`config.Port`, `config.Token`, `config.Secret`) parecia inofensiva até o time querer um **segundo** servidor HTTP com outro token e outro secret. O `SecretServer` reusava a config global e vazava o secret errado — um bug silencioso, com consequência de negócio. Dependência global impede reuso seguro. A regra que ficou: **dependência explícita no construtor** é contrato e é verificação em tempo de compilação. Se o pacote não recebe o que precisa, o compilador reclama.
+
+A Parte 2 fecha a escolha de arquitetura: entre Clean, Hexagonal, DDD e Modular, adotaram **hexagonal** por ser a menos prescritiva, mais princípios de DDD para linguagem e estrutura modular por domínio dentro da regra. E deixam um refinamento importante: implementar `adapter/` e `port/` como pastas de topo é, ele mesmo, um "por tipo" disfarçado. Adapters HTTP e MySQL no mesmo pacote acabam compartilhando código que não deveriam. A correção é agrupar por tecnologia: `infra/http`, `infra/mysql`, `infra/kafka`. Vale para projeto grande; para o exemplo deste post, seria prematuro.
+
+### O repositório que "não é padrão"
+
+O [golang-standards/project-layout](https://github.com/golang-standards/project-layout) tem dezenas de milhares de stars e é tratado por muita gente como "o padrão". Não é. Em abril de 2021, Russ Cox abriu a [issue #117](https://github.com/golang-standards/project-layout/issues/117), intitulada *this is not a standard Go project layout*:
+
+> The README makes clear that this is not official, but even the claim "it is a set of common historical and emerging project layout patterns in the Go ecosystem" is not accurate. For example, the *vast* majority of packages in the Go ecosystem do *not* put the importable packages in a `pkg` subdirectory. More generally what is described here is just very complex, and Go repos tend to be much simpler.
+>
+> — Russ Cox
+
+O problema não é o layout em si. É o nome: "golang-standards" sugere oficialidade que não existe, e leva gestores a exigir `pkg/` e `cmd/` de projetos que não precisam. Leia como catálogo de ideias, não como manual.
+
+### Scaffolds: go-blueprint e prabogo
+
+Ferramentas de scaffold resolvem a paralisia inicial. Duas posições opostas:
+
+**go-blueprint** (Melkey) gera um projeto interativo com `cmd/` fino, `internal/` privado (`server/`, banco), `tests/`, Makefile, Docker Compose e escolha de framework (stdlib, Chi, Gin, Fiber, Echo) e driver. Os criadores falam em resolver a "decision paralysis" de quem vem de Rails/NestJS. O próprio autor recomenda **começar pela stdlib** antes de framework. Ponto importante: go-blueprint entrega **layout**, não **direção de dependência** — nada impede o handler de importar o banco direto.
+
+**prabogo** é o oposto: um framework opinativo que implementa hexagonal com `domain/`, `port/inbound`, `port/outbound`, `adapter/inbound`, `adapter/outbound`. O domínio depende só de portas (interfaces). Serve para ver a arquitetura inteira materializada em pastas — e como aviso de quanto cerimônia isso pode virar.
+
+**Regra prática.** Scaffold é ponto de partida, não arquitetura. Ele dá o esqueleto; a direção de dependência é decisão sua.
+
+### 12-factor: o checklist operacional
+
+A arquitetura hexagonal é o lado **código** de uma preocupação que o [12-factor](https://12factor.net/) trata do lado **operação**. Um layout saudável serve aos fatores; um layout ruim atrapalha.
+
+| Fator | Como Go cumpre | Como o layout serve |
+|---|---|---|
+| Codebase | Um repo, um módulo (`go.mod`) | Módulo único; sem `src/` fóssil |
+| Dependencies | `go.mod`/`go.sum`, módulos | Nada de código vendorizado à mão |
+| Config | `os.Getenv` no `main`, nunca hardcoded | Config entra pelo construtor, não global |
+| Backing services | Trocar banco/cache por adapter | Porta outbound + adapter intercambiável |
+| Build, release, run | `go build` gera binário único | `cmd/` separa binário de biblioteca |
+| Processes | Stateless; estado no backing service | Sem estado global; deps injetadas |
+| Port binding | `net/http` embute o servidor | `main` liga a porta; app não depende de servidor externo |
+| Concurrency | Goroutines e channels | (ver [Concorrência em Go](/go-concorrencia)) |
+| Disposability | Shutdown gracioso com `signal.NotifyContext` | `main` faz a drenagem |
+| Dev/prod parity | Mesmos adapters, configs diferentes | `memory` em dev, `postgres` em prod |
+| Logs | `slog` para stdout, como stream de eventos | (ver [Erros e logs](/go-erros-logs)) |
+| Admin processes | Binário separado em `cmd/` | Um `cmd/` por processo administrativo |
+
+Nem todo fator se aplica a CLI ou biblioteca. Use como checklist, não como dogma.
+
+### Síntese
+
+O layout segue a direção de dependência, não o contrário. Comece plano; crie pacote quando existir uma costura real (uma porta). Quando criar, agrupe por domínio, não por tipo.
+
+| Tamanho / dor | Layout |
+|---|---|
+| Script, protótipo, biblioteca pequena | Um pacote na raiz |
+| Um binário, regra simples | `main.go` + alguns arquivos |
+| Um serviço que cresceu | `cmd/` + `internal/` |
+| Regra pesada, várias infraestruturas | hexagonal: `domain/` + portas + adapters |
+| Muitos domínios, muitas infraestruturas | por domínio; `infra/<tecnologia>` |
+
+![Graduação: um arquivo, cmd + internal, hexagonal — cada um quando a dor aparece](/img/diagramas/go-hex-graduacao.svg)
+
+## 6. Falhas e trade-offs
+
+**Hexagonal prematuro.** Um CRUD sem regra nenhuma não precisa de domínio, portas e cinco adapters. Você paga cerimônia e ganha indireção. Aplique quando existir regra que muda por motivo próprio e infraestrutura que muda por outro.
+
+**Erro tipado por camada.** Se cada camada define seu tipo de erro, o handler precisa de `errors.As` e rewrap em toda fronteira — o banco devolve `sql.ErrNoRows`, a camada intermediária embrulha em `EmptyError`, o transporte converte de novo. É cerimônia pura. Erro nasce na **borda** e se mapeia **uma vez**; o domínio usa sentinelas (`ErrSaldoInsuficiente`) e o adapter traduz. Aprofunde em [Erros e logs](/go-erros-logs).
+
+**Config global e reuso.** Variável global de config funciona até você precisar de duas instâncias com valores diferentes. Aí o reuso vaza o valor errado, silenciosamente. Passe dependência pelo construtor; o compilador vira seu aliado.
+
+**Dependência não declarada.** Se dois pacotes conversam por global, o compilador não enxerga o vínculo e não pode enforçar contrato. Dependência explícita documenta e verifica.
+
+**Interface no lugar errado.** Definir `AccountRepository` no pacote `postgres` (junto do implementador) inverte a seta: agora o domínio precisa importar o adapter. A porta mora no lado que **consome** — o domínio.
+
+**Modelo do banco vazando.** Deixar a linha do banco (`sql.Row`, struct com tag de ORM) atravessar o domínio reintroduz o acoplamento que você queria eliminar. Converta na fronteira do adapter.
+
+**Package explosion.** Muitos pacotes minúsculos aumentam o custo de navegação e forçam tudo a ser público. O Ben Johnson recomenda arquivos de 200–500 linhas e um pacote raiz maior antes de subdividir.
+
+**Over-DI.** Container de injeção em Go costuma ser solução para um problema que o construtor já resolve. Injeção manual no `main` é explícita e rastreável.
+
+**Copiar `project-layout` inteiro.** Vinte pastas, três usadas. O nome sugere oficialidade; a [issue #117](https://github.com/golang-standards/project-layout/issues/117) desfaz a sugestão.
+
+**12-factor dogmático.** Fatores assumem processo stateless e backing services. CLI e biblioteca não seguem todos. Checklist, não lei.
+
+### Fontes e nível de autoridade
+
+| Assunto | Fonte principal |
+|---|---|
+| Ports & Adapters | [Cockburn, 2005](https://alistair.cockburn.us/hexagonal-architecture/) |
+| Filosofia da linguagem | [Pike, "Less is exponentially more"](https://commandcenter.blogspot.com/2012/06/less-is-exponentially-more.html) · [Thompson, oral history](https://youtu.be/OmVHkL0IWk4) |
+| "code rather than types" | [Ian Lance Taylor, go#29649](https://github.com/golang/go/issues/29649#issuecomment-454820179) |
+| Layout oficial | [Organizing a Go module](https://go.dev/doc/modules/layout) |
+| "I don't know" (Griesemer) | relatado por Bartłomiej Klimczak, "How to structure Go code?" |
+| project-layout não é padrão | [rsc, issue #117](https://github.com/golang-standards/project-layout/issues/117) (citação verbatim) |
+| Estrutura de aplicação | [Ben Johnson](https://www.gobeyond.dev/structuring-applications/) |
+| Por tipo vs por domínio | jerf, thread clássica do r/golang |
+| Três abordagens e retrospectiva | Aviv Carmi, série "Finding The Best Go Project Structure" (HUMAN Security) |
+| Estrutura modular | [Kat Zień, GopherCon 2018](https://www.youtube.com/watch?v=oL6JBUk6tj0) |
+| Operação | [12factor.net](https://12factor.net/) |
+| Scaffold | [go-blueprint](https://github.com/Melkeydev/go-blueprint) · [prabogo](https://prabogo.com/docs/architecture.html) |
+
+<Summary>
+
+- hexagonal é uma **direção de dependência**, não um conjunto de pastas: o domínio não conhece o mundo
+- porta é interface com propósito; adapter é implementação para uma tecnologia
+- inbound (driving) aciona a app; outbound (driven) é acionada por ela
+- em Go, a interface mora onde é consumida — a porta outbound pertence ao domínio
+- o caso de uso recebe dependências pelo construtor; sem global, sem container
+- teste de domínio roda sem banco, com fakes; trocar adapter não toca na regra
+- layout não tem resposta única: comece plano, crie pacote quando houver costura real
+- agrupe por domínio, não por tipo: pacotes por tipo geram ciclos de import
+- `cmd/` + `internal/` é o consenso; `pkg/` não é oficial
+- `golang-standards/project-layout` não é padrão (rsc, issue #117)
+- 12-factor é o checklist operacional que o layout deve servir
+
+</Summary>
+
+<NextSteps href="/go-testes-http" title="Testes de API HTTP em Go">
+
+O domínio já é testável sem infraestrutura. O próximo passo é testar cada camada da fronteira: handler sem socket, mux em tabela, client contra servidor efêmero e regra de negócio com fake — e quando o mock é a escolha errada.
+
+</NextSteps>
+
+<SkillsGained skills={["Arquitetura hexagonal", "Ports & Adapters", "Injeção de dependência", "Design de pacotes", "Go idiomático", "12-factor"]} />
