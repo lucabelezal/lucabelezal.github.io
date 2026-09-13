@@ -1,139 +1,11 @@
 import Link from '@docusaurus/Link';
+import allPosts from '@site/src/data/all-posts.json';
 import styles from './styles.module.css';
 
-const contents = [
-  {
-    title: 'Testes de API HTTP em Go',
-    description: 'Handler, rotas, client e adapters com httptest e fakes.',
-    href: '/go-testes-http',
-    date: '14 set 2026',
-  },
-  {
-    title: 'Do socket ao handler',
-    description: 'net.Listen, Accept e como bytes TCP viram Request.',
-    href: '/go-socket-ao-handler',
-    date: '14 set 2026',
-  },
-  {
-    title: 'API HTTP em Go',
-    description: 'Stdlib sem framework: roteamento, middleware, JSON e contrato com curl.',
-    href: '/go-http-api',
-    date: '13 set 2026',
-  },
-  {
-    title: 'Testes em Go',
-    description: 'Tabela, subtests, -race e o que validar além do caminho feliz.',
-    href: '/go-testes',
-    date: '13 set 2026',
-  },
-  {
-    title: 'Worker pool em Go',
-    description: 'Fila, limite, backpressure e desligamento limpo com contexto.',
-    href: '/go-worker-pool',
-    date: '13 set 2026',
-  },
-  {
-    title: 'Defer, panic e recover em Go',
-    description: 'LIFO, argumentos na hora e a regra: panic nunca é fluxo.',
-    href: '/go-defer-panic',
-    date: '13 set 2026',
-  },
-  {
-    title: 'sync.Map em Go',
-    description: 'Read sem lock, dirty com lock: quando o mapa precisa de cadeado embutido.',
-    href: '/go-sync-map',
-    date: '13 set 2026',
-  },
-  {
-    title: 'CAP e PACELC na prática',
-    description: 'P é pré-requisito: C vs A na partição, L vs C fora dela.',
-    href: '/cap-pacelc',
-    date: '13 set 2026',
-  },
-  {
-    title: 'Generics em Go',
-    description: 'Constraints, type sets e um Cache[K, V] pronto para produção.',
-    href: '/go-generics',
-    date: '12 set 2026',
-  },
-  {
-    title: 'Erros e logs em Go',
-    description: 'Embrulhar com %w, inspecionar com Is/As e logar estruturado com slog.',
-    href: '/go-erros-logs',
-    date: '12 set 2026',
-  },
-  {
-    title: 'Concorrência em Go',
-    description: 'Goroutines, channels, WaitGroup e race detector com saídas reais.',
-    href: '/go-concorrencia',
-    date: '12 set 2026',
-  },
-  {
-    title: 'Maps em Go',
-    description: 'Swiss Tables por dentro: grupos, control bytes e o fim dos buckets.',
-    href: '/go-maps',
-    date: '12 set 2026',
-  },
-  {
-    title: 'Slices em Go',
-    description: 'O ponteiro que você não vê: header, backing array, append e aliasing.',
-    href: '/go-slices',
-    date: '12 set 2026',
-  },
-  {
-    title: 'Interfaces em Go',
-    description: 'Comportamento sem herança: method sets, nil tipado e interfaces pequenas.',
-    href: '/go-interfaces',
-    date: '12 set 2026',
-  },
-  {
-    title: 'Visibilidade e packages em Go',
-    description: 'Maiúscula exporta: pacotes, construtores, structs aninhadas e callbacks.',
-    href: '/go-visibilidade-pacotes',
-    date: '12 set 2026',
-  },
-  {
-    title: 'Structs e methods em Go',
-    description: 'Struct tem semântica de valor: receivers, method sets, layout de memória e composição.',
-    href: '/go-structs-methods',
-    date: '12 set 2026',
-  },
-  {
-    title: 'Ponteiros em Go',
-    description: 'Ponteiro é um valor que identifica uma variável: &, *, nil, escape analysis e quando (não) usar.',
-    href: '/go-ponteiros',
-    date: '12 set 2026',
-  },
-  {
-    title: 'Error handling em Go',
-    description: 'Quando o if err != nil é decisão e quando vira ruído: tratar, propagar, traduzir, acumular — e o lugar do Result[T].',
-    href: '/go-error-handling',
-    date: '06 set 2026',
-  },
-  {
-    title: 'De Swift para Go',
-    description: 'Para quem domina Swift: o que migra, o que não existe e o que engana ao aprender Go.',
-    href: '/swift-para-go',
-    date: '06 set 2026',
-  },
-  {
-    title: 'Style Guide Go',
-    description: 'Minhas decisões de estilo em português, com a razão de cada uma e quando quebro a regra.',
-    href: '/go/style-guide',
-    date: '06 set 2026',
-  },
-  {
-    title: 'Guia dos guias de estilo do Go',
-    description: 'Effective Go, Google e Uber: o que cobre cada guia, para quem serve e como decidir na dúvida.',
-    href: '/go-style-guides',
-    date: '06 set 2026',
-  },
-  {
-    title: 'Go 1.27: novidades que importam para backend',
-    description: 'Uma leitura prática das novidades da versão e do que vale adotar em serviços backend.',
-    href: '/go-1-27-novidades',
-    date: '05 set 2026',
-  },
+type Post = {slug: string; title: string; date: string; description: string; tags: string[]};
+
+// Páginas docs (fora do blog) que também pertencem à área Go.
+const docsExtras = [
   {
     title: 'Go Backend Roadmap',
     description: 'A sequência de estudo para sair dos fundamentos e chegar a serviços confiáveis em produção.',
@@ -141,11 +13,36 @@ const contents = [
     date: '05 set 2026',
   },
   {
+    title: 'Style Guide Go',
+    description: 'Decisões de estilo com a razão de cada uma e quando quebrar a regra.',
+    href: '/go/style-guide',
+    date: '06 set 2026',
+  },
+  {
     title: 'Go by Example',
     description: 'Exemplos pequenos para consultar a sintaxe, a biblioteca padrão e os recursos da linguagem.',
     href: '/go/hello-world',
     date: '05 set 2026',
   },
+];
+
+const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+
+function fmtData(iso: string): string {
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, '0')} ${MESES[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+const contents = [
+  ...(allPosts as Post[])
+    .filter((p) => p.tags.includes('go'))
+    .map((p) => ({
+      title: p.title,
+      description: p.description,
+      href: `/${p.slug}`,
+      date: fmtData(p.date),
+    })),
+  ...docsExtras,
 ];
 
 export default function GoHome() {
@@ -163,7 +60,7 @@ export default function GoHome() {
         </div>
         <div className={styles.contentList}>
           {contents.map((entry) => (
-            <Link className={styles.content} to={entry.href} key={entry.title}>
+            <Link className={styles.content} to={entry.href} key={entry.href}>
               <span className={styles.contentDate}>{entry.date}</span>
               <span className={styles.contentBody}>
                 <strong>{entry.title}</strong>

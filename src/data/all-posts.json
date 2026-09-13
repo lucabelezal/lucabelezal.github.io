@@ -2,111 +2,227 @@
   {
     "slug": "go-testes-http",
     "title": "Testes de API HTTP em Go: handler, rotas, client e adapters",
-    "date": "2026-09-14T11:00:00"
+    "date": "2026-09-14T11:00:00",
+    "description": "httptest passo a passo: handler sem socket, mux em tabela, middleware em cadeia, client contra servidor efêmero e regra de negócio com fake — e quando mock é a escolha errada.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-socket-ao-handler",
     "title": "Do socket ao handler: como um programa Go recebe algo da internet",
-    "date": "2026-09-14T10:00:00"
+    "date": "2026-09-14T10:00:00",
+    "description": "net.Listen pede um socket ao kernel, Accept entrega conexões TCP e net/http transforma bytes em Request: o caminho do SYN até o handler, com código executável.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-http-api",
     "title": "API HTTP em Go: stdlib, middleware e JSON sem framework",
-    "date": "2026-09-13T15:00:00"
+    "date": "2026-09-13T15:00:00",
+    "description": "net/http da stdlib, passo a passo: servidor mínimo, roteamento por método, middleware, JSON e logs — validado com curl, sem framework.",
+    "tags": [
+      "go",
+      "backend",
+      "sistemas-distribuidos"
+    ]
   },
   {
     "slug": "go-testes",
     "title": "Testes em Go: tabela, -race e o que realmente validar",
-    "date": "2026-09-13T14:00:00"
+    "date": "2026-09-13T14:00:00",
+    "description": "Testes de tabela com subtests, -race no CI, redaction e contagem de goroutines: o kit mínimo que pega bug antes do merge — com saída real.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-worker-pool",
     "title": "Worker pool em Go: fila, limite e desligamento limpo",
-    "date": "2026-09-13T13:00:00"
+    "date": "2026-09-13T13:00:00",
+    "description": "Pool com N workers, backpressure por buffer e cancelamento por contexto: throughput limitado, saída limpa e soma validada com -race.",
+    "tags": [
+      "go",
+      "backend",
+      "sistemas-distribuidos"
+    ]
   },
   {
     "slug": "go-defer-panic",
     "title": "Defer, panic e recover em Go: LIFO, argumentos e a regra",
-    "date": "2026-09-13T12:00:00"
+    "date": "2026-09-13T12:00:00",
+    "description": "Defer executa em LIFO com argumentos avaliados na hora; panic não é fluxo. Entenda recover, middleware e quando cada um — com código executável.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-sync-map",
     "title": "sync.Map em Go: quando o mapa precisa de cadeado embutido",
-    "date": "2026-09-13T11:00:00"
+    "date": "2026-09-13T11:00:00",
+    "description": "sync.Map não é map thread-safe genérico: é otimização para leitura dominante com escrita esparsa. Entenda read/dirty, LoadOrStore e quando map+mutex vence.",
+    "tags": [
+      "go",
+      "backend",
+      "sistemas-distribuidos"
+    ]
   },
   {
     "slug": "cap-pacelc",
     "title": "CAP e PACELC na prática: P é pré-requisito, o resto é decisão",
-    "date": "2026-09-13T09:00:00"
+    "date": "2026-09-13T09:00:00",
+    "description": "CAP sem decoreba: partição é pré-requisito, a escolha real é C vs A — por serviço. E PACELC cobre o resto do tempo: latência vs consistência.",
+    "tags": [
+      "go",
+      "sistemas-distribuidos",
+      "backend"
+    ]
   },
   {
     "slug": "go-generics",
     "title": "Generics em Go: constraints, type sets e código produção",
-    "date": "2026-09-12T23:55:00"
+    "date": "2026-09-12T23:55:00",
+    "description": "Generics eliminam duplicação sem perder segurança de tipos: parâmetros, constraints, comparable e um Cache[K, V] pronto para produção — com código executável.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-erros-logs",
     "title": "Erros e logs em Go: embrulhar com %w, logar estruturado",
-    "date": "2026-09-12T23:45:00"
+    "date": "2026-09-12T23:45:00",
+    "description": "Erros são valores que viajam; logs são o rastro observável. Entenda %w vs %v, errors.Is/As, erros customizados e slog estruturado — com código executável.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-concorrencia",
     "title": "Concorrência em Go: goroutines, channels e o detector de race",
-    "date": "2026-09-12T23:30:00"
+    "date": "2026-09-12T23:30:00",
+    "description": "Concorrência não é paralelismo. Entenda goroutines, channels, WaitGroup, mutex e worker pools — com race real, detector ligado e saídas validadas.",
+    "tags": [
+      "go",
+      "backend",
+      "sistemas-distribuidos"
+    ]
   },
   {
     "slug": "go-maps",
     "title": "Maps em Go: Swiss Tables por dentro",
-    "date": "2026-09-12T23:00:00"
+    "date": "2026-09-12T23:00:00",
+    "description": "Desde o Go 1.24, maps usam Swiss Tables: grupos de 8 slots, control bytes, probing triangular e diretório. Entenda o runtime atual — e o que mudou dos buckets antigos.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-slices",
     "title": "Slices em Go: o ponteiro que você não vê",
-    "date": "2026-09-12T22:00:00"
+    "date": "2026-09-12T22:00:00",
+    "description": "Slice é um valor de três palavras (ponteiro, tamanho, capacidade) sobre um array. Entenda aliasing, append, crescimento e nil vs vazio — com código executável e saídas reais.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-interfaces",
     "title": "Interfaces em Go: comportamento sem herança",
-    "date": "2026-09-12T20:00:00"
+    "date": "2026-09-12T20:00:00",
+    "description": "Interface em Go é conjunto de métodos com satisfação implícita: sem implements, sem hierarquia. Entenda method sets, valores de interface, nil tipado e interfaces pequenas, com código executável.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-visibilidade-pacotes",
     "title": "Visibilidade e packages em Go: maiúscula, pacotes e callbacks",
-    "date": "2026-09-12T18:00:00"
+    "date": "2026-09-12T18:00:00",
+    "description": "Go não tem public, private nem internal: tem uma regra — maiúscula exporta. Entenda pacotes como unidade de encapsulamento, construtores, structs aninhadas e callbacks, com código executável.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-structs-methods",
     "title": "Structs e methods em Go: valores agrupados, receivers e composição",
-    "date": "2026-09-12T14:00:00"
+    "date": "2026-09-12T14:00:00",
+    "description": "Struct em Go tem semântica de valor: atribuir copia tudo. Entenda value vs pointer receiver, method sets, layout de memória e embedding.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-ponteiros",
     "title": "Ponteiros em Go: valores, endereços e memória",
-    "date": "2026-09-12T10:00:00"
+    "date": "2026-09-12T10:00:00",
+    "description": "Ponteiro em Go é um valor que identifica uma variável — não um endereço físico, não magia. Entenda &, *, nil, escape analysis e quando (não) usar ponteiros, com código executável e saídas reais.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "go-error-handling",
     "title": "Error handling em Go: quando o if err != nil é decisão e quando vira ruído",
-    "date": "2026-09-06T15:30:00"
+    "date": "2026-09-06T15:30:00",
+    "description": "Nem todo if err != nil é o mesmo fenômeno. Separar tratar, propagar, traduzir e acumular é o que transforma error handling de boilerplate em decisão — e mostra onde Result[T] realmente ajuda.",
+    "tags": [
+      "go",
+      "backend"
+    ]
   },
   {
     "slug": "swift-para-go",
     "title": "De Swift para Go: o guia para quem domina Swift",
-    "date": "2026-09-06T13:09:00"
+    "date": "2026-09-06T13:09:00",
+    "description": "Se você domina Swift, não procure enum com associated values nem Optional no Go. Eles não faltam — foram recusados. Um mapa do que migra, do que não existe e do que engana.",
+    "tags": [
+      "go",
+      "ios",
+      "engenharia-de-software"
+    ]
   },
   {
     "slug": "go-style-guides",
     "title": "Guia dos guias de estilo do Go: Effective Go, Google e Uber",
-    "date": "2026-09-06T12:37:00"
+    "date": "2026-09-06T12:37:00",
+    "description": "O que cada guia de estilo do Go cobre, para quem serve, onde discordam e como decidir na dúvida.",
+    "tags": [
+      "go",
+      "engenharia-de-software"
+    ]
   },
   {
     "slug": "go-1-27-novidades",
     "title": "Go 1.27: novidades que importam para backend",
-    "date": "2026-09-05T19:28:00"
+    "date": "2026-09-05T19:28:00",
+    "description": "As principais novidades do Go 1.27 e o que elas mudam para quem constrói serviços backend.",
+    "tags": [
+      "go",
+      "backend",
+      "engenharia-de-software"
+    ]
   },
   {
     "slug": "ola-mundo",
     "title": "Olá, mundo",
-    "date": "2026-09-05T10:53:00"
+    "date": "2026-09-05T10:53:00",
+    "description": "",
+    "tags": [
+      "engenharia-de-software"
+    ]
   }
 ]

@@ -35,10 +35,17 @@ Harness: muitas skills no projeto (~67). AGENTS.md é roteador leve; detalhes fi
 
 ## Área Go
 
-- `/go` é a home editorial da área: lista conteúdos em ordem cronológica.
-- `sidebarsGo.ts` deve listar apenas conteúdos editoriais por ano; não incluir o catálogo do Go by Example.
+- `/go` é a home editorial da área: cards em ordem cronológica, sem sidebar
+  (`displayed_sidebar: null` nas páginas editoriais; `goByExampleSidebar`
+  vive só no catálogo de referência).
+- Fonte única: `src/data/all-posts.json` (gerado por `scripts/all-posts.mjs`
+  com `slug/title/date/description/tags`) alimenta `/posts`, os cards de
+  `GoHome` (filtro `tags: go`) e a vitrine da home. `sidebarsGo.ts` contém
+  só o catálogo Go by Example.
 - Go by Example permanece como referência acessível por link, fora da navegação editorial principal.
-- Ao publicar conteúdo novo de Go, adicionar a entrada mais recente em `src/components/GoHome/index.tsx` e ao ano correspondente no sidebar, quando aplicável.
+- Ao publicar post novo: nada manual nas listas — `npm run build` regenera
+  o índice via `prebuild`. Só garanta `tag: go` no frontmatter se o post
+  pertence à área Go.
 
 ## Regras de escrita
 

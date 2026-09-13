@@ -14,6 +14,12 @@ function field(body, name) {
   return m[1].trim().replace(/^"(.*)"$/, '$1');
 }
 
+function tagsOf(body) {
+  const m = body.match(/^tags:\s*\[(.*)\]$/m);
+  if (!m) return [];
+  return m[1].split(',').map((t) => t.trim()).filter(Boolean);
+}
+
 const posts = readdirSync(blogDir)
   .filter((f) => f.endsWith('.mdx'))
   .map((file) => {
@@ -24,6 +30,8 @@ const posts = readdirSync(blogDir)
       slug: field(body, 'slug'),
       title: field(body, 'title'),
       date,
+      description: field(body, 'description') ?? '',
+      tags: tagsOf(body),
     };
   })
   .filter((p) => p.slug && p.title && p.date)
