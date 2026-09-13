@@ -200,37 +200,28 @@ code {
     max-width: none !important;
   }
 
-  /* Blog — todas as páginas (posts e listas) usam o mesmo grid de 3 colunas:
-     Recent | conteúdo (expande) | coluna direita (TOC ou vazia).
-     Colunas posicionadas explicitamente p/ reservar a direita mesmo sem TOC. */
+  /* Blog — sidebar desativada (blogSidebarCount: 0); grid de 2 colunas:
+     conteúdo (expande) | coluna direita (TOC ou vazia).
+     Descoberta vive em /posts + NextSteps, não no rail esquerdo. */
   html.blog-wrapper main.col,
-  html.blog-wrapper aside.col,
   html.blog-wrapper .col--2 {
     max-width: none;
   }
 
   html.blog-wrapper .container > .row {
     display: grid;
-    grid-template-columns: minmax(0, 280px) minmax(0, 1fr) minmax(0, 300px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
     column-gap: 3rem;
     align-items: start;
   }
 
-  html.blog-wrapper .container > .row > aside.col {
-    grid-column: 1;
-    position: sticky;
-    top: calc(var(--ifm-navbar-height) + 1rem);
-    max-height: calc(100vh - var(--ifm-navbar-height) - 2rem);
-    overflow-y: auto;
-  }
-
   html.blog-wrapper .container > .row > main.col {
-    grid-column: 2;
+    grid-column: 1;
     min-width: 0;
   }
 
   html.blog-wrapper .container > .row > .col--2 {
-    grid-column: 3;
+    grid-column: 2;
   }
 
   html.blog-wrapper .col--2 .table-of-contents {
@@ -270,7 +261,7 @@ code {
 
 @media (min-width: 997px) and (max-width: 1400px) {
   html.blog-wrapper .container > .row {
-    grid-template-columns: minmax(0, 240px) minmax(0, 1fr) minmax(0, 260px);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 260px);
     column-gap: 2rem;
   }
 
