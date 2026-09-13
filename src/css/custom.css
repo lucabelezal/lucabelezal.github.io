@@ -706,3 +706,46 @@ code {
 .prism-code {
   tab-size: 4;
 }
+
+/* ── Admonitions no padrão .blogSection ──
+   Regra / Regra prática / Trade-off usam o mesmo vocabulário visual das
+   seções de post: superfície, borda esquerda de 4px e título em caixa
+   baixa. Assim o style guide parece parte do blog, não doc genérica. */
+.theme-admonition {
+  border: 1px solid var(--ifm-color-emphasis-200);
+  border-left-width: 4px;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0;
+  background: var(--ifm-background-surface-color);
+  color: var(--ifm-font-color-base);
+}
+
+.theme-admonition [class*='admonitionHeading'] {
+  text-transform: none;
+  font: var(--ifm-heading-font-weight) 0.95rem/1.3 var(--ifm-heading-font-family);
+  letter-spacing: 0.01em;
+  margin-bottom: 0.5rem;
+  color: var(--ifm-heading-color);
+}
+
+.theme-admonition [class*='admonitionIcon'] {
+  display: none;
+}
+
+.theme-admonition [class*='admonitionContent'] > :last-child {
+  margin-bottom: 0;
+}
+
+.theme-admonition-note { border-left-color: var(--ifm-color-primary); }
+.theme-admonition-tip { border-left-color: #238636; }
+.theme-admonition-info { border-left-color: #8957e5; }
+.theme-admonition-warning { border-left-color: #d29922; }
+.theme-admonition-danger { border-left-color: #cf222e; }
+
+@media (max-width: 996px) {
+  .theme-admonition {
+    padding: 0.9rem 1rem;
+    margin: 1.15rem 0;
+  }
+}

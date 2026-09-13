@@ -6,47 +6,45 @@ description: O melhor de Effective Go, Google e Uber em um guia — decisões po
 ---
 
 import Link from '@docusaurus/Link';
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import ContentList from '@site/src/components/ContentList';
 
-Este é o meu style guide de Go: o **melhor de cada guia**, sintetizado em um documento. Em vez de seguir um único texto, escolho regra a regra aquela que maximiza a probabilidade de dois resultados — **manutenção** (código que sobrevive a mudanças sem quebrar) e **legibilidade** (código que o próximo leitor entende sem pedir ajuda).
+Este é o meu style guide de Go: o melhor de cada guia, sintetizado em um documento só. Em vez de seguir um texto de ponta a ponta, escolho regra a regra aquela que maximiza dois resultados ao mesmo tempo — **manutenção**, para o código sobreviver a mudanças sem quebrar, e **legibilidade**, para o próximo leitor entender sem pedir ajuda.
 
-A fonte das decisões são os três documentos de estilo que li por completo — o [Effective Go](https://go.dev/doc/effective_go) (oficial, go.dev), o [Go Style Guide do Google](https://google.github.io/styleguide/go/) e o [Go Style Guide do Uber](https://github.com/uber-go/guide) ([tradução pt-BR](https://github.com/alcir-junior-caju/uber-go-style-guide-pt-br)) — mais os exemplos da biblioteca padrão. Quando os guias discordam, escolho o lado com maior ganho de manutenção/legibilidade e registro o motivo.
+As fontes são os três documentos que li por completo: o [Effective Go](https://go.dev/doc/effective_go), o [Go Style Guide do Google](https://google.github.io/styleguide/go/) e o [Go Style Guide do Uber](https://github.com/uber-go/guide) ([tradução pt-BR](https://github.com/alcir-junior-caju/uber-go-style-guide-pt-br)). Quando os guias discordam, escolho o lado com maior ganho de manutenção e legibilidade, e registro o motivo em vez de fingir consenso.
 
-## Como estes três documentos se relacionam
+<WhatYouWillLearn>
 
-| Guia | Forma | Normativo | Papel |
-| --- | --- | --- | --- |
-| **Effective Go** | Ensaio único, em prosa | Não | Ensinar o idioma; baseline comum da comunidade |
-| **Google guide** | Documento canônico | Sim | Princípios + regras centrais (todos) |
-| **Google decisions** | Decisões estilo RFC | Sim | Por quê de cada regra (revisores de readability) |
-| **Google best-practices** | Padrões situacionais | Não | Recomendações com trade-offs (interessados) |
-| **Uber guide** | Arquivo único, tabelas Bad/Good | Sim (na Uber) | Checklist pragmático de review |
+- decidir estilo sem decorar regra, entendendo o porquê de cada escolha
+- o que `gofmt` resolve sozinho e o que continua decisão humana
+- as divergências reais entre Google e Uber e como eu resolvo cada uma
+- quando uma regra razoável pode e deve ser quebrada
 
-O Effective Go é o alicerce. O Google é hierárquico: o `guide` manda, o `decisions` explica, o `best-practices` sugere. O Uber é a régua prática de code review.
+</WhatYouWillLearn>
 
-## Como este guia seleciona
+## Índice rápido
 
-Cada regra abaixo nasceu em um guia específico. Esta é a matriz de origem — o "vencedor" de cada tema e por que ele ganha para manutenção e leitura:
-
-| Tema | Fonte escolhida | Por que ganha |
-| --- | --- | --- |
-| Formatação | Effective Go / gofmt | Máquina decide; zero discussão em PR |
-| Linha longa | Google (sem teto rígido) | Refatorar > fatiar linha; quebra antes de indentação confunde |
-| Nomes / não repetição | Google | Regra mais sistematizada; legibilidade direta |
-| Getters / `-er` / MixedCaps | Effective Go + Google | Consenso comunitário, reconhecível |
-| Erros: estrutura, `%w`, mensagem | Google decisions | Cadeia e matching previsíveis; base de manutenção |
-| Erros: sem "failed to", handle-once | Uber | Logs limpos; anti-padrão de duplicação |
-| `panic`/`recover`/`Must*` | Google | Mais rigoroso; protege contra estado corrompido |
-| `init`/estado global | Google + Uber | Determinismo e teste isolado |
-| Struct, mutex, field tags, map | Uber | Regra prática de review |
-| nil slice / copy na fronteira | Uber + Google | Evita bug de aliasing e distinção nil/vazio |
-| Performance | Uber (hot path) | Benchmarks reais, escopo restrito |
-| Interfaces / ports | Google | Sob demanda + consumer-side; base hexagonal |
-| Concorrência / goroutines | Uber + Google | Ciclo de vida explícito |
-| Contexto | Google | Regra dura; nunca em struct |
-| Testes | Google (base) + Uber (tabela) | Veredito na seção 13.1 |
-| Functional options | Uber | Cresce sem quebrar chamada |
-
-Onde Uber e Google colidem sem vencedor claro de manutenção, a seção correspondente registra os dois lados e minha escolha — nenhuma regra entra aqui por tradição ou por ser "a da empresa X".
+<ContentList items={[
+  {href: '#parte-1--princípios', title: '1. Princípios', description: 'Clareza vence tudo; consistência local só onde o guia silencia.'},
+  {href: '#parte-2--formatação-e-estrutura-de-arquivo', title: '2. Formatação e estrutura', description: 'gofmt decide; sem teto de linha; assinatura em uma linha.'},
+  {href: '#parte-3--nomes', title: '3. Nomes', description: 'MixedCaps; nome pelo papel, sem repetir tipo nem pacote.'},
+  {href: '#parte-4--comentários-e-documentação', title: '4. Comentários e documentação', description: 'Doc comment em frase completa, começando pelo nome, explicando o porquê.'},
+  {href: '#parte-5--variáveis-e-declarações', title: '5. Variáveis e declarações', description: ':= para valor, var para zero value; nada de global mutável.'},
+  {href: '#parte-6--erros', title: '6. Erros', description: 'Erro é valor; %w no fim, sentinela no começo; nunca compare string.'},
+  {href: '#parte-7--estruturas-de-controle', title: '7. Estruturas de controle', description: 'Trate o erro primeiro; o caminho feliz desce reto, sem else.'},
+  {href: '#parte-8--dados-slices-maps-structs', title: '8. Dados: slices, maps, structs', description: 'Copie na fronteira; mutex como campo; tag em struct serializada.'},
+  {href: '#parte-9--structs-tipos-e-zero-value', title: '9. Structs, tipos e zero value', description: 'Zero value útil; enum em 1; any; receiver ponteiro na dúvida.'},
+  {href: '#parte-10--panic-init-exit', title: '10. Panic, init, exit', description: 'Quase nunca panic; init é último recurso; exit só em main.'},
+  {href: '#parte-11--interfaces', title: '11. Interfaces', description: 'Valor, nunca ponteiro; sob demanda, definida pelo consumidor.'},
+  {href: '#parte-12--concorrência', title: '12. Concorrência', description: 'Canal 0 ou 1; context primeiro; defer limpa; atômico tipado.'},
+  {href: '#parte-13--testes', title: '13. Testes', description: 'Stdlib primeiro; tabela; t.Error por padrão; falha útil.'},
+  {href: '#parte-14--funções-e-parâmetros', title: '14. Funções e parâmetros', description: 'Assinatura curta; options; sem parâmetro nu.'},
+  {href: '#parte-15--strings-e-tempo', title: '15. Strings e tempo', description: 'strconv no hot path; time.Time e time.Duration.'},
+  {href: '#parte-16--importação-e-dependências', title: '16. Importação e dependências', description: 'Alias só quando necessário; stdlib antes de biblioteca.'},
+  {href: '#parte-17--linting-e-ferramentas', title: '17. Linting e ferramentas', description: 'Lintar consistentemente vale mais que escolher o linter.'},
+  {href: '#parte-18--quando-quebro-as-próprias-regras', title: '18. Quando quebro as regras', description: 'Performance medida, demo, consistência local, contrato de time.'},
+  {href: '#parte-19--idiomas-modernos', title: '19. Idiomas modernos', description: 'slices/maps, sync.OnceValue, variável de laço por iteração.'},
+]} />
 
 ---
 
@@ -54,21 +52,39 @@ Onde Uber e Google colidem sem vencedor claro de manutenção, a seção corresp
 
 ### 1.1 Ordene os princípios
 
-**Decisão**: quando duas regras brigam, decido nesta ordem — clareza, simplicidade, concisão, manutenibilidade, consistência.
+:::note[Regra]
 
-**Por quê**: o [Google guide](https://google.github.io/styleguide/go/guide#style-principles) ordena explicitamente e deixa claro que consistência nunca vence clareza. Um pacote inteiro com nomes ruins continua ruim se for consistente. Código é lido mais vezes do que escrito; o leitor importa mais que o autor.
+Quando duas regras entram em conflito, decido nesta ordem: clareza, simplicidade, concisão, manutenibilidade e, por último, consistência.
+
+:::
+
+O [Google guide](https://google.github.io/styleguide/go/guide#style-principles) deixa essa ordem explícita e diz que consistência nunca vence clareza. Faz sentido: um pacote inteiro com nomes ruins continua ruim, mesmo que seja consistente do começo ao fim. Código é lido muito mais vezes do que escrito, então o leitor importa mais que o autor.
 
 ### 1.2 Consistência local só onde o guia silencia
 
-**Decisão**: se o código vizinho do mesmo pacote/arquivo já tomou uma posição e nenhuma regra objetiva deste guia se aplica, sigo a posição vizinha.
+:::note[Regra]
 
-**Por quê**: consistência local reduz atrito de review, mas [só vale onde o guia não decidiu](https://google.github.io/styleguide/go/guide#consistency). Limite de linha e bibliotecas de asserção nunca podem virar exceção local.
+Se o código vizinho do mesmo pacote já tomou uma posição e nenhuma regra objetiva deste guia se aplica, eu sigo o vizinho.
+
+:::
+
+Consistência local reduz atrito de review, mas [só vale onde o guia não decidiu](https://google.github.io/styleguide/go/guide#local-consistency). Duas coisas nunca podem virar exceção local: limite de linha e biblioteca de asserção em teste. São decisões que o guia já tomou.
 
 ### 1.3 Menos mecanismo possível
 
-**Decisão**: construto da linguagem antes de stdlib; stdlib antes de dependência externa; dependência externa só quando resolve problema real. Sem framework "por precaução".
+:::note[Regra]
 
-**Por quê**: o Google chama de [least mechanism](https://google.github.io/styleguide/go/guide#least-mechanism). Cada dependência é superfície de manutenção, segurança e compatibilidade. `map[string]bool` resolve set; não importo uma biblioteca de set.
+Uso um construto da linguagem antes da stdlib, a stdlib antes de uma dependência externa, e uma dependência externa só quando ela resolve um problema real. Nunca trago um framework "por precaução".
+
+:::
+
+O Google chama isso de [least mechanism](https://google.github.io/styleguide/go/guide#least-mechanism). Cada dependência é superfície de manutenção, de segurança e de compatibilidade. Um `map[string]bool` resolve set; não preciso importar uma biblioteca de set para isso.
+
+:::tip[Regra prática]
+
+Antes de adicionar mecanismo, pergunte se a própria linguagem já resolve o problema.
+
+:::
 
 ---
 
@@ -76,21 +92,33 @@ Onde Uber e Google colidem sem vencedor claro de manutenção, a seção corresp
 
 ### 2.1 `gofmt` decide
 
-**Decisão**: formatação é do `gofmt`, sem discussão. Editor roda `gofmt` (ou `goimports`) no salvar.
+:::note[Regra]
 
-**Por quê**: o [Effective Go](https://go.dev/doc/effective_go#formatting) delegou isso à máquina em 2009; quem lê Go espera o formato canônico. Discussão de formatação é a menos consequente e a que mais gasta energia.
+Formatação é responsabilidade do `gofmt`, sem discussão. O editor roda `gofmt` (ou `goimports`) ao salvar.
+
+:::
+
+O [Effective Go](https://go.dev/doc/effective_go#formatting) delegou isso à máquina em 2009, e quem lê Go já espera o formato canônico. Discussão de formatação é a menos consequente de todas e a que mais gasta energia em review.
 
 ### 2.2 Código gerado também é formatado
 
-**Decisão**: código gerado passa por `gofmt` igual ao código escrito.
+:::note[Regra]
 
-**Por quê**: o [Google](https://google.github.io/styleguide/go/guide#formatting) formata código gerado via `format.Source`; diff e review ficam limpos.
+Código gerado passa por `gofmt` igual ao código escrito à mão.
+
+:::
+
+O [Google](https://google.github.io/styleguide/go/guide#formatting) formata código gerado via `format.Source`, porque ele também é lido e navegado. Com o arquivo formatado, o diff e o review ficam limpos.
 
 ### 2.3 Sem limite rígido de linha
 
-**Decisão**: sem teto de colunas. Quebro linha quando a leitura piora; nunca quebro antes de mudança de indentação; não fatiar string literal longa.
+:::note[Regra]
 
-**Por quê**: o Google [não fixa limite](https://google.github.io/styleguide/go/guide#line-length) e avisa que quebrar antes de mudar indentação confunde. O Uber sugere [99 como alvo suave](https://github.com/uber-go/guide#avoid-overly-long-lines). Se a linha passa de ~100 e incomoda, refatoro — extraio expressão em variável local — em vez de fatiar.
+Não uso teto de colunas. Quebro a linha quando a leitura piora, nunca antes de uma mudança de indentação, e não fatio string literal longa.
+
+:::
+
+O Google [não fixa limite](https://google.github.io/styleguide/go/guide#line-length) e avisa que quebrar antes de mudar a indentação confunde o leitor. O Uber sugere [99 colunas como alvo suave](https://github.com/uber-go/guide#avoid-overly-long-lines). Se a linha passa de ~100 e incomoda, refatoro — extraindo a expressão em uma variável local — em vez de fatiar.
 
 ```go title="linha-longa.go"
 // Errado: condição longa quebrada em duas linhas — o leitor perde o `if`.
@@ -108,9 +136,13 @@ if canBypass {
 
 ### 2.4 Agrupe declarações relacionadas
 
-**Decisão**: `import`, `const`, `var` e `type` relacionados ficam em um único bloco. Não agrupo declarações não relacionadas.
+:::note[Regra]
 
-**Por quê**: o [Uber](https://github.com/uber-go/guide#group-similar-declarations) mostra que o bloco comunica coesão e reduz ruído visual. Dentro de função, variáveis adjacentes podem agrupar mesmo sem relação.
+`import`, `const`, `var` e `type` relacionados ficam em um único bloco. Não agrupo declarações que não têm relação entre si.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#group-similar-declarations) mostra que o bloco comunica coesão e reduz ruído visual. Dentro de uma função, variáveis adjacentes podem ser agrupadas mesmo sem relação direta.
 
 ```go title="agrupar.go"
 // Errado: uma declaração por linha sem necessidade.
@@ -126,15 +158,39 @@ const (
 
 ### 2.5 Dois grupos de import — três quando há proto
 
-**Decisão**: grupo 1 = stdlib; grupo 2 = o resto; grupo 3 (só quando existir) = protos. Side-effect (`import _`) vai no fim, grupo próprio.
+:::note[Regra]
 
-**Por quê**: o Uber usa [dois grupos](https://github.com/uber-go/guide#import-group-ordering) (padrão goimports). O Google usa [quatro](https://google.github.io/styleguide/go/decisions#import-grouping): stdlib / outros / proto / side-effect. Como meus projetos não usam proto ainda, adoto dois; quando entrarem protos, separo. A regra que carrego é: **ordem estável e visível de relance**.
+O primeiro grupo é a stdlib, o segundo é todo o resto, e o terceiro (só quando existir) são os protos. Import de side-effect (`import _`) vai no fim, em grupo próprio.
+
+:::
+
+O Uber usa [dois grupos](https://github.com/uber-go/guide#import-group-ordering), que é o padrão do goimports. O Google usa [quatro](https://google.github.io/styleguide/go/decisions#import-grouping): stdlib, outros, proto e side-effect. Como meus projetos ainda não usam proto, adoto dois e separo o terceiro quando os protos entrarem. A regra que carrego é uma só: ordem estável e visível de relance.
 
 ### 2.6 Ordene funções por receptor e fluxo de chamada
 
-**Decisão**: num arquivo: `type`/`const`/`var` primeiro; `New*` logo após o tipo; métodos exportados antes de unexportados; utilitárias sem receptor no fim.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#function-grouping-and-ordering) — leitor percorre o arquivo na ordem em que o código é chamado.
+Em um arquivo, `type`/`const`/`var` vêm primeiro, `New*` logo após o tipo, métodos exportados antes dos unexportados, e funções utilitárias sem receptor no fim.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#function-grouping-and-ordering) recomenda essa ordem porque o leitor percorre o arquivo na mesma sequência em que o código é chamado. Isso reduz a ida e volta para entender um fluxo.
+
+### 2.7 Assinaturas e controle em uma linha
+
+:::note[Regra]
+
+Assinatura de função fica em uma linha, e `if`, `for` e `switch` também. Se não cabe, extraio a expressão em uma variável local em vez de quebrar a cláusula.
+
+:::
+
+O Google exige [assinatura em linha única](https://google.github.io/styleguide/go/decisions#function-formatting) e proíbe quebrar a cláusula de [estruturas de controle](https://google.github.io/styleguide/go/decisions#conditional-formatting). Quando você quebra, a continuação alinha com o bloco indentado e o leitor perde onde o corpo começa.
+
+:::tip[Regra prática]
+
+A máquina formata o código; o humano decide nome, tamanho e ordem.
+
+:::
 
 ---
 
@@ -142,45 +198,73 @@ const (
 
 ### 3.1 MixedCaps; sem underscore em identificador
 
-**Decisão**: `camelCase`/`PascalCase`. Nunca `snake_case` em nomes de variável, função, tipo, constante ou pacote.
+:::note[Regra]
 
-**Por quê**: convenção da linguagem ([Effective Go](https://go.dev/doc/effective_go#mixed-caps)); o Google [bane underscores](https://google.github.io/styleguide/go/decisions#underscores) com exceções mínimas. Funções de teste podem usar `_` para agrupar (`TestFormat_ComErro`), como aceita o [Uber](https://github.com/uber-go/guide#function-names).
+Uso `camelCase` e `PascalCase`. Nunca `snake_case` em variável, função, tipo, constante ou pacote.
+
+:::
+
+É a convenção da linguagem ([Effective Go](https://go.dev/doc/effective_go#mixed-caps)), e o Google [bane underscores](https://google.github.io/styleguide/go/decisions#underscores) com poucas exceções. Funções de teste podem usar `_` para agrupar casos, como `TestFormat_ComErro`, o que o [Uber](https://github.com/uber-go/guide#function-names) também aceita.
 
 ### 3.2 Constantes em MixedCaps, nomeadas pelo papel
 
-**Decisão**: `const MaxPacketSize = 1500`. Nunca `MAX_PACKET_SIZE`, nem prefixo `k`. Nome pelo papel, não pelo valor.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#constant-names) — constante de valor só (`const Twelve = 12`) não comunica; quem lê `MaxPacketSize` entende a intenção.
+Escrevo `const MaxPacketSize = 1500`. Nunca `MAX_PACKET_SIZE`, nem prefixo `k`. O nome descreve o papel, não o valor.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#constant-names) observa que uma constante de valor puro, como `const Twelve = 12`, não comunica nada. Quem lê `MaxPacketSize` entende a intenção sem olhar o número.
 
 ### 3.3 Iniciais seguem a prosa
 
-**Decisão**: `URL`, `ID`, `API` — maiúsculas como na prosa, não `Url`/`Id`. Primeira letra minúscula quando o nome não é exportado (`url`, `id`).
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#initialisms) — `Url`/`Id` parecem errados a quem lê inglês; `iOS`/`gRPC` seguem a grafia original.
+Escrevo `URL`, `ID` e `API` com maiúsculas, como na prosa, e não `Url` ou `Id`. Quando o nome não é exportado, começo em minúscula (`url`, `id`).
+
+:::
+
+Segundo o [Google decisions](https://google.github.io/styleguide/go/decisions#initialisms), `Url` e `Id` parecem errados para quem lê inglês. Já grafias consagradas como `iOS` e `gRPC` seguem a forma original.
 
 ### 3.4 Pacote com nome curto, que descreve o que oferece
 
-**Decisão**: pacote em uma palavra minúscula; nome = base do diretório; curto porque é digitado em toda chamada; sem `util`/`common`/`helpers`/`lib`; não plural.
+:::note[Regra]
 
-**Por quê**: [Effective Go](https://go.dev/doc/effective_go#package-names) e [Uber](https://github.com/uber-go/guide#package-names). `bytes.Buffer` lê melhor que `bufferutil.Buffer`. `net/url` e não `net/urls`.
+O pacote usa uma palavra minúscula, com o nome igual à base do diretório. Curto, porque é digitado em toda chamada; sem `util`, `common`, `helpers` ou `lib`; e não no plural.
+
+:::
+
+Vale o que dizem o [Effective Go](https://go.dev/doc/effective_go#package-names) e o [Uber](https://github.com/uber-go/guide#package-names). `bytes.Buffer` lê melhor que `bufferutil.Buffer`, e a stdlib usa `net/url`, não `net/urls`.
 
 ### 3.5 Getter sem `Get`
 
-**Decisão**: método de leitura usa o nome do campo: `Owner()`, não `GetOwner()`. `Fetch`/`Compute` sinalizam operação cara.
+:::note[Regra]
 
-**Por quê**: [Effective Go](https://go.dev/doc/effective_go#Getters) e [Google](https://google.github.io/styleguide/go/decisions#getters) — `Get` não adiciona informação; `Owner()` já diz o que retorna. Nome de função que retorna valor é substantivo (`JobName`); que executa ação é verbo.
+Método de leitura usa o nome do campo: `Owner()`, não `GetOwner()`. Palavras como `Fetch` e `Compute` sinalizam uma operação cara.
+
+:::
+
+[Effective Go](https://go.dev/doc/effective_go#Getters) e [Google](https://google.github.io/styleguide/go/decisions#getters) concordam que `Get` não adiciona informação. `Owner()` já diz o que retorna. Nome de função que retorna valor é substantivo (`JobName`); que executa ação é verbo.
 
 ### 3.6 Interface de um método termina em `-er`
 
-**Decisão**: `Reader`, `Writer`, `Formatter`. Métodos canônicos (`Read`, `Write`, `String`) mantêm nome e assinatura canônicos.
+:::note[Regra]
 
-**Por quê**: [Effective Go](https://go.dev/doc/effective_go#interface-names) — honrar os nomes estabelecidos faz a interface ser reconhecível. `String()`, não `ToString()`.
+Uso `Reader`, `Writer`, `Formatter`. Métodos canônicos como `Read`, `Write` e `String` mantêm nome e assinatura canônicos.
+
+:::
+
+O [Effective Go](https://go.dev/doc/effective_go#interface-names) explica que honrar os nomes estabelecidos torna a interface reconhecível. Por isso o método é `String()`, e não `ToString()`.
 
 ### 3.7 Nome reflete uso, não origem nem tipo
 
-**Decisão**: a variável se chama pelo que representa no contexto: `users`, não `userSlice`; `id`, não `in.GetUserID()`. Nome cresce com o escopo.
+:::note[Regra]
 
-**Por quê**: [Google](https://google.github.io/styleguide/go/best-practices#variable-names) sistematiza o que o Effective Go sugere: nome vem do problema. Repetição do tipo ou da origem vira ruído.
+A variável se chama pelo que representa no contexto: `users`, não `userSlice`; `id`, não `in.GetUserID()`. O nome cresce junto com o escopo.
+
+:::
+
+O [Google](https://google.github.io/styleguide/go/best-practices#variable-names) sistematiza o que o Effective Go sugere: o nome vem do problema, não do tipo. Repetir o tipo ou a origem vira ruído.
 
 ```go title="variavel.go"
 // Errado: o nome repete o tipo e a origem.
@@ -196,21 +280,49 @@ for _, u := range users {
 
 ### 3.8 Receiver curto e consistente
 
-**Decisão**: receiver de 1–2 letras, abreviação do tipo, igual em todos os métodos do tipo. Nunca `this`/`self`.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#receiver-names) — receiver repete em toda assinatura; nome longo multiplica ruído.
+O receiver tem uma ou duas letras, é uma abreviação do tipo e se repete igual em todos os métodos daquele tipo. Nunca uso `this` nem `self`.
+
+:::
+
+Segundo o [Google decisions](https://google.github.io/styleguide/go/decisions#receiver-names), o receiver se repete em toda assinatura do tipo, então um nome longo multiplica o ruído.
 
 ### 3.9 Nome de função não repete a assinatura
 
-**Decisão**: omito do nome o que a assinatura já diz. `yamlconfig.Parse`, não `ParseYAMLConfig`; `Marshal`, não `MarshalToString`. Quando duas funções diferem só no tipo, o tipo diferencia: `ParseInt` vs `ParseInt64`.
+:::note[Regra]
 
-**Por quê**: [Google best-practices](https://google.github.io/styleguide/go/best-practices#function-and-method-names) — o nome soma informação à assinatura, não repete.
+Omito do nome o que a assinatura já diz. Escrevo `yamlconfig.Parse`, não `ParseYAMLConfig`, e `Marshal`, não `MarshalToString`. Quando duas funções diferem só no tipo, o tipo diferencia: `ParseInt` e `ParseInt64`.
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#function-names) resume a ideia: o nome soma informação à assinatura, não repete o que já está ali.
 
 ### 3.10 Não faça shadowing de nomes da stdlib
 
-**Decisão**: variável chamada `url`, `http`, `json` que esconde o pacote: proibido. Prefiro renomear a variável (`endpoint`) ou usar sufixo `pkg` no import (`urlpkg`) quando inevitável.
+:::note[Regra]
 
-**Por quê**: [Google best-practices](https://google.github.io/styleguide/go/best-practices#shadowing) — shadowing compila em silêncio e quebra usos posteriores do pacote sem erro.
+É proibido criar uma variável chamada `url`, `http` ou `json` que esconda o pacote. Prefiro renomear a variável (`endpoint`) ou usar o sufixo `pkg` no import (`urlpkg`) quando for inevitável.
+
+:::
+
+Como alerta o [Google best-practices](https://google.github.io/styleguide/go/best-practices#shadowing), o shadowing compila em silêncio e quebra usos posteriores do pacote sem erro nenhum.
+
+### 3.11 Não reuse nome de built-in
+
+:::note[Regra]
+
+É proibido nomear variável ou campo `error`, `string`, `len` ou `new`. Prefiro `err`, `str` e `n`.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#avoid-using-built-in-names) mostra que reusar um identificador pré-declarado cria shadowing difícil de grep: `error` e `f.error` ficam visualmente parecidos. O `go vet` aponta, mas é melhor nem escrever.
+
+:::tip[Regra prática]
+
+O nome diz o papel; quem lê não precisa saber o tipo nem o pacote.
+
+:::
 
 ---
 
@@ -218,21 +330,69 @@ for _, u := range users {
 
 ### 4.1 Doc comment explica o porquê, não o quê
 
-**Decisão**: comentário em declaração exportada explica *por que* aquele comportamento existe e casos não óbvios; não descreve o que o código obviamente faz. Sem comentário redundante.
+:::note[Regra]
 
-**Por quê**: [Effective Go](https://go.dev/doc/effective_go#commentary) e princípio de clareza do [Google guide](https://google.github.io/styleguide/go/guide#clarity). Comentário que repete o código é manutenção a mais; quando o código muda e o comentário fica, vira mentira.
+Comentário em declaração exportada explica **por que** aquele comportamento existe e quais casos não são óbvios. Não descreve o que o código já deixa claro, e não existe comentário redundante.
+
+:::
+
+Valem o [Effective Go](https://go.dev/doc/effective_go#commentary) e o princípio de clareza do [Google guide](https://google.github.io/styleguide/go/guide#clarity). Comentário que repete o código é manutenção a mais; quando o código muda e o comentário fica, ele vira mentira.
 
 ### 4.2 Doc comment abre com o nome, frase completa
 
-**Decisão**: `// A Request representa uma requisição HTTP.` — começa com o nome do símbolo e forma frase completa com ponto final.
+:::note[Regra]
 
-**Por quê**: o [Google](https://google.github.io/styleguide/go/decisions#doc-comments) exige disciplina uniforme; godoc e ferramentas de busca dependem do padrão. Comentário de campo no fim de linha pode ser fragmento.
+Escrevo `// A Request representa uma requisição HTTP.` — começando pelo nome do símbolo e formando uma frase completa, com ponto final.
+
+:::
+
+O [Google](https://google.github.io/styleguide/go/decisions#doc-comments) exige essa disciplina porque godoc e as ferramentas de busca dependem do padrão. Comentário de campo no fim da linha pode ser um fragmento.
 
 ### 4.3 Exemplos executáveis nos testes
 
-**Decisão**: exemplo demonstrando API vai em arquivo `_test.go` como `ExampleXxx` — roda e renderiza no godoc. Trecho não executável pode ficar em comentário.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#examples) — exemplo que executa nunca mente.
+Exemplo que demonstra uma API vai em arquivo `_test.go`, como `ExampleXxx`: ele roda e aparece no godoc. Trecho que não roda pode ficar em comentário.
+
+:::
+
+Segundo o [Google decisions](https://google.github.io/styleguide/go/decisions#examples), exemplo que executa nunca mente.
+
+### 4.4 Comente o pacote uma vez, acima do `package`
+
+:::note[Regra]
+
+Há um único comentário de pacote, imediatamente acima do `package`, sem linha em branco no meio. Quando é longo, ele fica em um `doc.go` com o comentário e a cláusula `package`.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#package-comments) lembra que esse comentário é a porta de entrada do pacote no godoc. Em `package main`, o nome do binário abre a frase.
+
+### 4.5 Comentário em frase completa; sem teto de linha
+
+:::note[Regra]
+
+Doc comment é frase completa, capitalizada e pontuada. Comentário de fim de linha pode ser fragmento. Não existe coluna fixa: 80 ou 100 são comuns, desde que o arquivo seja consistente.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#comment-sentences) prefere a sentença completa porque ela lê como documentação. Já uma frase jogada em uma linha larguíssima obriga rolagem horizontal.
+
+### 4.6 Documente só o não óbvio
+
+:::note[Regra]
+
+Em parâmetros, campos e options, documento o que é propenso a erro ou surpreendente, e não enumero o óbvio. Cancelamento de context é implícito; só documento quando o comportamento diverge.
+
+:::
+
+O [Google](https://google.github.io/styleguide/go/best-practices#documentation-conventions-params) usa `format is the format` como anti-exemplo: um bom comentário diz o que o leitor não deduz sozinho.
+
+:::tip[Regra prática]
+
+O comentário explica o porquê; o quê o código já mostra.
+
+:::
 
 ---
 
@@ -240,9 +400,13 @@ for _, u := range users {
 
 ### 5.1 `:=` para valor explícito; `var` para zero value
 
-**Decisão**: `s := "foo"` quando atribuo um valor. `var filtered []int` quando o ponto é o zero value (slice vazio, struct zero, alvo de unmarshal).
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#local-variable-declarations) — `:=` comunica "valor definido"; `var` comunica "começa vazio e pronto pra uso". `var user User` é mais claro que `user := User{}`.
+Uso `s := "foo"` quando atribuo um valor. Uso `var filtered []int` quando o ponto é o zero value, como slice vazio, struct zero ou alvo de unmarshal.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#local-variable-declarations) explica a diferença de leitura: `:=` comunica "valor definido", enquanto `var` comunica "começa vazio e pronto para uso". `var user User` é mais claro que `user := User{}`.
 
 ```go title="declarar.go"
 // Errado: aloca e depois append.
@@ -254,21 +418,33 @@ var filtered []int
 
 ### 5.2 `nil` é slice válido
 
-**Decisão**: retorno vazio é `nil` ou `var s []T`, nunca `[]T{}`. Emptiness via `len(s) == 0`, nunca `s == nil`.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#nil-is-a-valid-slice) e [Google](https://google.github.io/styleguide/go/decisions#nil-slices). Dois lembretes: (1) serialização pode distinguir `nil` de `[]`; (2) não desenho API onde o chamador precise distinguir `nil` de vazio — quem precisa sabe que isso é cheiro de design.
+Retorno vazio é `nil` ou `var s []T`, nunca `[]T{}`. Testo vazio com `len(s) == 0`, nunca com `s == nil`.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#nil-is-a-valid-slice) e o [Google](https://google.github.io/styleguide/go/decisions#nil-slices) concordam. Dois lembretes: a serialização pode distinguir `nil` de `[]`, e eu não desenho uma API em que o chamador precise distinguir os dois — quem precisa sabe que isso é cheiro de design.
 
 ### 5.3 Globals unexported: cuidado com shadowing acidental
 
-**Decisão**: global unexported tem nome descritivo (`defaultPort`). Não adoto o prefixo `_` do Uber.
+:::note[Regra]
 
-**Por quê**: o Uber pede [`_defaultPort`](https://github.com/uber-go/guide#prefix-unexported-globals-with-_) para sinalizar escopo de pacote; a comunidade e o golint usam `defaultPort`. Minha régua: globals são raros (ver 5.4); quando existem, o risco de shadowing some com nomes longos. Registro aqui a divergência consciente — e que erro sentinela unexported segue `errNotFound` nos dois guias.
+Global não exportado tem nome descritivo, como `defaultPort`. Não adoto o prefixo `_` do Uber.
+
+:::
+
+O Uber pede [`_defaultPort`](https://github.com/uber-go/guide#prefix-unexported-globals-with-_) para sinalizar o escopo de pacote, mas a comunidade e o golint usam `defaultPort`. Minha régua: globals são raros (ver 5.4), e quando existem o risco de shadowing some com nomes longos. Erro sentinela unexported segue `errNotFound` nos dois guias, como exceção explícita à regra do `_`.
 
 ### 5.4 Sem estado global mutável
 
-**Decisão**: biblioteca sem variável de pacote que muda em runtime, sem registro de callbacks, sem singleton preguiçoso. Configuração entra por construtor.
+:::note[Regra]
 
-**Por quê**: [Google best-practices](https://google.github.io/styleguide/go/best-practices#global-state) — estado global quebra isolamento de teste: um teste muda o estado e corrompe o seguinte. [Uber](https://github.com/uber-go/guide#avoid-mutable-globals) mostra a alternativa com injeção.
+Biblioteca não tem variável de pacote que muda em runtime, nem registro de callbacks, nem singleton preguiçoso. Configuração entra por construtor.
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#global-state) mostra que estado global quebra o isolamento de teste: um teste muda o estado e corrompe o seguinte. O [Uber](https://github.com/uber-go/guide#avoid-mutable-globals) mostra a alternativa com injeção.
 
 ```go title="global.go"
 // Errado: global mutável que todo teste compartilha.
@@ -286,9 +462,19 @@ func New(opts ...Option) *Client {
 
 ### 5.5 Reduza o escopo de variáveis
 
-**Decisão**: variável vive no menor escopo que o uso permite — `if err := f(); err != nil`. Se o valor é preciso fora do `if`, o escopo maior é o certo; não sacrifico isso para "reduzir escopo".
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#reduce-scope-of-variables) — escopo menor = menos estado para o leitor carregar. Reduzir aninhamento (7.2) tem prioridade quando conflita.
+A variável vive no menor escopo que o uso permite, como em `if err := f(); err != nil`. Se o valor é preciso fora do `if`, o escopo maior é o certo; não sacrifico isso para "reduzir escopo".
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#reduce-scope-of-variables) lembra que escopo menor é menos estado para o leitor carregar. Quando entra em conflito, reduzir aninhamento (7.2) tem prioridade.
+
+:::tip[Regra prática]
+
+`:=` diz "tem valor"; `var` diz "começa vazio e utilizável".
+
+:::
 
 ---
 
@@ -296,13 +482,19 @@ func New(opts ...Option) *Client {
 
 ### 6.1 Erro é valor; nunca compare string
 
-**Decisão**: uso `errors.Is`/`errors.As` e sentinela/`var Err...` quando o chamador precisa casar o erro. Proibido comparar o texto da mensagem.
+:::note[Regra]
 
-**Por quê**: [Google](https://google.github.io/styleguide/go/decisions#errors) e [Uber](https://github.com/uber-go/guide#errors) concordam: mensagem muda sem mudar o significado; comparação por string quebra em silêncio. Se o chamador precisa de detalhe estruturado (arquivo, operação), o erro tem campos (`os.PathError.Op/Path`), não texto.
+Uso `errors.Is` e `errors.As`, com sentinela ou `var Err...`, quando o chamador precisa casar o erro. É proibido comparar o texto da mensagem.
+
+:::
+
+O [Google](https://google.github.io/styleguide/go/decisions#errors) e o [Uber](https://github.com/uber-go/guide#errors) concordam: a mensagem muda sem mudar o significado, e a comparação por string quebra em silêncio. Quando o chamador precisa de detalhe estruturado, como arquivo ou operação, o erro carrega campos (`os.PathError.Op/Path`), não texto.
 
 ### 6.2 Escolha do tipo de erro
 
-**Decisão**: sigo a matriz do [Uber](https://github.com/uber-go/guide#error-types):
+:::note[Regra]
+
+Sigo a matriz do [Uber](https://github.com/uber-go/guide#error-types):
 
 | Precisa casar? | Mensagem | Ferramenta |
 | --- | --- | --- |
@@ -311,19 +503,29 @@ func New(opts ...Option) *Client {
 | Sim | estática | `var ErrFoo = errors.New(...)` |
 | Sim | dinâmica | tipo customizado + `errors.As` |
 
-**Por quê**: sentinela/tipo exportado vira API pública — exporto só quando o contrato exige matching.
+:::
+
+Sentinela e tipo exportado viram API pública, então eu só exporto quando o contrato exige matching.
 
 ### 6.3 Wrap com `%w` no fim; sentinela no começo
 
-**Decisão**: contexto novo antes do erro original: `fmt.Errorf("abrir config: %w", err)`. Exceção: sentinela/categoria lidera: `fmt.Errorf("%w: cabeçalho inválido", ErrParse)`. `%v` só quando quero ocultar a causa de propósito.
+:::note[Regra]
 
-**Por quê**: [Google best-practices](https://google.github.io/styleguide/go/best-practices#error-placement) — `%w` no fim faz a cadeia impressa ir do erro mais novo ao mais antigo; sentinela no começo garante que a categoria apareça primeiro. [Uber](https://github.com/uber-go/guide#error-wrapping): se o chamador deve casar, `%w`; senão, `%v`.
+O contexto novo vem antes do erro original: `fmt.Errorf("abrir config: %w", err)`. A exceção é a sentinela, que lidera: `fmt.Errorf("%w: cabeçalho inválido", ErrParse)`. Uso `%v` só quando quero ocultar a causa de propósito.
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#error-percent-w) explica que o `%w` no fim faz a cadeia impressa ir do erro mais novo ao mais antigo, e que a sentinela no começo garante que a categoria apareça primeiro. O [Uber](https://github.com/uber-go/guide#error-wrapping) resume: se o chamador deve casar, `%w`; senão, `%v`.
 
 ### 6.4 Sem "failed to" empilhado
 
-**Decisão**: contexto como substantivo: `"new store: %w"`, não `"failed to create new store: %w"`.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#error-wrapping) — `failed to x: failed to y` empilha e ninguém sabe onde começa o problema real. `x: y: new store: the error` lê como cadeia de causa.
+Escrevo o contexto como substantivo: `"new store: %w"`, e não `"failed to create new store: %w"`.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#error-wrapping) mostra que `failed to x: failed to y` empilha e ninguém sabe onde começa o problema real. A cadeia `x: y: new store: the error` lê como causa.
 
 ```go title="wrap.go"
 s, err := store.New()
@@ -336,21 +538,33 @@ if err != nil {
 
 ### 6.5 Mensagens minúsculas, sem pontuação final
 
-**Decisão**: `errors.New("usuario nao encontrado")`. Sem maiúscula inicial (exceto nome próprio/acrônimo), sem ponto final.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#error-strings) — a mensagem vira prefixo quando outro `%w` a envolve; maiúscula e ponto viram ruído no meio da cadeia. Para exibição final (log/UI) capitalizo no ponto de exibição.
+Escrevo `errors.New("usuario nao encontrado")`, sem maiúscula inicial (exceto nome próprio ou acrônimo) e sem ponto final.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#error-strings) lembra que a mensagem vira prefixo quando outro `%w` a envolve, então maiúscula e ponto viram ruído no meio da cadeia. Para exibição final, em log ou UI, capitalizo no ponto de exibição.
 
 ### 6.6 Loga OU retorna; nunca os dois
 
-**Decisão**: cada erro é tratado uma vez. Quem loga decide a mensagem; quem retorna decide a cadeia. Logar *e* retornar o mesmo erro duplica ruído em toda a pilha.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#handle-errors-once) e [Google](https://google.github.io/styleguide/go/best-practices#error-logging). Três saídas legítimas: wrap+return; log+degrade; casa sentinela e degrade (`errors.Is`) envolvendo o resto.
+Cada erro é tratado uma vez. Quem loga decide a mensagem; quem retorna decide a cadeia. Logar **e** retornar o mesmo erro duplica ruído em toda a pilha.
+
+:::
+
+Vale o [Uber](https://github.com/uber-go/guide#handle-errors-once) e o [Google](https://google.github.io/styleguide/go/best-practices#error-logging). Existem três saídas legítimas: envolver e retornar, logar e degradar, ou casar a sentinela e degradar com `errors.Is`, envolvendo o resto.
 
 ### 6.7 Sem erro in-band
 
-**Decisão**: função que pode falhar retorna `(valor, err)` ou `(valor, ok)`. Nunca `-1`/`""` mágico como erro.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#in-band-errors) — erro no valor esconde a falha e convida a esquecer o tratamento. Retorno explícito força a decisão.
+Função que pode falhar retorna `(valor, err)` ou `(valor, ok)`. Nunca uso `-1` ou `""` mágico como erro.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#in-band-errors) mostra que o erro dentro do valor esconde a falha e convida a esquecer o tratamento. O retorno explícito força a decisão.
 
 ```go title="in-band.go"
 // Errado: -1 como "não achou" mistura dado e erro.
@@ -362,15 +576,59 @@ func Find(list []int, want int) (index int, ok bool)
 
 ### 6.8 Type assertion sempre com comma-ok
 
-**Decisão**: `t, ok := i.(string)`. A forma de um retorno só quando o panic é o comportamento desejado (nunca em produção).
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#handle-type-assertion-failures) — `t := i.(string)` panica em tipo errado.
+Escrevo `t, ok := i.(string)`. A forma de um retorno só quando o panic é o comportamento desejado, e isso nunca acontece em produção.
+
+:::
+
+Segundo o [Uber](https://github.com/uber-go/guide#handle-type-assertion-failures), `t := i.(string)` panica quando o tipo é errado.
 
 ### 6.9 Asserção com `t.Fatal` em teste, não `panic`
 
-**Decisão**: em teste, falha de setup usa `t.Fatal`/`t.FailNow`, nunca `panic`.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#dont-panic) — `panic` em teste marca falha de forma imprecisa e pode mascarar o caso que rodou.
+Em teste, falha de setup usa `t.Fatal` ou `t.FailNow`, nunca `panic`.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#dont-panic) observa que `panic` em teste marca a falha de forma imprecisa e pode mascarar o caso que estava rodando.
+
+### 6.10 Nomeie erros: `ErrFoo`, `errFoo`, `FooError`
+
+:::note[Regra]
+
+Sentinela exportada é `ErrFoo`; unexported é `errFoo`, e não `_errFoo`; tipo de erro tem sufixo `Error`, como `NotFoundError`.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#error-naming) e o [Google GoTip #106](https://google.github.io/styleguide/go/index#gotip) usam o prefixo `Err`/`err` para valor sentinela e o sufixo `Error` para tipo. É uma exceção explícita à regra do `_` em globals unexported.
+
+### 6.11 `errors.Join` e múltiplos `%w`
+
+:::note[Regra]
+
+Para agregar falhas independentes, uso `errors.Join(err1, err2)`. Desde o Go 1.20, `fmt.Errorf` também aceita mais de um `%w`.
+
+:::
+
+Assim a cadeia de cada erro continua inspecionável por `errors.Is` e `errors.As`, sem eu ter que escolher uma única causa.
+
+### 6.12 `%w` vira contrato público
+
+:::note[Regra]
+
+Uso `%w` quando o chamador deve inspecionar a causa, e documento e testo isso. Uso `%v` quando quero apenas anotar ou traduzir para outro espaço de erro, como RPC ou storage.
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#error-extra-info) alerta que quem faz `errors.Is` passa a depender do erro interno. Isso vira parte da API e precisa ser garantido.
+
+:::tip[Regra prática]
+
+O erro sobe como valor; a categoria lidera a mensagem e a causa fecha.
+
+:::
 
 ---
 
@@ -378,9 +636,13 @@ func Find(list []int, want int) (index int, ok bool)
 
 ### 7.1 Trate o erro primeiro, mantenha o caminho feliz sem indentação
 
-**Decisão**: condição de erro/saída primeiro com `return`/`continue`; o fluxo feliz desce a página sem `else`. O `else` só sobrevive quando as duas pernas atribuem a mesma variável.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#indent-error-flow) e [Uber](https://github.com/uber-go/guide#reduce-nesting) — aninhamento profundo esconde o fluxo principal.
+A condição de erro ou saída vem primeiro, com `return` ou `continue`, e o fluxo feliz desce a página sem `else`. O `else` só sobrevive quando as duas pernas atribuem a mesma variável.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#indent-error-flow) e o [Uber](https://github.com/uber-go/guide#reduce-nesting) concordam que aninhamento profundo esconde o fluxo principal.
 
 ```go title="flow.go"
 // Errado: happy path indentado, erro tratado por último.
@@ -411,21 +673,39 @@ for _, v := range data {
 
 ### 7.2 Reduza aninhamento
 
-**Decisão**: `if v.F1 != 1 { continue }` antes do corpo, em vez de `if v.F1 == 1 { ... } else { ... }` aninhado.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#reduce-nesting) — cada nível de indentação é estado mental extra para o leitor.
+Prefiro `if v.F1 != 1 { continue }` antes do corpo a um `if v.F1 == 1 { ... } else { ... }` aninhado.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#reduce-nesting) lembra que cada nível de indentação é estado mental extra para o leitor.
 
 ### 7.3 Sem Yoda
 
-**Decisão**: variável sempre do lado esquerdo da comparação: `if len(s) == 0`, nunca `if 0 == len(s)`.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#conditionals-and-loops) — em Go o compilador já pega atribuição acidental; Yoda só prejudica leitura.
+A variável fica sempre do lado esquerdo da comparação: `if len(s) == 0`, nunca `if 0 == len(s)`.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#conditionals-and-loops) observa que, em Go, o compilador já pega atribuição acidental; a forma Yoda só prejudica a leitura.
 
 ### 7.4 `break` em switch não sai do loop
 
-**Decisão**: para sair de um `for` de dentro de `switch`, uso `break loop` com label. `break` sozinho dentro de `case` é redundante — não escrevo.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#switch-and-break) — `break` dentro de switch quebra o switch, não o loop; label torna a intenção explícita. Comentário substitui `break` final desnecessário.
+Para sair de um `for` de dentro de um `switch`, uso `break loop` com label. `break` sozinho dentro de um `case` é redundante, e eu não escrevo.
+
+:::
+
+Segundo o [Google decisions](https://google.github.io/styleguide/go/decisions#switch-and-break), `break` dentro do switch quebra o switch, não o loop; o label torna a intenção explícita. Um comentário substitui o `break` final desnecessário.
+
+:::tip[Regra prática]
+
+Trate a exceção cedo e deixe o caminho feliz descer reto.
+
+:::
 
 ---
 
@@ -433,9 +713,13 @@ for _, v := range data {
 
 ### 8.1 Copie na fronteira
 
-**Decisão**: ao receber ou devolver slice/map, copio — salvo contrato explícito de não retenção. Não guardo referência ao slice/mapa do chamador; não devolvo slice/mapa interno que exponha estado protegido por mutex.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#copy-slices-and-maps-at-boundaries) — slice/map compartilham o array/mapa subjacente; mutação do outro lado vira data race ou estado corrompido.
+Ao receber ou devolver slice ou map, copio, salvo contrato explícito de não retenção. Não guardo referência ao slice ou map do chamador, e não devolvo estado interno protegido por mutex.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#copy-slices-and-maps-at-boundaries) explica que slice e map compartilham o array ou mapa subjacente, então a mutação do outro lado vira data race ou estado corrompido.
 
 ```go title="copy.go"
 func (d *Driver) SetTrips(trips []Trip) {
@@ -457,33 +741,53 @@ func (s *Stats) Snapshot() map[string]int {
 
 ### 8.2 Struct init com nome de campo
 
-**Decisão**: `User{FirstName: "ana", LastName: "silva"}` — sempre nomeado, salvo tabela de teste com ≤3 campos.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#initializing-structs) e [Google](https://google.github.io/styleguide/go/decisions#literal-formatting) — literal posicional de tipo externo quebra se o pacote reordenar campos; `go vet` já reclama. Campo zero omitido quando não agrega contexto; se o zero é o ponto (teste), nomeio.
+Uso `User{FirstName: "ana", LastName: "silva"}`, sempre com nome, salvo tabela de teste com até três campos.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#initializing-structs) e o [Google](https://google.github.io/styleguide/go/decisions#literal-field-names) mostram que o literal posicional de um tipo externo quebra se o pacote reordenar os campos, e o `go vet` já reclama. Omito campo zero quando ele não agrega contexto; se o zero é justamente o ponto do teste, nomeio.
 
 ### 8.3 Struct referência: `&T{}`, não `new(T)`
 
-**Decisão**: `sptr := &T{Name: "bar"}`. `new(T)` reservado ao caso "só zero value faz sentido".
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#initializing-struct-references) — `&T{...}` mantém consistência com literais de valor.
+Escrevo `sptr := &T{Name: "bar"}`. Reservo `new(T)` para o caso em que só o zero value faz sentido.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#initializing-struct-references) prefere `&T{...}` por consistência com os literais de valor. `new(T)` e `&T{}` são equivalentes; a partir do Go 1.26, `new(value)` também inicializa um valor.
 
 ### 8.4 Map: literal para conjunto fixo; `make` para vazio/programático
 
-**Decisão**: elementos fixos conhecidos → literal. Vazio ou preenchido em loop → `make(map[...]..., hint)`.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#initializing-maps) — `make` distingue declaração de inicialização e aceita hint. Importante: mapa zero lê ok, mas **escrever** em mapa `nil` panica — inicializo antes de mutar ([Google](https://google.github.io/styleguide/go/best-practices#variable-declarations)).
+Elementos fixos conhecidos vão em literal. Map vazio ou preenchido em loop usa `make(map[...]..., hint)`.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#initializing-maps) lembra que `make` distingue declaração de inicialização e aceita hint. Ponto importante: ler de um map `nil` é ok, mas **escrever** nele panica, então inicializo antes de mutar.
 
 ### 8.5 Capacity hint quando o tamanho é conhecido
 
-**Decisão**: `make([]T, 0, n)` e `make(map[K]V, n)` quando sei (ou estimo) o tamanho antes do append.
+:::note[Regra]
 
-**Por quê**: [Uber performance](https://github.com/uber-go/guide#prefer-specifying-container-capacity) — slice capacity é exata: zero alloc até a capacidade (benchmark do guia: 0.21s vs 2.48s). Map hint é aproximação de buckets. **Só no hot path** — regra de performance não vira micro-otimização em todo lugar.
+Uso `make([]T, 0, n)` e `make(map[K]V, n)` quando sei ou estimo o tamanho antes do append.
+
+:::
+
+A [performance do Uber](https://github.com/uber-go/guide#prefer-specifying-container-capacity) mostra que a capacity de slice é exata, com zero alloc até o limite. O hint de map é uma aproximação de buckets. E isso **só no hot path**: regra de performance não vira micro-otimização em todo lugar.
 
 ### 8.6 Mutex: campo, nunca embedded
 
-**Decisão**: `mu sync.Mutex` como campo nomeado. Embedding de `sync.Mutex` é proibido até em struct unexported.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#zero-value-mutexes-are-valid) e [Google](https://google.github.io/styleguide/go/decisions#copying) — embedding promove `Lock`/`Unlock` à API pública do struct e esconde que o tipo não pode ser copiado. `var mu sync.Mutex` (zero value) é o correto; `new(sync.Mutex)` desnecessário.
+Uso `mu sync.Mutex` como campo nomeado. Embedding de `sync.Mutex` é proibido até em struct unexported.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#zero-value-mutexes-are-valid) e o [Google](https://google.github.io/styleguide/go/decisions#copying) explicam que o embedding promove `Lock` e `Unlock` à API pública do struct e esconde que o tipo não pode ser copiado. `var mu sync.Mutex`, o zero value, é o correto; `new(sync.Mutex)` é desnecessário.
 
 ```go title="mutex.go"
 // Certo.
@@ -501,15 +805,23 @@ type Counter struct {
 
 ### 8.7 Embedding: só com benefício tangível
 
-**Decisão**: embedding existe quando os métodos internos *deveriam* todos virar métodos do tipo externo. Teste: "eu adicionaria cada método exportado do interno direto no externo?" Se a resposta é "alguns" ou "não", uso campo nomeado. Embedded sempre no topo da lista de campos.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#embedding-in-structs) e Effective Go. Embedding de `io.ReadWriter` (interface) quebra zero value útil (`var b Book` → nil panic); embedding de `bytes.Buffer` preserva. Exceções de cópia e nil se aplicam.
+Embedding existe quando todos os métodos internos **deveriam** virar métodos do tipo externo. O teste é: "eu adicionaria cada método exportado do interno direto no externo?". Se a resposta é "alguns" ou "não", uso campo nomeado. Embedded fica sempre no topo da lista de campos.
+
+:::
+
+Valem o [Uber](https://github.com/uber-go/guide#embedding-in-structs) e o Effective Go. Embedding de `io.ReadWriter`, uma interface, quebra o zero value útil (`var b Book` dá nil panic); embedding de `bytes.Buffer` preserva. Embedding em struct exportado também vaza implementação e trava a evolução do tipo.
 
 ### 8.8 Field tags em struct serializada
 
-**Decisão**: todo campo que vira JSON/YAML/outro formato tag-based recebe tag explícita, mesmo quando o nome coincide.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#use-field-tags-in-marshaled-structs) — forma serializada é contrato entre sistemas; tag torna o contrato explícito e protege de rename acidental.
+Todo campo que vira JSON, YAML ou outro formato tag-based recebe tag explícita, mesmo quando o nome coincide.
+
+:::
+
+Segundo o [Uber](https://github.com/uber-go/guide#use-field-tags-in-marshaled-structs), a forma serializada é um contrato entre sistemas; a tag torna o contrato explícito e protege contra rename acidental.
 
 ```go title="tags.go"
 type Stock struct {
@@ -518,21 +830,35 @@ type Stock struct {
 }
 ```
 
+:::tip[Regra prática]
+
+Slice e map são referências: compartilhou, compartilhou mutação.
+
+:::
+
 ---
 
 ## Parte 9 — Structs, tipos e zero value
 
 ### 9.1 Projete o zero value para ser útil
 
-**Decisão**: tipo novo começa utilizável com zero value quando faz sentido (`bytes.Buffer`, `sync.Mutex` documentam "zero value ready"). Documento quando o zero value é utilizável e quando não.
+:::note[Regra]
 
-**Por quê**: [Effective Go](https://go.dev/doc/effective_go#allocation_new) — quem usa o tipo não precisa de construtor para o caso comum.
+Um tipo novo começa utilizável com o zero value quando isso faz sentido — `bytes.Buffer` e `sync.Mutex` documentam "zero value ready". Documento quando o zero value é utilizável e quando não é.
+
+:::
+
+O [Effective Go](https://go.dev/doc/effective_go#allocation_new) mostra o ganho: quem usa o tipo não precisa de construtor para o caso comum.
 
 ### 9.2 Enum: começa em 1, a menos que zero seja o default desejado
 
-**Decisão**: `Add Operation = iota + 1`. Zero fica reservado para "não definido". Exceção: quando o zero value é o comportamento padrão bom (`LogToStdout = iota`).
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#start-enums-at-one) — variáveis começam em zero; enum em 0 não distingue "nunca setado" de "primeiro valor". Complemento: enum com valor não-zero ganha método `String()` ([Effective Go](https://go.dev/doc/effective_go#constants)).
+Escrevo `Add Operation = iota + 1`, deixando o zero reservado para "não definido". A exceção é quando o zero value é o comportamento padrão bom, como em `LogToStdout = iota`.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#start-enums-at-one) lembra que variáveis começam em zero, então um enum em 0 não distingue "nunca setado" de "primeiro valor". Como complemento, enum com valor não-zero ganha um método `String()` ([Effective Go](https://go.dev/doc/effective_go#constants)).
 
 ```go title="enum.go"
 type Operation int
@@ -548,27 +874,59 @@ const (
 
 ### 9.3 Prefira definição a type alias
 
-**Decisão**: `type T1 T2` (nova definição). `type T1 = T2` (alias) só para migração.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#type-aliases) — definição permite métodos e evolui; alias congela identidade.
+Uso `type T1 T2`, uma nova definição. O alias `type T1 = T2` fica só para migração.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#type-aliases) explica que a definição permite métodos e evolui, enquanto o alias congela a identidade do tipo.
 
 ### 9.4 `any` no lugar de `interface{}`
 
-**Decisão**: código novo usa `any`. Sem `interface{}` novo.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#use-any) — `any` comunica "qualquer tipo" sem parecer uma interface com método.
+Código novo usa `any`, e não `interface{}`.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#use-any) prefere `any` porque ele comunica "qualquer tipo" sem parecer uma interface com método.
 
 ### 9.5 Não ponteirize por tamanho
 
-**Decisão**: passo valores por valor (struct pequena, string, int). Ponteiro para tipo grande ou mutável. Nunca `*string`, `*int` "para não copiar". Exceção: protobuf, que exige ponteiro.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#pass-values) — ponteiro por tamanho economiza cópia e cria nil-check desnecessário.
+Passo valores por valor: struct pequena, string, int. Uso ponteiro para tipo grande ou mutável. Nunca `*string` ou `*int` só "para não copiar". A exceção é protobuf, que exige ponteiro.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#pass-values) observa que ponteiro por tamanho economiza uma cópia e cria um nil-check desnecessário.
 
 ### 9.6 Receiver: valor ou ponteiro
 
-**Decisão**: método que muta → ponteiro. Não muta e tipo pequeno → valor. Tipo com mutex/campo não copiável → ponteiro (obrigatório). Consistência entre métodos do mesmo tipo. Na dúvida, ponteiro.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#receivers-and-interfaces) e [Google decisions](https://google.github.io/styleguide/go/decisions#receiver-type). Valor em map não é endereçável → método de ponteiro não compila em `m[k].Write()`; map de ponteiro resolve. Método de valor é chamável em valor e ponteiro; método de ponteiro só em ponteiro/endereçável.
+Método que muta usa ponteiro. Método que não muta e tem tipo pequeno usa valor. Tipo com mutex ou campo não copiável exige ponteiro. Mantenho consistência entre os métodos do mesmo tipo e, na dúvida, uso ponteiro.
+
+:::
+
+Valem o [Uber](https://github.com/uber-go/guide#receivers-and-interfaces) e o [Google decisions](https://google.github.io/styleguide/go/decisions#receiver-type). Valor dentro de map não é endereçável, então método de ponteiro não compila em `m[k].Write()`; um map de ponteiro resolve. Método de valor é chamável em valor e em ponteiro; método de ponteiro só em ponteiro ou valor endereçável.
+
+### 9.7 Genéricos só quando cumprem requisito
+
+:::note[Regra]
+
+Uso tipo paramétrico quando há necessidade real, como coleções e algoritmos sobre tipos. Nomeio `T`, `K` e `V`, documento APIs genéricas exportadas, e não construo DSL nem framework de asserção em cima de generics.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#generics) alerta contra uso prematuro: com um único tipo em jogo, prefira código concreto.
+
+:::tip[Regra prática]
+
+Desenhe o zero value primeiro; se ele serve, o construtor vira opcional.
+
+:::
 
 ---
 
@@ -576,9 +934,13 @@ const (
 
 ### 10.1 Quase nunca `panic`
 
-**Decisão**: erro normal volta como `error`; quem chama decide. `panic` só para invariante irreversível (nil deref) ou boot. Nunca `recover` para "não derrubar o programa".
+:::note[Regra]
 
-**Por quê**: é o maior contraste do [Effective Go](https://go.dev/doc/effective_go#panic) com os guias modernos. [Uber](https://github.com/uber-go/guide#dont-panic): panic em produção é fonte de cascata. [Google](https://google.github.io/styleguide/go/best-practices#program-checks-and-panics): recuperar panic para evitar crash significa seguir rodando com estado possivelmente corrompido; o guia chama o `recover` do `net/http` de "erro histórico".
+Erro normal volta como `error`, e quem chama decide. `panic` fica para invariante irreversível, como nil deref, ou para boot. Nunca uso `recover` só para "não derrubar o programa".
+
+:::
+
+É o maior contraste entre o [Effective Go](https://go.dev/doc/effective_go#panic) e os guias modernos. O [Uber](https://github.com/uber-go/guide#dont-panic) lembra que panic em produção é fonte de cascata de falhas. O [Google](https://google.github.io/styleguide/go/best-practices#checks-and-panics) vai além: recuperar panic para evitar crash significa continuar rodando com estado possivelmente corrompido, e o guia chama o `recover` do `net/http` de "erro histórico".
 
 ```go title="panic.go"
 // Errado: panic para erro que o chamador deveria decidir.
@@ -601,27 +963,43 @@ func connect() (*Conn, error) {
 
 ### 10.2 `Must*` para boot, não para handler
 
-**Decisão**: helper `Must*` (`template.Must`, `regexp.MustCompile`) só para inicialização de variável de pacote ou valor em tabela de teste. Nunca dentro de handler de request.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#must-functions) — no boot ainda não há request para responder; no handler, `Must` derruba o processo por um input do usuário.
+Helper `Must*`, como `template.Must` e `regexp.MustCompile`, só serve para inicialização de variável de pacote ou valor em tabela de teste. Nunca dentro de um handler de request.
+
+:::
+
+Segundo o [Google decisions](https://google.github.io/styleguide/go/decisions#must-functions), no boot ainda não há request para responder; no handler, um `Must` derruba o processo por causa de um input do usuário.
 
 ### 10.3 Invariante quebrada: `log.Fatal`, não `panic`
 
-**Decisão**: condição impossível que impede o programa de continuar → `log.Fatal` (mensagem acionável), não `panic`.
+:::note[Regra]
 
-**Por quê**: [Google](https://google.github.io/styleguide/go/best-practices#program-checks-and-panics) — deferreds rodam no unwinding de `panic` e podem corromper/empatar. `log.Exit` para falha de init em `main` com instrução de correção.
+Condição impossível que impede o programa de continuar vira `log.Fatal` com mensagem acionável, não `panic`.
+
+:::
+
+O [Google](https://google.github.io/styleguide/go/best-practices#checks-and-panics) explica que os deferreds rodam durante o unwinding do `panic` e podem corromper ou travar. Uso `log.Exit` para falha de init em `main`, com instrução de correção.
 
 ### 10.4 `init()` é último recurso
 
-**Decisão**: evito `init`. Se inevitável: determinístico, sem I/O, sem acessar env/cwd/args, sem depender de ordem de outros `init`s, sem goroutine. Lógica real vai para helper chamado por `main()`/construtor.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#avoid-init) — "init magic" em biblioteca é impossível de testar e raciocinar. Exceções aceitas: registro de driver (`database/sql`), registry de encoding, expressão complexa de atribuição única.
+Evito `init`. Se for inevitável, ele é determinístico, sem I/O, sem acessar env, cwd ou args, sem depender da ordem de outros `init`s e sem goroutine. A lógica real vai para um helper chamado por `main()` ou pelo construtor.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#avoid-init) chama isso de "init magic": em biblioteca, é impossível de testar e raciocinar. As exceções aceitas são registro de driver (`database/sql`), registry de encoding e expressão complexa de atribuição única.
 
 ### 10.5 `os.Exit`/`log.Fatal` só em `main()`, uma vez
 
-**Decisão**: função que falha retorna erro; `main()` faz `if err := run(); err != nil { log.Fatal(err) }`. Um único ponto de exit.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#exit-in-main) — exit em função qualquer: fluxo não óbvio, função que mata `go test` quando chamada, e `defer` de cleanup pulado. Extrair `run() error` testa a lógica sem matar o teste.
+Função que falha retorna erro, e `main()` faz `if err := run(); err != nil { log.Fatal(err) }`. Um único ponto de exit.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#exit-in-main) lista os problemas de sair em qualquer função: fluxo não óbvio, função que mata o `go test` quando chamada, e `defer` de cleanup pulado. Extrair `run() error` testa a lógica sem matar o teste.
 
 ```go title="main.go"
 func main() {
@@ -638,9 +1016,13 @@ func run() error {
 
 ### 10.6 Goroutine com fim previsível
 
-**Decisão**: toda goroutine tem condição de saída (channel fechado, `context`, `WaitGroup`) e um meio de esperar por ela. Nada de fire-and-forget sem dono. Sem goroutine em `init`.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#dont-fire-and-forget-goroutines) e [Google](https://google.github.io/styleguide/go/decisions#goroutine-lifetimes) — goroutine vazada segura memória/recurso para sempre; GC não coleta goroutine bloqueada. Esperar: `WaitGroup` para várias, `done := make(chan struct{}); <-done` para uma.
+Toda goroutine tem condição de saída — channel fechado, `context` ou `WaitGroup` — e um meio de esperar por ela. Nada de fire-and-forget sem dono, e nenhuma goroutine em `init`.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#dont-fire-and-forget-goroutines) e o [Google](https://google.github.io/styleguide/go/decisions#goroutine-lifetimes) explicam que goroutine vazada segura memória e recursos para sempre, porque o GC não coleta goroutine bloqueada. Para esperar, uso `WaitGroup` quando são várias e `done := make(chan struct{}); <-done` quando é uma.
 
 ```go title="goroutine.go"
 stop := make(chan struct{})
@@ -667,9 +1049,19 @@ close(stop)
 
 ### 10.7 Prefira função síncrona
 
-**Decisão**: função nasce síncrona; quem chama decide se roda em goroutine.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#synchronous-functions) — adicionar `go` na chamada é trivial; remover concorrência desnecessária depois é difícil.
+A função nasce síncrona, e quem chama decide se ela roda em uma goroutine.
+
+:::
+
+Segundo o [Google decisions](https://google.github.io/styleguide/go/decisions#synchronous-functions), adicionar `go` na chamada é trivial, mas remover concorrência desnecessária depois é difícil.
+
+:::tip[Regra prática]
+
+`panic` é para bug, não para fluxo; e `exit` é um só, no topo.
+
+:::
 
 ---
 
@@ -677,36 +1069,58 @@ close(stop)
 
 ### 11.1 Interface por valor, nunca ponteiro
 
-**Decisão**: parâmetro/retorno de interface é o valor da interface (`io.Reader`), nunca `*io.Reader`. A interface tem dois ponteiros internos; se o método precisa mutar, o dado embaixo é que é ponteiro.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#pointers-to-interfaces) — ponteiro para interface é quase sempre erro; só o dado subjacente decide endereçamento.
+Parâmetro e retorno de interface usam o valor da interface, como `io.Reader`, e nunca `*io.Reader`. A interface já tem dois ponteiros internos; se o método precisa mutar, o dado embaixo é que é ponteiro.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#pointers-to-interfaces) diz que ponteiro para interface é quase sempre erro: só o dado subjacente decide o endereçamento.
 
 ### 11.2 Verifique compliance em compile-time
 
-**Decisão**: tipo exportado cujo contrato exige interface ganha `var _ http.Handler = (*Handler)(nil)`. Só onde não existe conversão estática que já garantiria.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#verify-interface-compliance) — quebra o build no instante em que o contrato muda. RHS é zero value: `nil` para ponteiro, `T{}` para struct.
+Tipo exportado cujo contrato exige uma interface ganha `var _ http.Handler = (*Handler)(nil)`. Uso isso só onde não existe conversão estática que já garantiria.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#verify-interface-compliance) mostra que a linha quebra o build no instante em que o contrato muda. O lado direito é o zero value: `nil` para ponteiro e `T{}` para struct.
 
 ### 11.3 Interface sob demanda, do lado de quem consome
 
-**Decisão**: interface criada quando há necessidade real (≥2 implementadores, quebra de ciclo, protocolo). Consumer define; produtor exporta interface só quando ela *é* o produto. Sem interface reflexiva "service/repository".
+:::note[Regra]
 
-**Por quê**: [Google best-practices](https://google.github.io/styleguide/go/best-practices#interfaces) — abstração prematura aumenta custo de manutenção sem benefício. Aceito interface, retorno struct concreto (exceção: `error`, factory, `io.Reader`-like).
+Crio interface quando há necessidade real, como dois ou mais implementadores, quebra de ciclo ou protocolo. O consumidor define; o produtor só exporta interface quando ela **é** o produto. Nada de interface reflexiva "service/repository".
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#interfaces) explica que abstração prematura aumenta o custo de manutenção sem benefício. Aceito interface e retorno struct concreto; as exceções são `error`, factory e tipos `io.Reader`-like.
 
 ```go title="interface.go"
 // Certo: interface pequena, do lado de quem consome.
 type Storer interface {
-    Store(ctx context.Context, key string, v []byte) error
+	Store(ctx context.Context, key string, v []byte) error
 }
 
 func NewService(st Storer) *Service { ... } // retorna struct
 ```
 
-### 11.4 Interface de um método se chama pelo verbo + -er
+### 11.4 Interface de um método se chama pelo verbo + `-er`
 
-**Decisão**: `type Reader interface { Read(...) }`. Nome deriva do método canônico.
+:::note[Regra]
 
-**Por quê**: [Effective Go](https://go.dev/doc/effective_go#interface-names) — reconhecível e curto.
+Escrevo `type Reader interface { Read(...) }`. O nome deriva do método canônico.
+
+:::
+
+O [Effective Go](https://go.dev/doc/effective_go#interface-names) mostra que esse nome é reconhecível e curto.
+
+:::tip[Regra prática]
+
+Interface pequena, definida por quem consome e aceita por valor.
+
+:::
 
 ---
 
@@ -714,27 +1128,43 @@ func NewService(st Storer) *Service { ... } // retorna struct
 
 ### 12.1 Canal: capacidade 0 ou 1
 
-**Decisão**: canal nasce sem buffer. Tamanho 1 tem justificativa. Buffer maior, só com razão forte (backpressure, throughput medido).
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#channel-size-is-one-or-none) — "ought to be enough for anybody" (`make(chan int, 64)`) não é design; buffer esconde acoplamento e bloqueio.
+O canal nasce sem buffer. Tamanho 1 precisa de justificativa, e buffer maior só com razão forte, como backpressure ou throughput medido.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#channel-size-is-one-or-none) lembra que "ought to be enough for anybody" (`make(chan int, 64)`) não é design: buffer esconde acoplamento e bloqueio.
 
 ### 12.2 Direção de canal na assinatura
 
-**Decisão**: assinatura declara `<-chan`/`chan<-` quando o uso é de leitura ou escrita. Compilador pega uso errado.
+:::note[Regra]
 
-**Por quê**: [Google best-practices](https://google.github.io/styleguide/go/best-practices#channel-direction) — expressa ownership e pega bug em compile-time.
+A assinatura declara `<-chan` ou `chan<-` quando o uso é de leitura ou de escrita, e o compilador pega o uso errado.
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#channel-direction) mostra que isso expressa ownership e pega bug em compile-time.
 
 ### 12.3 Context: primeiro parâmetro; nunca campo de struct
 
-**Decisão**: `func Run(ctx context.Context, ...)`. Contexto primeiro. Nunca em struct, nunca tipo customizado.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#contexts) — contexto é fluxo de chamada, não estado do objeto. Custom context type quebra refactor automatizado.
+Escrevo `func Run(ctx context.Context, ...)`, com o contexto primeiro. Nunca em struct e nunca como tipo customizado.
+
+:::
+
+Segundo o [Google decisions](https://google.github.io/styleguide/go/decisions#contexts), o contexto é fluxo de chamada, não estado do objeto. Um tipo customizado de context quebra refactor automatizado.
 
 ### 12.4 Atômicos: stdlib tipado
 
-**Decisão**: `sync/atomic` com os tipos tipados (`atomic.Bool`, `atomic.Int64`) da stdlib. Sempre via método (`Load`, `Swap`), nunca leitura crua.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#use-gouberorgatomic) recomenda `go.uber.org/atomic` porque `sync/atomic` cru permite `f.running == 1 // race!`. A stdlib ganhou tipos tipados equivalentes — uso a stdlib (menos dependência) com a mesma disciplina: **atômico é lido/escrito só por método atômico**.
+Uso `sync/atomic` com os tipos tipados, como `atomic.Bool` e `atomic.Int64`, sempre por método (`Load`, `Swap`) e nunca por leitura crua.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#use-gouberorgatomic) recomendava `go.uber.org/atomic` porque o `sync/atomic` cru permite `f.running == 1 // race!`. A stdlib ganhou tipos tipados equivalentes, então uso a stdlib, com menos dependência, mantendo a disciplina: **atômico só se lê e escreve por método atômico**.
 
 ```go title="atomic.go"
 type foo struct {
@@ -755,9 +1185,13 @@ func (f *foo) isRunning() bool {
 
 ### 12.5 Defer para liberar recurso
 
-**Decisão**: lock/arquivo liberados por `defer` imediatamente após adquirir. Custo de `defer` é desprezível fora de função de nanossegundos.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#defer-to-clean-up) — garante liberação em todo caminho de return e mantém open/close próximos.
+Lock e arquivo são liberados por `defer` imediatamente após serem adquiridos. O custo do `defer` é desprezível fora de uma função de nanossegundos.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#defer-to-clean-up) mostra que o `defer` garante a liberação em todo caminho de return e mantém o open e o close próximos.
 
 ```go title="defer.go"
 p.Lock()
@@ -770,15 +1204,25 @@ p.count++
 return p.count
 ```
 
+:::tip[Regra prática]
+
+Concorrência sem dono é leak: todo canal e toda goroutine têm fim.
+
+:::
+
 ---
 
 ## Parte 13 — Testes
 
 ### 13.1 Stdlib `testing` primeiro
 
-**Decisão**: padrão = stdlib `testing` com mensagem `função(%v) = %v, want %v`. Não uso biblioteca de asserção como dogma.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#assert) — libs de asserção abortam cedo, omitem contexto e fragmentam a experiência de debug; o Uber usa testify nos exemplos. Minha régua para aprender Go: stdlib primeiro, para sentir a linguagem; num time com convenção testify estabelecida, sigo a convenção local.
+O padrão é a stdlib `testing`, com mensagem no formato `função(%v) = %v, want %v`. Não uso biblioteca de asserção como dogma.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#assert) argumenta que libs de asserção abortam cedo, omitem contexto e fragmentam a experiência de debug; o Uber usa testify nos exemplos. Minha régua: stdlib primeiro, para sentir a linguagem; em um time com convenção testify estabelecida, sigo a convenção local.
 
 ```go title="teste.go"
 func TestSplitHostPort(t *testing.T) {
@@ -797,9 +1241,13 @@ func TestSplitHostPort(t *testing.T) {
 
 ### 13.2 Tabela quando o corpo repete
 
-**Decisão**: vários casos da mesma lógica → tabela com `t.Run` e nome descritivo por caso. Convensão: slice `tests`, elemento `tt`, campos `give`/`want`. Um caso só → teste simples. Corpo de subteste sem condicional complexo (`shouldCallX`, mocks por caso) — nesse ponto, quebro em testes separados.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#test-tables) — reduz duplicação, cada falha identifica o caso. Complexidade dentro da tabela ("test depth") torna a falha ilegível.
+Vários casos da mesma lógica viram uma tabela com `t.Run` e nome descritivo por caso. A convenção é slice `tests`, elemento `tt`, campos `give` e `want`. Um caso só vira teste simples, e o subteste não leva condicional complexo; quando chega nesse ponto, quebro em testes separados.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#test-tables) mostra que a tabela reduz duplicação e faz cada falha identificar o caso. Complexidade dentro da tabela, o "test depth", torna a falha ilegível.
 
 ```go title="tabela.go"
 tests := []struct {
@@ -829,27 +1277,79 @@ for _, tt := range tests {
 
 ### 13.3 Helper de teste marca falha no caller
 
-**Decisão**: helper de setup que falha chama `t.Helper()` e `t.Fatalf` com o que/quanto. Helper de asserção que recebe `*testing.T` só para falhar: evito — validação fica no `Test` ou helper retorna `error`.
+:::note[Regra]
 
-**Por quê**: [Google best-practices](https://google.github.io/styleguide/go/best-practices#test-functions) — `t.Helper()` redireciona a falha para a linha do caller. Asserção helper esconde contexto e fragmenta mensagem.
+Helper de setup que falha chama `t.Helper()` e `t.Fatalf` dizendo o que e quanto. Helper de asserção que recebe `*testing.T` só para falhar eu evito: a validação fica no `Test`, ou o helper retorna `error`.
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#test-functions) mostra que `t.Helper()` redireciona a falha para a linha do caller. Um helper de asserção esconde contexto e fragmenta a mensagem.
 
 ### 13.4 `t.Error` por padrão; `t.Fatal` só quando não dá para continuar
 
-**Decisão**: falha de comparação → `t.Errorf` (continua, mostra todas). Falha de setup/decodificação que invalida o resto → `t.Fatalf`. Goroutine separada nunca chama `FailNow` — usa `t.Errorf` + return.
+:::note[Regra]
 
-**Por quê**: [Google](https://google.github.io/styleguide/go/best-practices#tests) — `t.Error` reporta todas as falhas de uma rodada; `t.Fatal` prematuro esconde as demais.
+Falha de comparação usa `t.Errorf`, que continua e mostra todas. Falha de setup ou decodificação que invalida o resto usa `t.Fatalf`. Goroutine separada nunca chama `FailNow`: usa `t.Errorf` e retorna.
+
+:::
+
+Segundo o [Google](https://google.github.io/styleguide/go/best-practices#tests), `t.Error` reporta todas as falhas de uma rodada, enquanto um `t.Fatal` prematuro esconde as demais.
 
 ### 13.5 Teste sem estado global compartilhado
 
-**Decisão**: dados caros de setup são carregados pelo teste que precisa (`mustLoadDataset(t)`), não em `init()` de pacote de teste. `TestMain` só quando *todo* teste precisa do setup caro.
+:::note[Regra]
 
-**Por quê**: [Google best-practices](https://google.github.io/styleguide/go/best-practices#test-setup) — setup em `init` quebra filtro `-run` e isola custo de quem não precisa.
+Dados caros de setup são carregados pelo teste que precisa, como `mustLoadDataset(t)`, e não em `init()` de pacote de teste. `TestMain` só quando **todo** teste precisa do setup caro.
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#test-setup) explica que setup em `init` quebra o filtro `-run` e impõe custo a quem não precisa.
 
 ### 13.6 Compare estrutura inteira, não campo a campo
 
-**Decisão**: struct/resultado composto → comparação profunda (`cmp.Diff`), não série de `if` por campo.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#equality-comparison-and-diffs) — comparação profunda acha diferença que campo-a-campo esquece. Para erro, testo semântica (`errors.Is`), nunca o texto.
+Struct ou resultado composto pede comparação profunda, como `cmp.Diff`, e não uma série de `if` por campo.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#compare-full-structures) mostra que a comparação profunda acha a diferença que a comparação campo a campo esquece. Para erro, testo a semântica com `errors.Is`, nunca o texto.
+
+### 13.7 Falha útil: `got`/`want`, com função e input
+
+:::note[Regra]
+
+A mensagem inclui função, input e valores, como `SplitHostPort(%q) = %q, want %q`. O valor real vem antes do esperado ("got"/"want"), e struct grande usa `cmp.Diff`.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#useful-test-failures) resume o objetivo: o teste deve ser diagnosticável sem ler o código-fonte. Sem isso, a falha vira arqueologia.
+
+### 13.8 Test doubles e pacote de teste
+
+:::note[Regra]
+
+Test double vive em um pacote `<produto>test`, como `creditcardtest`. Nomeio `Stub` quando há um só, ou pelo comportamento, como `AlwaysDeclines`. Teste black-box usa pacote `_test`.
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#naming-doubles) observa que o contexto do pacote já diz o domínio; `StubService` e `StubCreditCardService` repetem o que o import já diz.
+
+### 13.9 `t.Cleanup`, `t.Setenv`, `t.Parallel`
+
+:::note[Regra]
+
+Recurso com teardown usa `t.Cleanup`; variável de ambiente usa `t.Setenv`, que restaura sozinho; `t.Parallel` isola os testes. Nunca uso `t.Fatal` em goroutine separada.
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#test-setup) mostra que o setup escopado ao teste que precisa evita vazamento de estado entre casos. E `t.Fatal` fora da goroutine do teste chama `FailNow` no lugar errado.
+
+:::tip[Regra prática]
+
+Teste bom falha dizendo o que quebrou, com que input e qual era o esperado.
+
+:::
 
 ---
 
@@ -857,9 +1357,13 @@ for _, tt := range tests {
 
 ### 14.1 Assinatura curta; opções quando cresce
 
-**Decisão**: assinatura com 3+ argumentos opcionais vira struct de opções ou variadic options. Contexto nunca entra em struct de opções — fica primeiro parâmetro.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#functional-options) e [Google](https://google.github.io/styleguide/go/best-practices#function-argument-lists) — chamada com 5 parâmetros posicionais é ilegível; options crescem sem quebrar callers.
+Assinatura com três ou mais argumentos opcionais vira struct de opções ou variadic options. O contexto nunca entra no struct de opções: ele fica como primeiro parâmetro.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#functional-options) e o [Google](https://google.github.io/styleguide/go/best-practices#function-argument-lists) mostram que uma chamada com cinco parâmetros posicionais é ilegível, enquanto options crescem sem quebrar os callers.
 
 ```go title="options.go"
 // Errado: 3 argumentos sempre obrigatórios.
@@ -875,33 +1379,59 @@ db.Open(addr, db.WithLogger(log), db.WithCache(false))
 
 ### 14.2 Opções: interface com método unexported > closure
 
-**Decisão**: option é `type Option interface { apply(*options) }` com `WithX` retornando o tipo. Closure (função que seta campo) é segunda escolha.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#functional-options) — valor de opção por interface pode ser comparado, mockado e ganhar `String()`; closure não. (Eu registro: para projeto pequeno, closure basta — sigo a forma do Uber quando a API é pública.)
+Option é `type Option interface { apply(*options) }`, com `WithX` retornando o tipo. Closure, ou seja, função que seta o campo, é a segunda escolha.
+
+:::
+
+Segundo o [Uber](https://github.com/uber-go/guide#functional-options), um valor de opção por interface pode ser comparado, mockado e ganhar `String()`; a closure não. Registro que, para projeto pequeno, closure basta; sigo a forma do Uber quando a API é pública.
 
 ### 14.3 Evite parâmetro nu
 
-**Decisão**: booleano/estado que não se explica na chamada vira tipo nomeado com constante, ou recebe comentário `/* isLocal */`.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#avoid-naked-parameters) — `printInfo("foo", true, true)` não diz o que é cada `true`. Tipo `Region`/`Status` também permite mais estados no futuro.
+Booleano ou estado que não se explica na chamada vira um tipo nomeado com constante, ou recebe um comentário como `/* isLocal */`.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#avoid-naked-parameters) mostra que `printInfo("foo", true, true)` não diz o que é cada `true`. Um tipo como `Region` ou `Status` também permite mais estados no futuro.
 
 ### 14.4 Raw string para evitar escape
 
-**Decisão**: string com aspas/barra/multilinha usa backtick: `` `unknown error:"test"` ``, não `"unknown name:\"test\""`.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#use-raw-string-literals-to-avoid-escaping) — escape manual é difícil de ler e errar.
+String com aspas, barra ou multilinha usa backtick: `` `unknown error:"test"` ``, e não `"unknown name:\"test\""`.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#use-raw-string-literals-to-avoid-escaping) lembra que o escape manual é difícil de ler e de acertar.
 
 ### 14.5 Formato de Printf como `const`
 
-**Decisão**: format string fora de literal é `const`. Função estilo printf que eu criar termina em `f` (`Wrapf`), para `go vet` achar.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#format-strings-outside-printf) e [naming](https://github.com/uber-go/guide#naming-printf-style-functions) — `go vet` só analisa estaticamente format string de `const`.
+Format string fora de um literal é `const`. Função estilo printf que eu crio termina em `f`, como `Wrapf`, para o `go vet` achar.
+
+:::
+
+Segundo o [Uber](https://github.com/uber-go/guide#format-strings-outside-printf), o `go vet` só analisa estaticamente a format string de uma `const`.
 
 ### 14.6 Resultados nomeados com moderação
 
-**Decisão**: nomeio resultados quando os tipos não bastam (`(left, right *Node, err error)`), o caller precisa agir sobre um (`ctx, cancel`) ou o valor muda em closure `defer`. Nomear para usar naked return em função grande: não.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#named-result-parameters) — naked return em função grande esconde o que retorna.
+Nomeio resultados quando os tipos não bastam, como em `(left, right *Node, err error)`, quando o caller precisa agir sobre um deles (`ctx, cancel`) ou quando o valor muda em um closure `defer`. Nomear só para usar naked return em função grande, não.
+
+:::
+
+O [Google decisions](https://google.github.io/styleguide/go/decisions#named-result-parameters) observa que o naked return em função grande esconde o que está sendo retornado.
+
+:::tip[Regra prática]
+
+Assinatura curta; o que é opcional ganha nome por meio de option.
+
+:::
 
 ---
 
@@ -909,27 +1439,43 @@ db.Open(addr, db.WithLogger(log), db.WithCache(false))
 
 ### 15.1 Prefira `strconv` a `fmt` no hot path
 
-**Decisão**: conversão de primitivo para string usa `strconv.Itoa`/`FormatInt`. `fmt` só para formatos compostos.
+:::note[Regra]
 
-**Por quê**: [Uber performance](https://github.com/uber-go/guide#prefer-strconv-over-fmt) — benchmark do guia: 64ns/1 alloc (`strconv`) vs 143ns/2 allocs (`fmt`). Hot path apenas.
+Conversão de primitivo para string usa `strconv.Itoa` e `FormatInt`. O `fmt` fica para formatos compostos.
+
+:::
+
+O benchmark da [performance do Uber](https://github.com/uber-go/guide#prefer-strconv-over-fmt) mostra 64ns com 1 alloc no `strconv`, contra 143ns com 2 allocs no `fmt`. Só no hot path.
 
 ### 15.2 Não reconverta string fixa em bytes no loop
 
-**Decisão**: `data := []byte("...")` uma vez, fora do loop.
+:::note[Regra]
 
-**Por quê**: [Uber performance](https://github.com/uber-go/guide#avoid-repeated-string-to-byte-conversions) — 3.25ns vs 22.2ns por iteração.
+Faço `data := []byte("...")` uma vez, fora do loop.
+
+:::
+
+Segundo a [performance do Uber](https://github.com/uber-go/guide#avoid-repeated-string-to-byte-conversions), isso custa 3,25ns por iteração, contra 22,2ns quando a conversão fica dentro do loop.
 
 ### 15.3 Construção de string: ferramenta certa para o caso
 
-**Decisão**: poucas concatenações → `+`. Formatação → `fmt.Sprintf`. Destino é `io.Writer` → `fmt.Fprintf`. Montagem em loop → `strings.Builder` (linear vs quadrático). Template complexo → `text/template`.
+:::note[Regra]
 
-**Por quê**: [Google best-practices](https://google.github.io/styleguide/go/best-practices#string-concatenation).
+Poucas concatenações usam `+`. Formatação usa `fmt.Sprintf`. Quando o destino é um `io.Writer`, uso `fmt.Fprintf`. Montagem em loop usa `strings.Builder`, que é linear em vez de quadrático. Template complexo usa `text/template`.
+
+:::
+
+Vale o [Google best-practices](https://google.github.io/styleguide/go/best-practices#string-concatenation).
 
 ### 15.4 Hora é `time.Time`/`time.Duration`
 
-**Decisão**: instante = `time.Time`; período = `time.Duration`. Comparação por método (`Before`, `Equal`), nunca `int`. Assinatura aceita `time.Duration` para o caller escrever `10 * time.Second`. Em formato externo sem suporte (JSON), campo leva a unidade no nome (`IntervalMillis`); timestamp vira string RFC 3339.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#use-time-to-handle-time) — suposições de tempo são falsas (dia tem 24h?, mês tem 30d?). `AddDate(0,0,1)` = próximo dia de calendário; `Add(24*time.Hour)` = instante 24h depois — intenções diferentes.
+Instante é `time.Time` e período é `time.Duration`. Comparo por método (`Before`, `Equal`), nunca por `int`. A assinatura aceita `time.Duration` para o caller escrever `10 * time.Second`. Em formato externo sem suporte, como JSON, o campo leva a unidade no nome (`IntervalMillis`), e timestamp vira string RFC 3339.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#use-time-to-handle-time) lembra que as suposições sobre tempo são falsas: dia nem sempre tem 24h, mês nem sempre tem 30 dias. `AddDate(0,0,1)` é o próximo dia de calendário, e `Add(24*time.Hour)` é o instante 24h depois; são intenções diferentes.
 
 ```go title="time.go"
 func poll(delay time.Duration) { // caller: poll(10 * time.Second)
@@ -940,48 +1486,202 @@ func poll(delay time.Duration) { // caller: poll(10 * time.Second)
 func poll(delay int) // poll(10) — segundos? milissegundos?
 ```
 
+### 15.5 Formate string com `%q`
+
+:::note[Regra]
+
+Para imprimir uma string entre aspas, uso `%q` em vez de concatenar `"\"" + s + "\""`.
+
+:::
+
+Segundo o [Google decisions](https://google.github.io/styleguide/go/decisions#use-q), uma diretiva faz o escape correto, enquanto montar aspas na mão é mais verboso e erra em caractere especial.
+
+:::tip[Regra prática]
+
+Use o tipo certo, como `time.Duration`, e não um número com a unidade embutida no nome.
+
+:::
+
 ---
 
 ## Parte 16 — Importação e dependências
 
 ### 16.1 Alias quando o nome do pacote difere do caminho
 
-**Decisão**: alias obrigatório se nome ≠ último elemento do path (`client "example.com/client-go"`). Evito alias nos outros casos, salvo colisão direta.
+:::note[Regra]
 
-**Por quê**: [Uber](https://github.com/uber-go/guide#import-aliasing) — nome do pacote é como o caller se refere; sem alias enganoso.
+O alias é obrigatório quando o nome do pacote difere do último elemento do path, como `client "example.com/client-go"`. Evito alias nos outros casos, salvo colisão direta.
+
+:::
+
+O [Uber](https://github.com/uber-go/guide#import-aliasing) lembra que o nome do pacote é como o caller se refere a ele; sem alias, ele engana.
 
 ### 16.2 Import `.` proibido; `_` restrito
 
-**Decisão**: import com ponto (`.`) proibido. Import de side-effect (`_`) só em `main` ou teste quando o efeito é o objetivo.
+:::note[Regra]
 
-**Por quê**: [Google decisions](https://google.github.io/styleguide/go/decisions#imports) — `.` esconde a origem dos símbolos; `_` em biblioteca registra global escondido de quem importa.
+Import com ponto (`.`) é proibido. Import de side-effect (`_`) só em `main` ou em teste, quando o efeito é o objetivo.
+
+:::
+
+Segundo o [Google decisions](https://google.github.io/styleguide/go/decisions#imports), o `.` esconde a origem dos símbolos e o `_` em biblioteca registra um global escondido de quem importa.
 
 ### 16.3 Stdlib primeiro, dependência por problema real
 
-**Decisão**: antes de adicionar dependência, confirmo que a stdlib não resolve. Dependência nova = superfície de manutenção, segurança e compatibilidade.
+:::note[Regra]
 
-**Por quê**: [Google guide](https://google.github.io/styleguide/go/guide#least-mechanism).
+Antes de adicionar uma dependência, confirmo que a stdlib não resolve. Dependência nova é superfície de manutenção, de segurança e de compatibilidade.
+
+:::
+
+Vale o princípio de [least mechanism do Google guide](https://google.github.io/styleguide/go/guide#least-mechanism).
+
+### 16.4 Pacotes coesos, não gigantes
+
+:::note[Regra]
+
+O pacote reúne o que é usado junto: se o cliente precisa importar dois pacotes para usar um, provavelmente é um só. Evito pacote gigante e a convenção "um tipo por arquivo"; cada arquivo deve ser localizável pelo conteúdo.
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#package-size) lembra que o godoc mostra o pacote em uma página, então a coesão certa reduz cerimônia sem poluir a API pública.
+
+### 16.5 Import de proto com `pb`/`grpc`
+
+:::note[Regra]
+
+Proto gerado importa com sufixo `pb` para proto ou `grpc` para gRPC. Removo o `_` do nome local e prefiro um nome descritivo.
+
+:::
+
+O [Google best-practices](https://google.github.io/styleguide/go/best-practices#import-protos) explica que proto é cross-language, então a convenção de rename é estável e legível no call site.
+
+:::tip[Regra prática]
+
+Toda dependência é dívida até provar que resolve o problema.
+
+:::
 
 ---
 
 ## Parte 17 — Linting e ferramentas
 
-**Decisão**: base de linters: `errcheck` (erros tratados), `goimports` (formatação + imports), `govet` (erros comuns), `staticcheck` (análise estática), `revive` (estilo — sucessor do golint). Runner: `golangci-lint`.
+:::note[Regra]
 
-**Por quê**: [Uber linting](https://github.com/uber-go/guide#linting) — o valor não está em um linter específico, mas em **lintar consistentemente** no codebase. Minha régua pessoal: linter que discorda de uma regra documentada deste guia ganha `//nolint` com referência à seção — a exceção fica rastreável, não muda em silêncio.
+Minha base de linters é `errcheck`, para erros tratados; `goimports`, para formatação e imports; `govet`, para erros comuns; `staticcheck`, para análise estática; e `revive`, para estilo, como sucessor do golint. O runner é o `golangci-lint`.
+
+:::
+
+O [Uber linting](https://github.com/uber-go/guide#linting) mostra que o valor não está em um linter específico, mas em **lintar consistentemente** no codebase. Minha régua pessoal: quando um linter discorda de uma regra documentada aqui, ele ganha um `//nolint` com referência à seção, para a exceção ficar rastreável e não mudar em silêncio.
+
+:::tip[Regra prática]
+
+Configure uma vez, rode sempre; silencie exceção com referência, nunca sem.
+
+:::
 
 ---
 
 ## Parte 18 — Quando quebro as próprias regras
 
-Toda regra tem exceção legítima, e este guia registra onde:
+Toda regra tem uma exceção legítima, e este guia registra onde:
 
-- **Performance comprovada** (com benchmark) pode justificar desvio — documento o porquê no código e cubro com teste.
-- **Código de demonstração** (como os exemplos do blog) prioriza clareza pedagógica sobre dogmatismo.
-- **Consistência local**: pacote com convenção estabelecida e nenhuma regra objetiva aqui aplicável → sigo o vizinho.
-- **Contrato com time**: se o time tem guia próprio que diverge (ex.: testify), o guia do time vence **dentro daquele time**; documento a divergência ao público.
+- **Performance comprovada** com benchmark pode justificar um desvio. Documento o porquê no código e cubro com teste.
+- **Código de demonstração**, como os exemplos do blog, prioriza clareza pedagógica sobre dogmatismo.
+- **Consistência local**: em pacote com convenção estabelecida e nenhuma regra objetiva aplicável, sigo o vizinho.
+- **Contrato com time**: se o time tem um guia próprio que diverge, como testify, o guia do time vence **dentro daquele time**, e eu documento a divergência ao público.
 
-A régua final é o princípio 1.1: o código está claro? Se sim, a regra cumpriu o papel.
+A régua final é o princípio 1.1: o código está claro? Se está, a regra cumpriu o papel.
+
+---
+
+## Parte 19 — Idiomas modernos
+
+### 19.1 `slices` e `maps` antes de loop manual
+
+:::note[Regra]
+
+Uso `slices.Clone`, `slices.Contains`, `slices.Sort` e `maps.Clone` no lugar de loop manual quando existe equivalente, desde o Go 1.21.
+
+:::
+
+A stdlib é tipada e testada, então sobra menos código e menos bug.
+
+### 19.2 `sync.OnceValue`/`OnceFunc`
+
+:::note[Regra]
+
+Inicialização lazy e única usa `sync.OnceValue` ou `OnceFunc`, do Go 1.21, em vez de `sync.Once` manual.
+
+:::
+
+Isso reduz o boilerplate e dispensa a variável capturada para guardar o resultado.
+
+### 19.3 Variável de laço é por iteração (Go 1.22)
+
+:::note[Regra]
+
+Desde o Go 1.22 cada iteração tem a sua variável, então capturar em goroutine ou closure não exige mais `x := x`. Mesmo assim, não relaxo o resto: goroutine continua precisando de dono (10.6).
+
+:::
+
+A mudança removeu o bug clássico de captura, mas o requisito de ciclo de vida continua valendo.
+
+### 19.4 `min`/`max` e `strings.Cut`
+
+:::note[Regra]
+
+Uso `min(a, b)` e `max(a, b)`, do Go 1.21, no lugar de um `if`. E uso `strings.Cut` no lugar de `SplitN` quando quero "antes e depois".
+
+:::
+
+Builtins e stdlib cobrem o caso comum com menos ruído sintático.
+
+:::tip[Regra prática]
+
+Antes de escrever loop ou `Once` manual, veja se a stdlib já resolve.
+
+:::
+
+---
+
+## Apêndice A — As três fontes
+
+| Guia | Forma | Normativo | Papel |
+| --- | --- | --- | --- |
+| **Effective Go** | Ensaio único, em prosa | Não | Ensinar o idioma; baseline comum da comunidade |
+| **Google guide** | Documento canônico | Sim | Princípios + regras centrais (todos) |
+| **Google decisions** | Decisões estilo RFC | Sim | Por quê de cada regra (revisores de readability) |
+| **Google best-practices** | Padrões situacionais | Não | Recomendações com trade-offs (interessados) |
+| **Uber guide** | Arquivo único, tabelas Bad/Good | Sim (na Uber) | Checklist pragmático de review |
+
+O Effective Go é o alicerce. O Google é hierárquico: o `guide` manda, o `decisions` explica, o `best-practices` sugere. O Uber é a régua prática de code review.
+
+## Apêndice B — Matriz de origem
+
+Cada regra nasceu em um guia específico. Esta é a matriz de origem, com o "vencedor" de cada tema e o motivo pelo qual ele ganha para manutenção e leitura:
+
+| Tema | Fonte escolhida | Por que ganha |
+| --- | --- | --- |
+| Formatação | Effective Go / gofmt | Máquina decide; zero discussão em PR |
+| Linha longa | Google (sem teto rígido) | Refatorar > fatiar linha; quebra antes de indentação confunde |
+| Nomes / não repetição | Google | Regra mais sistematizada; legibilidade direta |
+| Getters / `-er` / MixedCaps | Effective Go + Google | Consenso comunitário, reconhecível |
+| Erros: estrutura, `%w`, mensagem | Google decisions | Cadeia e matching previsíveis; base de manutenção |
+| Erros: sem "failed to", handle-once | Uber | Logs limpos; anti-padrão de duplicação |
+| `panic`/`recover`/`Must*` | Google | Mais rigoroso; protege contra estado corrompido |
+| `init`/estado global | Google + Uber | Determinismo e teste isolado |
+| Struct, mutex, field tags, map | Uber | Regra prática de review |
+| nil slice / copy na fronteira | Uber + Google | Evita bug de aliasing e distinção nil/vazio |
+| Performance | Uber (hot path) | Benchmarks reais, escopo restrito |
+| Interfaces / ports | Google | Sob demanda + consumer-side; base hexagonal |
+| Concorrência / goroutines | Uber + Google | Ciclo de vida explícito |
+| Contexto | Google | Regra dura; nunca em struct |
+| Testes | Google (base) + Uber (tabela) | Veredito na seção 13.1 |
+| Functional options | Uber | Cresce sem quebrar chamada |
+| Genéricos | Google decisions | Uso cauteloso, sem DSL |
+
+Onde Uber e Google colidem sem vencedor claro de manutenção, a seção correspondente registra os dois lados e a minha escolha. Nenhuma regra entra aqui por tradição ou por ser "a da empresa X".
 
 ## Ver também
 
