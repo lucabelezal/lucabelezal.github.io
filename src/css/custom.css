@@ -290,6 +290,8 @@ code {
   html.blog-wrapper .container > .row > main.col {
     grid-column: 1;
     min-width: 0;
+    margin: 0;
+    width: auto;
   }
 
   html.blog-wrapper .container > .row > .col--2 {
