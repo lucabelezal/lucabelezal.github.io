@@ -1,5 +1,15 @@
 [
   {
+    "slug": "go-testes-http",
+    "title": "Testes de API HTTP em Go: handler, rotas, client e adapters",
+    "date": "2026-09-14T11:00:00"
+  },
+  {
+    "slug": "go-socket-ao-handler",
+    "title": "Do socket ao handler: como um programa Go recebe algo da internet",
+    "date": "2026-09-14T10:00:00"
+  },
+  {
     "slug": "go-http-api",
     "title": "API HTTP em Go: stdlib, middleware e JSON sem framework",
     "date": "2026-09-13T15:00:00"
