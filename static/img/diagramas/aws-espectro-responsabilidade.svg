@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 260" role="img" aria-label="Diagrama: espectro de responsabilidade do EC2 ao Lambda">
+  <title>Espectro de responsabilidade: EC2, ECS com Fargate e Lambda</title>
+  <desc>Do EC2, onde você controla o sistema operacional e assume toda a responsabilidade, ao Lambda, onde a AWS controla tudo. O ECS com Fargate fica no meio.</desc>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .midbox{fill:none;stroke:#8957e5;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#57606a;stroke-width:2;fill:none}
+    .head{fill:#57606a;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .midbox{stroke:#a371f7}
+      .goodbox{stroke:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#8b949e}
+      .head{fill:#8b949e}
+    }
+  </style>
+  <defs>
+    <marker id="awsSpecHead" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <text x="18" y="22" font-size="13" class="lbl">Espectro de responsabilidade</text>
+
+  <rect x="40" y="50" width="200" height="80" rx="10" class="box"/>
+  <text x="140" y="82" font-size="15" font-weight="bold" text-anchor="middle">EC2</text>
+  <text x="140" y="106" font-size="12" class="lbl" text-anchor="middle">máquina virtual · SO seu</text>
+
+  <rect x="280" y="50" width="200" height="80" rx="10" class="midbox"/>
+  <text x="380" y="82" font-size="15" font-weight="bold" text-anchor="middle">ECS + Fargate</text>
+  <text x="380" y="106" font-size="12" class="lbl" text-anchor="middle">contêiner · SO delegado</text>
+
+  <rect x="520" y="50" width="200" height="80" rx="10" class="goodbox"/>
+  <text x="620" y="82" font-size="15" font-weight="bold" text-anchor="middle">Lambda</text>
+  <text x="620" y="106" font-size="12" class="lbl" text-anchor="middle">função · serverless</text>
+
+  <line x1="140" y1="130" x2="140" y2="170" class="arrow"/>
+  <line x1="380" y1="130" x2="380" y2="170" class="arrow"/>
+  <line x1="620" y1="130" x2="620" y2="170" class="arrow"/>
+
+  <line x1="60" y1="180" x2="700" y2="180" class="arrow" marker-end="url(#awsSpecHead)"/>
+  <text x="40" y="205" font-size="12" class="lbl">você controla: SO, patch, escala</text>
+  <text x="720" y="205" font-size="12" class="lbl" text-anchor="end">AWS controla: tudo</text>
+  <text x="380" y="232" font-size="12" class="lbl" text-anchor="middle">mais controle e responsabilidade → menos controle, mais delegação</text>
+</svg>

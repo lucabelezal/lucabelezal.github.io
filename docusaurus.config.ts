@@ -31,6 +31,22 @@ const config: Config = {
     locales: ['pt-BR', 'en', 'es'],
   },
 
+  plugins: [
+    // Segunda instância de docs: guia de consulta AWS em /aws.
+    // Não conta em all-posts.json (é referência, como o Go by Example).
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'aws',
+        path: 'aws-guide',
+        routeBasePath: 'aws',
+        sidebarPath: './sidebarsAws.ts',
+        editUrl:
+          'https://github.com/lucabelezal/lucabelezal.github.io/tree/main/aws-guide/',
+      },
+    ],
+  ],
+
   presets: [
     [
       'classic',
@@ -82,6 +98,11 @@ const config: Config = {
           to: '/go',
           position: 'left',
           label: 'Go',
+        },
+        {
+          to: '/aws',
+          position: 'left',
+          label: 'AWS',
         },
         {
           type: 'localeDropdown',

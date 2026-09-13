@@ -1,0 +1,46 @@
+---
+title: Dados e objetos
+---
+
+Toda aplicação guarda informação em algum lugar. A pergunta não é "qual é o melhor banco", e sim "que forma esse dado tem e como ele será consultado".
+
+## Os serviços
+
+| Serviço | Tipo | Quando usar |
+|---|---|---|
+| **RDS** | banco relacional gerenciado (Postgres, MySQL, SQL Server…) | dados com esquema e relações; consultas SQL |
+| **Aurora** | banco relacional compatível com MySQL/Postgres, feito pela AWS | mesma necessidade do RDS, com mais desempenho e escala |
+| **DynamoDB** | banco NoSQL chave-valor, serverless | acesso por chave em escala, latência de milissegundos |
+| **S3** | armazenamento de objetos | arquivos: imagens, vídeos, PDFs, backups, logs |
+
+## Relacional: RDS e Aurora
+
+RDS é um banco SQL comum, gerenciado pela AWS: ela cuida de backup, patch e replicação. Você escolhe o tamanho da instância, o que mantém certa responsabilidade sobre capacidade e custo.
+
+Aurora é o banco relacional da AWS, compatível com MySQL e Postgres, com mais desempenho e replicação gerenciada. Serve para a mesma necessidade do RDS quando o volume cresce.
+
+Use quando o dado tem esquema definido e as consultas são variadas — pedidos, usuários, financeiro.
+
+## Chave-valor: DynamoDB
+
+DynamoDB é NoSQL e serverless: a AWS gerencia tudo, você só usa. Em troca, precisa modelar os dados do jeito que ele espera — acesso por chave, sem `JOIN`. Bem modelado, responde em poucos milissegundos e escala sem limite prático.
+
+Um caso clássico: sessões de usuário. São milhões de leituras por minuto que sobrecarregariam um banco relacional. Em DynamoDB, a checagem de sessão fica barata e rápida.
+
+## Objetos: S3
+
+S3 é um disco virtualmente infinito, organizado em *buckets* e prefixos. Não é sistema de arquivos: você guarda e recupera objetos por chave.
+
+Tem classes de armazenamento conforme a frequência de acesso — do acesso frequente ao arquivamento de longo prazo (Glacier) — o que reduz o custo do dado frio.
+
+## Os três no mesmo sistema
+
+Não há contradição em usar os três: RDS para o núcleo transacional, DynamoDB para sessões e alto volume de leitura por chave, S3 para arquivos. Isso é **polyglot persistence**: escolher o armazenamento pelo formato e pelo padrão de acesso.
+
+![Diagrama: arquitetura AWS heterogênea com clientes, adaptadores primários, domínio e adaptadores secundários](/img/diagramas/aws-arquitetura-evolucao.svg)
+
+**Regra prática:** relacional por padrão (RDS ou Aurora). Acesso por chave em escala vira DynamoDB. Arquivo binário nunca vai em banco: vai para o S3.
+
+Para o trade-off entre consistência e disponibilidade nesses bancos, veja [CAP e PACELC na prática](/cap-pacelc).
+
+Próximo: [Comunicação](/aws/comunicacao).

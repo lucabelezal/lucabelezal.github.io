@@ -1,0 +1,46 @@
+---
+title: Computação
+---
+
+Computação é onde o código roda. A escolha entre EC2, ECS, Fargate e Lambda não é de gosto: é quanto você quer controlar e quanto quer delegar.
+
+## Os serviços
+
+| Serviço | O que é | Quando usar | Controle |
+|---|---|---|---|
+| **EC2** | máquina virtual com sistema operacional | precisa do SO, de um runtime específico ou de acesso SSH | total |
+| **ECS** | orquestrador de contêineres | várias réplicas de uma imagem Docker | alto |
+| **Fargate** | modo de execução do ECS e do EKS | rodar contêiner sem gerenciar servidor | médio |
+| **EKS** | Kubernetes gerenciado | o time já usa Kubernetes | médio |
+| **Lambda** | função sob demanda | código curto, orientado a evento, com picos | mínimo |
+
+## EC2: controle total
+
+EC2 entrega uma máquina virtual. Você escolhe o sistema operacional, instala o que precisar, abre as portas que quiser e entra por SSH. Em troca, a responsabilidade é toda sua: patch de segurança, firewall, escala e disponibilidade.
+
+Use quando o ambiente importa — um software legado que só roda em certa versão, uma GPU específica, ou quando você precisa de acesso ao sistema operacional.
+
+## Contêineres: ECS e Fargate
+
+Um contêiner empacota o código com as dependências. Em vez de configurar um servidor, você entrega uma imagem e diz quantas réplicas quer.
+
+- **ECS** é o orquestrador: decide onde cada contêiner roda.
+- **Fargate** é um modo de execução: em vez de você provisionar as instâncias EC2, a AWS cuida do servidor. Você pensa em CPU e memória do contêiner, não no tamanho da máquina.
+
+Use contêiner quando a aplicação é longa (um servidor web, um worker) e você não quer administrar o sistema operacional.
+
+## Lambda: serverless
+
+Lambda executa uma função em resposta a um evento — uma chamada HTTP, uma mensagem na fila, um arquivo novo no S3. Você não escolhe servidor nem contêiner; a AWS decide onde e quando rodar, e cobra por invocação e tempo de execução.
+
+Use quando a tarefa é curta e orientada a evento. É o ponto de menor responsabilidade do espectro.
+
+![Diagrama: espectro de responsabilidade do EC2 ao Lambda](/img/diagramas/aws-espectro-responsabilidade.svg)
+
+**Regra prática:** comece pelo Lambda. Se precisar de processo longo, runtime específico ou porta fixa, vá para contêiner. Se precisar do sistema operacional, vá para EC2.
+
+## Cobrança em uma linha
+
+EC2 e contêineres cobram por tempo de execução da capacidade; Lambda cobra por invocação e milissegundos. Os modelos de desconto (Savings Plans, Reserved, Spot) estão em [Segurança e custo](/aws/seguranca-e-custo).
+
+Próximo: [Dados e objetos](/aws/dados).

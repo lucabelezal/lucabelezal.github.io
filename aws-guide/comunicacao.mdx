@@ -1,0 +1,41 @@
+---
+title: Comunicação
+---
+
+Depois de computação e dados, falta o que liga as peças. São os serviços que expõem a aplicação para fora e que fazem componentes conversarem sem ficarem grudados.
+
+## Os serviços
+
+| Serviço | Papel | Quando usar |
+|---|---|---|
+| **API Gateway** | porta de entrada HTTP | expor funções, contêineres ou servidores como API, com autorização e limite de uso |
+| **SQS** | fila de mensagens | desacoplar produtor e consumidor; absorver picos |
+| **SNS** | publicação/assinatura (pub/sub) | uma mensagem para vários destinos ao mesmo tempo |
+| **EventBridge** | barramento de eventos | arquitetura orientada a evento, roteando por regra |
+| **ELB** | balanceador de carga | distribuir tráfego entre várias instâncias |
+
+## API Gateway
+
+API Gateway é o ponto de entrada da aplicação. Ele recebe a requisição HTTP, valida autorização, aplica limite de uso e encaminha para o destino — que pode ser uma função Lambda, um contêiner no ECS ou um servidor no EC2.
+
+O detalhe poderoso: o mesmo API Gateway pode rotear endpoints diferentes para computações diferentes. Um endpoint leve vai para o Lambda; um pesado, para o contêiner.
+
+## Filas e notificações: SQS e SNS
+
+**SQS** é uma fila. O produtor coloca a mensagem; o consumidor retira quando puder. Se o tráfego explode, as mensagens esperam na fila em vez de virar erro para o usuário. A fila é o buffer que desacopla os dois lados.
+
+**SNS** é pub/sub. Uma publicação é entregue a vários assinantes ao mesmo tempo — é o fan-out: um evento vira várias ações independentes (enviar e-mail, cobrar, atualizar estoque).
+
+Combinados, SNS e SQS cobrem a maior parte das arquiteturas distribuídas: o SNS distribui, e cada serviço processa a sua fila.
+
+## Eventos: EventBridge
+
+EventBridge é um barramento de eventos. Em vez de um serviço chamar o outro diretamente, ele publica um evento ("usuário cadastrado") no barramento. Quem se interessa por aquele evento reage.
+
+Isso deixa a arquitetura mais desacoplada: o emissor não conhece os receptores, e adicionar um novo consumidor não exige mudar quem emite.
+
+![Diagrama: arquitetura AWS heterogênea com clientes, adaptadores primários, domínio e adaptadores secundários](/img/diagramas/aws-arquitetura-evolucao.svg)
+
+**Regra prática:** precisa de resposta imediata? API Gateway. Precisa absorver pico ou desacoplar? SQS. Precisa avisar vários destinos? SNS. Precisa reagir a fatos do sistema? EventBridge.
+
+Próximo: [Segurança e custo](/aws/seguranca-e-custo).

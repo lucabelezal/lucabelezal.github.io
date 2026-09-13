@@ -663,6 +663,12 @@ code {
   color: var(--ifm-color-emphasis-600);
 }
 
+.railNote {
+  margin: 0.75rem 0 0;
+  font-size: 0.8rem;
+  color: var(--ifm-color-emphasis-600);
+}
+
 .railTags {
   display: flex;
   flex-wrap: wrap;

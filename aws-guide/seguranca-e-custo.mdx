@@ -1,0 +1,69 @@
+---
+title: Segurança e custo
+---
+
+Os dois assuntos que mais assustam quem começa: as permissões (IAM) e a fatura. Nenhum dos dois é opcional, e os dois aparecem na prova de Cloud Practitioner.
+
+## IAM: quem pode fazer o quê
+
+IAM (Identity and Access Management) é o sistema de permissões da AWS. Toda ação — criar um servidor, ler um objeto do S3, apagar um banco — passa por uma verificação de permissão.
+
+As peças:
+
+| Peça | O que é |
+|---|---|
+| **User** | uma identidade para uma pessoa (ou aplicação) |
+| **Group** | conjunto de usuários que compartilham permissões |
+| **Role** | identidade assumida temporariamente, usada por serviços |
+| **Policy** | documento JSON que permite ou nega ações |
+
+O princípio central é o **menor privilégio**: conceder só o necessário e nada além. Um serviço que só lê uma tabela não deve poder apagá-la.
+
+Duas regras que evitam a maioria dos incidentes:
+
+- Nunca coloque chave de acesso no código. O serviço assume uma *role* e recebe credenciais temporárias.
+- Ative MFA nas contas humanas.
+
+**Regra prática:** se um recurso precisa acessar outro, use uma role. Se uma pessoa precisa acessar o console, use um user com MFA e permissão mínima.
+
+## Responsabilidade compartilhada
+
+O modelo divide a segurança em duas partes:
+
+- **AWS — segurança *da* nuvem:** data centers, hardware, rede e a base dos serviços gerenciados.
+- **Você — segurança *na* nuvem:** dados, permissões, configuração e o que você sobe.
+
+Quanto mais você delega (Lambda, DynamoDB), mais a AWS assume. Quanto mais controla (EC2), mais sobra para você. É o mesmo [espectro de responsabilidade](/aws/mapa-mental#o-espectro-de-responsabilidade) aplicado à segurança.
+
+## Custo
+
+A cobrança é por uso, mas o uso tem modelos:
+
+| Modelo | Ideia |
+|---|---|
+| **On-demand** | paga pelo que usar, sem compromisso |
+| **Savings Plans / Reserved** | desconto por compromisso de uso de 1 a 3 anos |
+| **Spot** | capacidade ociosa com grande desconto, pode ser interrompida |
+
+O **Free Tier** cobre uma faixa inicial: certos recursos são grátis por 12 meses, outros para sempre (dentro de limites), e há testes curtos. É o que permite estudar sem gastar.
+
+Para não ser surpreendido:
+
+- **AWS Budgets** — alerta quando o gasto passa de um limite.
+- **Cost Explorer** — mostra onde o dinheiro está indo.
+- **Tags** — etiquetas nos recursos para saber o que gera cada custo.
+
+**Regra prática:** antes de subir qualquer coisa, configure um alerta de orçamento. O maior risco do iniciante não é o serviço caro, é o recurso esquecido ligado.
+
+## Suporte
+
+Os planos de suporte vão do gratuito ao empresarial:
+
+| Plano | Para quê |
+|---|---|
+| **Basic** | grátis: documentação, fóruns, Trusted Advisor básico |
+| **Developer** | suporte por e-mail em horário comercial |
+| **Business** | suporte 24/7, Trusted Advisor completo, resposta rápida |
+| **Enterprise** | gerente técnico dedicado (TAM) e SLA mais rígido |
+
+Próximo: [Cloud Practitioner](/aws/cloud-practitioner).

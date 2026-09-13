@@ -1,0 +1,73 @@
+---
+title: Mapa mental
+---
+
+A AWS tem mais de duzentos serviços. Tentar decorar o que cada um faz é o caminho mais lento. O que funciona é entender três grupos e onde cada serviço encaixa. Este é o mapa que o resto do guia detalha.
+
+## Nuvem em uma frase
+
+Nuvem é alugar computação, armazenamento e comunicação sob demanda, pagando pelo uso. Três propriedades definem o modelo:
+
+- **Sob demanda**: pedir o recurso e recebê-lo em minutos, sem comprar hardware.
+- **Elástico**: crescer no pico e encolher depois.
+- **Pay-as-you-go**: pagar por hora, segundo ou requisição, não por contrato fixo.
+
+"Ter um site hospedado em algum lugar" não basta. O que caracteriza a nuvem é provisionar infraestrutura de forma automatizada.
+
+## Por que os nomes confundem
+
+Quase todo serviço da AWS é uma sigla. Sem expandir, o nome não diz nada.
+
+| Sigla | Nome | O que é |
+|---|---|---|
+| EC2 | Elastic Compute Cloud | servidores (máquinas virtuais) |
+| ECS | Elastic Container Service | orquestrador de contêineres |
+| EKS | Elastic Kubernetes Service | Kubernetes gerenciado |
+| Lambda | — | funções sob demanda |
+| S3 | Simple Storage Service | armazenamento de objetos |
+| RDS | Relational Database Service | banco SQL gerenciado |
+| DynamoDB | — | banco NoSQL gerenciado |
+| SQS | Simple Queue Service | fila de mensagens |
+| SNS | Simple Notification Service | publicação/assinatura (pub/sub) |
+| IAM | Identity and Access Management | permissões |
+
+**Regra prática:** ao bater numa sigla desconhecida, expanda o nome antes de ler a documentação. O nome quase sempre revela a função.
+
+## Os três grupos
+
+Todo serviço central cai em um destes grupos:
+
+- **Computação** — onde o código executa. EC2, ECS, Fargate, Lambda, EKS.
+- **Dados e objetos** — onde a informação fica. RDS, Aurora, DynamoDB, S3.
+- **Comunicação** — como as peças conversam. API Gateway, SQS, SNS, EventBridge, ELB.
+
+![Diagrama: os três grupos de serviços AWS — computação, dados e objetos, comunicação](/img/diagramas/aws-mapa-grupos.svg)
+
+**Regra prática:** diante de um serviço novo, pergunte primeiro "é computação, dado ou comunicação?". Isso reduz duzentos nomes a três caixas.
+
+## O espectro de responsabilidade
+
+Os serviços de computação não são equivalentes. Eles formam um espectro de quanto você controla e quanto delega.
+
+- **EC2** — você controla o sistema operacional, o patch e o firewall. Controle total, responsabilidade total.
+- **ECS com Fargate** — você entrega a imagem do contêiner; a AWS cuida do servidor.
+- **Lambda** — você entrega só a função; a AWS decide onde e quando executar.
+
+![Diagrama: espectro de responsabilidade do EC2 ao Lambda](/img/diagramas/aws-espectro-responsabilidade.svg)
+
+Esse espectro é a base do **modelo de responsabilidade compartilhada**: a AWS responde pela segurança *da* nuvem (data centers, hardware, rede); você responde pela segurança *na* nuvem (dados, permissões, configuração). Quanto mais alto no espectro, mais a AWS assume.
+
+**Regra prática:** escolha o ponto do espectro pelo que você quer controlar. Precisa do sistema operacional? EC2. Só quer rodar código? Lambda.
+
+## As peças se misturam
+
+Não existe escolher um serviço para o projeto inteiro. A mesma API pode rotear um endpoint para uma função, outro para um contêiner e outro para um servidor. Os dados também podem morar em bancos diferentes conforme a necessidade.
+
+![Diagrama: arquitetura AWS heterogênea com clientes, adaptadores primários, domínio e adaptadores secundários](/img/diagramas/aws-arquitetura-evolucao.svg)
+
+O resto do guia detalha cada grupo:
+
+- [Computação](/aws/computacao) — onde o código roda.
+- [Dados e objetos](/aws/dados) — onde a informação fica.
+- [Comunicação](/aws/comunicacao) — como as peças conversam.
+- [Segurança e custo](/aws/seguranca-e-custo) — os temas que os tutoriais pulam.
