@@ -1,28 +1,23 @@
+# URLs finais: /tags/<chave> (tagsBasePath 'tags' no docusaurus.config.ts).
+# Sem permalink custom: evita colisão com a rota /go dos docs (go-by-example).
 engenharia-de-software:
   label: Engenharia de Software
-  permalink: /engenharia-de-software
   description: Aprendizados, práticas e reflexões sobre engenharia de software
 backend:
   label: Backend
-  permalink: /backend
   description: Backend, APIs, sistemas distribuídos
 ios:
   label: iOS
-  permalink: /ios
   description: Desenvolvimento iOS
 go:
   label: Go
-  permalink: /go
-  description: Go
+  description: Tudo que envolve Go — posts, exemplos e código
 arquitetura:
   label: Arquitetura
-  permalink: /arquitetura
   description: Arquitetura de software e system design
 banco-de-dados:
   label: Banco de dados
-  permalink: /banco-de-dados
   description: Bancos de dados, transações, índices
 sistemas-distribuidos:
   label: Sistemas distribuídos
-  permalink: /sistemas-distribuidos
   description: Filas, eventos, consistência

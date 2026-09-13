@@ -1,5 +1,6 @@
 [
   {
+    "kind": "blog",
     "slug": "go-testes-http",
     "title": "Testes de API HTTP em Go: handler, rotas, client e adapters",
     "date": "2026-09-14T11:00:00",
@@ -7,9 +8,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-testes-http"
   },
   {
+    "kind": "blog",
     "slug": "go-socket-ao-handler",
     "title": "Do socket ao handler: como um programa Go recebe algo da internet",
     "date": "2026-09-14T10:00:00",
@@ -17,9 +20,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-socket-ao-handler"
   },
   {
+    "kind": "blog",
     "slug": "go-http-api",
     "title": "API HTTP em Go: stdlib, middleware e JSON sem framework",
     "date": "2026-09-13T15:00:00",
@@ -28,9 +33,11 @@
       "go",
       "backend",
       "sistemas-distribuidos"
-    ]
+    ],
+    "url": "/go-http-api"
   },
   {
+    "kind": "blog",
     "slug": "go-testes",
     "title": "Testes em Go: tabela, -race e o que realmente validar",
     "date": "2026-09-13T14:00:00",
@@ -38,9 +45,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-testes"
   },
   {
+    "kind": "blog",
     "slug": "go-worker-pool",
     "title": "Worker pool em Go: fila, limite e desligamento limpo",
     "date": "2026-09-13T13:00:00",
@@ -49,9 +58,11 @@
       "go",
       "backend",
       "sistemas-distribuidos"
-    ]
+    ],
+    "url": "/go-worker-pool"
   },
   {
+    "kind": "blog",
     "slug": "go-defer-panic",
     "title": "Defer, panic e recover em Go: LIFO, argumentos e a regra",
     "date": "2026-09-13T12:00:00",
@@ -59,9 +70,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-defer-panic"
   },
   {
+    "kind": "blog",
     "slug": "go-sync-map",
     "title": "sync.Map em Go: quando o mapa precisa de cadeado embutido",
     "date": "2026-09-13T11:00:00",
@@ -70,9 +83,11 @@
       "go",
       "backend",
       "sistemas-distribuidos"
-    ]
+    ],
+    "url": "/go-sync-map"
   },
   {
+    "kind": "blog",
     "slug": "cap-pacelc",
     "title": "CAP e PACELC na prática: P é pré-requisito, o resto é decisão",
     "date": "2026-09-13T09:00:00",
@@ -81,9 +96,11 @@
       "go",
       "sistemas-distribuidos",
       "backend"
-    ]
+    ],
+    "url": "/cap-pacelc"
   },
   {
+    "kind": "blog",
     "slug": "go-generics",
     "title": "Generics em Go: constraints, type sets e código produção",
     "date": "2026-09-12T23:55:00",
@@ -91,9 +108,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-generics"
   },
   {
+    "kind": "blog",
     "slug": "go-erros-logs",
     "title": "Erros e logs em Go: embrulhar com %w, logar estruturado",
     "date": "2026-09-12T23:45:00",
@@ -101,9 +120,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-erros-logs"
   },
   {
+    "kind": "blog",
     "slug": "go-concorrencia",
     "title": "Concorrência em Go: goroutines, channels e o detector de race",
     "date": "2026-09-12T23:30:00",
@@ -112,9 +133,11 @@
       "go",
       "backend",
       "sistemas-distribuidos"
-    ]
+    ],
+    "url": "/go-concorrencia"
   },
   {
+    "kind": "blog",
     "slug": "go-maps",
     "title": "Maps em Go: Swiss Tables por dentro",
     "date": "2026-09-12T23:00:00",
@@ -122,9 +145,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-maps"
   },
   {
+    "kind": "blog",
     "slug": "go-slices",
     "title": "Slices em Go: o ponteiro que você não vê",
     "date": "2026-09-12T22:00:00",
@@ -132,9 +157,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-slices"
   },
   {
+    "kind": "blog",
     "slug": "go-interfaces",
     "title": "Interfaces em Go: comportamento sem herança",
     "date": "2026-09-12T20:00:00",
@@ -142,9 +169,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-interfaces"
   },
   {
+    "kind": "blog",
     "slug": "go-visibilidade-pacotes",
     "title": "Visibilidade e packages em Go: maiúscula, pacotes e callbacks",
     "date": "2026-09-12T18:00:00",
@@ -152,9 +181,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-visibilidade-pacotes"
   },
   {
+    "kind": "blog",
     "slug": "go-structs-methods",
     "title": "Structs e methods em Go: valores agrupados, receivers e composição",
     "date": "2026-09-12T14:00:00",
@@ -162,9 +193,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-structs-methods"
   },
   {
+    "kind": "blog",
     "slug": "go-ponteiros",
     "title": "Ponteiros em Go: valores, endereços e memória",
     "date": "2026-09-12T10:00:00",
@@ -172,9 +205,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-ponteiros"
   },
   {
+    "kind": "blog",
     "slug": "go-error-handling",
     "title": "Error handling em Go: quando o if err != nil é decisão e quando vira ruído",
     "date": "2026-09-06T15:30:00",
@@ -182,9 +217,11 @@
     "tags": [
       "go",
       "backend"
-    ]
+    ],
+    "url": "/go-error-handling"
   },
   {
+    "kind": "blog",
     "slug": "swift-para-go",
     "title": "De Swift para Go: o guia para quem domina Swift",
     "date": "2026-09-06T13:09:00",
@@ -193,9 +230,11 @@
       "go",
       "ios",
       "engenharia-de-software"
-    ]
+    ],
+    "url": "/swift-para-go"
   },
   {
+    "kind": "blog",
     "slug": "go-style-guides",
     "title": "Guia dos guias de estilo do Go: Effective Go, Google e Uber",
     "date": "2026-09-06T12:37:00",
@@ -203,9 +242,11 @@
     "tags": [
       "go",
       "engenharia-de-software"
-    ]
+    ],
+    "url": "/go-style-guides"
   },
   {
+    "kind": "blog",
     "slug": "go-1-27-novidades",
     "title": "Go 1.27: novidades que importam para backend",
     "date": "2026-09-05T19:28:00",
@@ -214,15 +255,1041 @@
       "go",
       "backend",
       "engenharia-de-software"
-    ]
+    ],
+    "url": "/go-1-27-novidades"
   },
   {
+    "kind": "blog",
     "slug": "ola-mundo",
     "title": "Olá, mundo",
     "date": "2026-09-05T10:53:00",
     "description": "",
     "tags": [
       "engenharia-de-software"
-    ]
+    ],
+    "url": "/ola-mundo"
+  },
+  {
+    "kind": "go",
+    "slug": "go",
+    "title": "Go",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go"
+  },
+  {
+    "kind": "go",
+    "slug": "hello-world",
+    "title": "Olá Mundo",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/hello-world"
+  },
+  {
+    "kind": "go",
+    "slug": "values",
+    "title": "Valores",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/values"
+  },
+  {
+    "kind": "go",
+    "slug": "variables",
+    "title": "Variáveis",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/variables"
+  },
+  {
+    "kind": "go",
+    "slug": "constants",
+    "title": "Constantes",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/constants"
+  },
+  {
+    "kind": "go",
+    "slug": "for",
+    "title": "Laços For",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/for"
+  },
+  {
+    "kind": "go",
+    "slug": "if-else",
+    "title": "If/Else",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/if-else"
+  },
+  {
+    "kind": "go",
+    "slug": "switch",
+    "title": "Switch",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/switch"
+  },
+  {
+    "kind": "go",
+    "slug": "arrays",
+    "title": "Arrays",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/arrays"
+  },
+  {
+    "kind": "go",
+    "slug": "slices",
+    "title": "Slices",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/slices"
+  },
+  {
+    "kind": "go",
+    "slug": "maps",
+    "title": "Maps",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/maps"
+  },
+  {
+    "kind": "go",
+    "slug": "functions",
+    "title": "Funções",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/functions"
+  },
+  {
+    "kind": "go",
+    "slug": "multiple-return-values",
+    "title": "Múltiplos Retornos",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/multiple-return-values"
+  },
+  {
+    "kind": "go",
+    "slug": "variadic-functions",
+    "title": "Funções Variádicas",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/variadic-functions"
+  },
+  {
+    "kind": "go",
+    "slug": "closures",
+    "title": "Closures",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/closures"
+  },
+  {
+    "kind": "go",
+    "slug": "recursion",
+    "title": "Recursão",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/recursion"
+  },
+  {
+    "kind": "go",
+    "slug": "range-over-built-in-types",
+    "title": "Range sobre Tipos Embutidos",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/range-over-built-in-types"
+  },
+  {
+    "kind": "go",
+    "slug": "pointers",
+    "title": "Ponteiros",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/pointers"
+  },
+  {
+    "kind": "go",
+    "slug": "strings-and-runes",
+    "title": "Strings e Runes",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/strings-and-runes"
+  },
+  {
+    "kind": "go",
+    "slug": "structs",
+    "title": "Structs",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/structs"
+  },
+  {
+    "kind": "go",
+    "slug": "methods",
+    "title": "Métodos",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/methods"
+  },
+  {
+    "kind": "go",
+    "slug": "interfaces",
+    "title": "Interfaces",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/interfaces"
+  },
+  {
+    "kind": "go",
+    "slug": "enums",
+    "title": "Enums",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/enums"
+  },
+  {
+    "kind": "go",
+    "slug": "struct-embedding",
+    "title": "Composição de Structs",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/struct-embedding"
+  },
+  {
+    "kind": "go",
+    "slug": "generics",
+    "title": "Generics",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/generics"
+  },
+  {
+    "kind": "go",
+    "slug": "range-over-iterators",
+    "title": "Range sobre Iteradores",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/range-over-iterators"
+  },
+  {
+    "kind": "go",
+    "slug": "errors",
+    "title": "Erros",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/errors"
+  },
+  {
+    "kind": "go",
+    "slug": "custom-errors",
+    "title": "Erros Customizados",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/custom-errors"
+  },
+  {
+    "kind": "go",
+    "slug": "visibility-and-packages",
+    "title": "Visibilidade e Packages",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/visibility-and-packages"
+  },
+  {
+    "kind": "go",
+    "slug": "goroutines",
+    "title": "Goroutines",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/goroutines"
+  },
+  {
+    "kind": "go",
+    "slug": "goroutine-lifecycle",
+    "title": "Ciclo de Vida de Goroutines",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/goroutine-lifecycle"
+  },
+  {
+    "kind": "go",
+    "slug": "channels",
+    "title": "Channels",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/channels"
+  },
+  {
+    "kind": "go",
+    "slug": "channel-buffering",
+    "title": "Buffer de Channels",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/channel-buffering"
+  },
+  {
+    "kind": "go",
+    "slug": "channel-synchronization",
+    "title": "Sincronização com Channels",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/channel-synchronization"
+  },
+  {
+    "kind": "go",
+    "slug": "channel-directions",
+    "title": "Direção de Channels",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/channel-directions"
+  },
+  {
+    "kind": "go",
+    "slug": "select",
+    "title": "Select",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/select"
+  },
+  {
+    "kind": "go",
+    "slug": "timeouts",
+    "title": "Timeouts",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/timeouts"
+  },
+  {
+    "kind": "go",
+    "slug": "non-blocking-channel-operations",
+    "title": "Operações Não-Bloqueantes em Channels",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/non-blocking-channel-operations"
+  },
+  {
+    "kind": "go",
+    "slug": "closing-channels",
+    "title": "Fechando Channels",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/closing-channels"
+  },
+  {
+    "kind": "go",
+    "slug": "range-over-channels",
+    "title": "Range sobre Channels",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/range-over-channels"
+  },
+  {
+    "kind": "go",
+    "slug": "timers",
+    "title": "Timers",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/timers"
+  },
+  {
+    "kind": "go",
+    "slug": "tickers",
+    "title": "Tickers",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/tickers"
+  },
+  {
+    "kind": "go",
+    "slug": "worker-pools",
+    "title": "Worker Pools",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/worker-pools"
+  },
+  {
+    "kind": "go",
+    "slug": "waitgroups",
+    "title": "WaitGroups",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/waitgroups"
+  },
+  {
+    "kind": "go",
+    "slug": "rate-limiting",
+    "title": "Rate Limiting",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/rate-limiting"
+  },
+  {
+    "kind": "go",
+    "slug": "atomic-counters",
+    "title": "Contadores Atômicos",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/atomic-counters"
+  },
+  {
+    "kind": "go",
+    "slug": "mutexes",
+    "title": "Mutexes",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/mutexes"
+  },
+  {
+    "kind": "go",
+    "slug": "stateful-goroutines",
+    "title": "Goroutines com Estado",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/stateful-goroutines"
+  },
+  {
+    "kind": "go",
+    "slug": "sorting",
+    "title": "Ordenação",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/sorting"
+  },
+  {
+    "kind": "go",
+    "slug": "sorting-by-functions",
+    "title": "Ordenação com Funções",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/sorting-by-functions"
+  },
+  {
+    "kind": "go",
+    "slug": "panic",
+    "title": "Panic",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/panic"
+  },
+  {
+    "kind": "go",
+    "slug": "defer",
+    "title": "Defer",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/defer"
+  },
+  {
+    "kind": "go",
+    "slug": "recover",
+    "title": "Recover",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/recover"
+  },
+  {
+    "kind": "go",
+    "slug": "string-functions",
+    "title": "Funções de Strings",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/string-functions"
+  },
+  {
+    "kind": "go",
+    "slug": "string-formatting",
+    "title": "Formatação de Strings",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/string-formatting"
+  },
+  {
+    "kind": "go",
+    "slug": "text-templates",
+    "title": "Templates de Texto",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/text-templates"
+  },
+  {
+    "kind": "go",
+    "slug": "regular-expressions",
+    "title": "Expressões Regulares",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/regular-expressions"
+  },
+  {
+    "kind": "go",
+    "slug": "json",
+    "title": "JSON",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/json"
+  },
+  {
+    "kind": "go",
+    "slug": "xml",
+    "title": "XML",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/xml"
+  },
+  {
+    "kind": "go",
+    "slug": "time",
+    "title": "Time",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/time"
+  },
+  {
+    "kind": "go",
+    "slug": "epoch",
+    "title": "Epoch",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/epoch"
+  },
+  {
+    "kind": "go",
+    "slug": "time-formatting-parsing",
+    "title": "Formatação e Parsing de Datas",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/time-formatting-parsing"
+  },
+  {
+    "kind": "go",
+    "slug": "random-numbers",
+    "title": "Números Aleatórios",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/random-numbers"
+  },
+  {
+    "kind": "go",
+    "slug": "number-parsing",
+    "title": "Parsing de Números",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/number-parsing"
+  },
+  {
+    "kind": "go",
+    "slug": "url-parsing",
+    "title": "Parsing de URLs",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/url-parsing"
+  },
+  {
+    "kind": "go",
+    "slug": "sha256-hashes",
+    "title": "Hashes SHA256",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/sha256-hashes"
+  },
+  {
+    "kind": "go",
+    "slug": "base64-encoding",
+    "title": "Codificação Base64",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/base64-encoding"
+  },
+  {
+    "kind": "go",
+    "slug": "reading-files",
+    "title": "Lendo Arquivos",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/reading-files"
+  },
+  {
+    "kind": "go",
+    "slug": "writing-files",
+    "title": "Escrevendo Arquivos",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/writing-files"
+  },
+  {
+    "kind": "go",
+    "slug": "line-filters",
+    "title": "Filtros de Linha",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/line-filters"
+  },
+  {
+    "kind": "go",
+    "slug": "file-paths",
+    "title": "Caminhos de Arquivos",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/file-paths"
+  },
+  {
+    "kind": "go",
+    "slug": "directories",
+    "title": "Diretórios",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/directories"
+  },
+  {
+    "kind": "go",
+    "slug": "temporary-files-and-directories",
+    "title": "Arquivos e Diretórios Temporários",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/temporary-files-and-directories"
+  },
+  {
+    "kind": "go",
+    "slug": "embed-directive",
+    "title": "Diretiva Embed",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/embed-directive"
+  },
+  {
+    "kind": "go",
+    "slug": "testing-and-benchmarking",
+    "title": "Testes e Benchmarks",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/testing-and-benchmarking"
+  },
+  {
+    "kind": "go",
+    "slug": "unit-testing",
+    "title": "Testes Unitários",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/unit-testing"
+  },
+  {
+    "kind": "go",
+    "slug": "command-line-arguments",
+    "title": "Argumentos de Linha de Comando",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/command-line-arguments"
+  },
+  {
+    "kind": "go",
+    "slug": "command-line-flags",
+    "title": "Flags de Linha de Comando",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/command-line-flags"
+  },
+  {
+    "kind": "go",
+    "slug": "command-line-subcommands",
+    "title": "Subcomandos de Linha de Comando",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/command-line-subcommands"
+  },
+  {
+    "kind": "go",
+    "slug": "environment-variables",
+    "title": "Variáveis de Ambiente",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/environment-variables"
+  },
+  {
+    "kind": "go",
+    "slug": "logging",
+    "title": "Logging",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/logging"
+  },
+  {
+    "kind": "go",
+    "slug": "http-client",
+    "title": "Cliente HTTP",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/http-client"
+  },
+  {
+    "kind": "go",
+    "slug": "http-server",
+    "title": "Servidor HTTP",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/http-server"
+  },
+  {
+    "kind": "go",
+    "slug": "tcp-server",
+    "title": "Servidor TCP",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/tcp-server"
+  },
+  {
+    "kind": "go",
+    "slug": "context",
+    "title": "Context",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/context"
+  },
+  {
+    "kind": "go",
+    "slug": "context-cancellation",
+    "title": "Context e Cancelamento",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/context-cancellation"
+  },
+  {
+    "kind": "go",
+    "slug": "spawning-processes",
+    "title": "Criando Processos",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/spawning-processes"
+  },
+  {
+    "kind": "go",
+    "slug": "execing-processes",
+    "title": "Exec",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/execing-processes"
+  },
+  {
+    "kind": "go",
+    "slug": "signals",
+    "title": "Sinais",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/signals"
+  },
+  {
+    "kind": "go",
+    "slug": "exit",
+    "title": "Exit",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/exit"
+  },
+  {
+    "kind": "go",
+    "slug": "roadmap",
+    "title": "Go Backend Roadmap",
+    "date": null,
+    "description": "Uma jornada de aprendizado de Go e backend para quem vem de iOS e Swift.",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/roadmap"
+  },
+  {
+    "kind": "go",
+    "slug": "scrollycoding-demo",
+    "title": "Demo: Scrollycoding (Code Hike style)",
+    "date": null,
+    "description": "",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/scrollycoding-demo"
+  },
+  {
+    "kind": "go",
+    "slug": "style-guide",
+    "title": "Style Guide Go",
+    "date": null,
+    "description": "O melhor de Effective Go, Google e Uber em um guia — decisões por manutenção e legibilidade.",
+    "tags": [
+      "go"
+    ],
+    "url": "/go/style-guide"
   }
 ]

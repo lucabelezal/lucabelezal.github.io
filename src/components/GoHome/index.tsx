@@ -2,7 +2,15 @@ import Link from '@docusaurus/Link';
 import allPosts from '@site/src/data/all-posts.json';
 import styles from './styles.module.css';
 
-type Post = {slug: string; title: string; date: string; description: string; tags: string[]};
+type Post = {
+  kind: 'blog' | 'go';
+  slug: string;
+  title: string;
+  date: string | null;
+  description: string;
+  tags: string[];
+  url: string;
+};
 
 // Páginas docs (fora do blog) que também pertencem à área Go.
 const docsExtras = [
@@ -35,12 +43,12 @@ function fmtData(iso: string): string {
 
 const contents = [
   ...(allPosts as Post[])
-    .filter((p) => p.tags.includes('go'))
+    .filter((p) => p.kind === 'blog' && p.tags.includes('go') && p.date)
     .map((p) => ({
       title: p.title,
       description: p.description,
-      href: `/${p.slug}`,
-      date: fmtData(p.date),
+      href: p.url,
+      date: fmtData(p.date as string),
     })),
   ...docsExtras,
 ];

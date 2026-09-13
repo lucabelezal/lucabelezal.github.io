@@ -44,6 +44,8 @@ const config: Config = {
         },
         blog: {
           routeBasePath: '/',
+          // Páginas de tag em /tags/<tag>; nunca colide com a rota /go dos docs.
+          tagsBasePath: 'tags',
           showReadingTime: true,
           blogSidebarCount: 0,
           feedOptions: {
