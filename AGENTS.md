@@ -17,6 +17,7 @@ Carregue a skill certa antes de agir. Fonte canônica: `skills/` → sync para `
 |---|---|---|
 | Analisar screenshot/Figma/URL e transformar em spec implementável | `code-blog-ui` | `skills/code-blog-ui/SKILL.md` |
 | Criar/editar post técnico, aplicar esqueleto editorial, revisar estrutura | `code-blog-content` | `skills/code-blog-content/SKILL.md` |
+| Gerar gráfico SVG de dados do post (benchmark, latência, antes/depois) | `code-blog-chart` | `skills/code-blog-chart/SKILL.md` |
 | Escrever conteúdo didático estilo professor/Elemar (formato aula, capítulo técnico, texto corrido → aula, qualquer tema) | `didactic-writing` | `skills/didactic-writing/SKILL.md` |
 | Implementar spec em Docusaurus/React/TS (tokens, layout, componente) | `code-blog-docusaurus` | `skills/code-blog-docusaurus/SKILL.md` |
 | Frontend genérico (design system, blueprint, audit) | `frontend-design`, `frontend-blueprint`, `web-design-guidelines`, `web-quality-audit`, `perf-web-optimization` | `.claude/skills/` |
@@ -50,6 +51,7 @@ Harness: muitas skills no projeto (~67). AGENTS.md é roteador leve; detalhes fi
 ## Regras de escrita
 
 - Idioma canônico: **pt-BR**. Posts novos nascem em `blog/`.
+- Voz do autor: perfil medido + regras em `.ai/voice.md` (revise contra ele).
 - Voz: engenheiro sênior explicando algo de que gosta — técnico, direto,
   específico. Sem floreios, sem "prosa roxa", sem jargão de marketing.
 - Sempre adicione `{/* truncate */}` após a introdução (arquivos `.mdx`).

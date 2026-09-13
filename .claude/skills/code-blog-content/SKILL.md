@@ -141,6 +141,21 @@ Template canônico em `.ai/templates/blog-post.mdx`.
 - Sem "prosa roxa", sem marketing, sem jargão
 - Humor só se servir ao conteúdo (máx. 1 piada/post)
 
+## Referências de qualidade
+
+Carregue só a que a tarefa pede (todas em `references/`):
+
+| Arquivo | Quando usar |
+|---|---|
+| `references/templates.md` | Escolher o formato (tutorial, conceito, comparação, dados, explicador) |
+| `references/eeat.md` | Autoria, fonte, evidência de primeira mão, confiança |
+| `references/links-internos.md` | Densidade de links, âncora, órfão, trilha hub-and-spoke |
+| `references/anti-slop.md` | Revisão de muletas e repetição estrutural (dois níveis) |
+| `references/carga-cognitiva.md` | Post longo: checar conceitos/números/jargão por seção |
+
+Todas adaptadas de `claude-blog` (MIT, AgriciDaniel/claude-blog) para pt-BR e
+para este blog. Ver `references/`.
+
 ## Código
 
 - Fonte JetBrains Mono (tema `src/css/custom.css:2`), highlight Prism `github` light / `oneDark` dark (`docusaurus.config.ts:91`)
