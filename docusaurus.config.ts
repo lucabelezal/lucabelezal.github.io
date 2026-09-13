@@ -77,14 +77,14 @@ const config: Config = {
       title: 'Lucas Nascimento',
       items: [
         {
-          to: '/go',
-          position: 'left',
-          label: 'Go',
-        },
-        {
           to: '/posts',
           position: 'left',
           label: 'Posts',
+        },
+        {
+          to: '/go',
+          position: 'left',
+          label: 'Go',
         },
         {
           type: 'localeDropdown',
