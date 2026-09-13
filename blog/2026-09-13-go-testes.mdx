@@ -13,7 +13,7 @@ import Summary from '@site/src/components/blog/Summary';
 import NextSteps from '@site/src/components/blog/NextSteps';
 import SkillsGained from '@site/src/components/blog/SkillsGained';
 
-Teste bom em Go é tabela + subtest + `-race`: casos como dados, cada um nomeado e isolado, detector ligado. Este post fecha o ciclo com [erros](/go-erros-logs) e [concorrência](/go-concorrencia): o que validar além do caminho feliz — redaction, vazamento de goroutine, condição de corrida.
+Teste bom em Go é tabela + subtest + `-race`: casos como dados, cada um nomeado e isolado, detector ligado. Vamos evoluir nessa ordem — da função repetida à tabela, da tabela ao subtest paralelo, do verde falso ao `-race` que acusa — e fechar com o que validar além do caminho feliz: redaction, vazamento de goroutine, condição de corrida.
 
 Post avulso. Saídas reais, Go 1.26.
 
@@ -21,10 +21,12 @@ Post avulso. Saídas reais, Go 1.26.
 
 <WhatYouWillLearn>
 
-- testes de tabela: casos como struct, subtests com `t.Run`
-- `-race` e `-v`: o que cada flag revela
-- testar redaction e campos obrigatórios de log
-- detectar leak com `NumGoroutine` antes/depois
+- testes de tabela: do copia-e-cola ao slice de structs
+- subtests com `t.Run`: nome como documentação, `-run` para isolar
+- `t.Parallel`: quando paralelizar e a armadilha do loop
+- slice vs map: ordem aleatória que pega dependência escondida
+- `-race`: saída real de um data race e o fix
+- validar observável: redaction no log, `NumGoroutine` sem leak
 - o que NÃO testar (implementação, terceiros, framework)
 
 </WhatYouWillLearn>
@@ -40,13 +42,26 @@ Post avulso. Saídas reais, Go 1.26.
 
 `go test` roda arquivos `*_test.go`, com cache por padrão e `-count=1` para forçar. Convenção: função `TestXxx(t *testing.T)`, `t.Fatalf` para falhar com mensagem, `t.Run` para subtests. Tabela = slice de structs `{name, in, want}`: adicionar caso é adicionar linha, sem nova função.
 
+Comandos que vamos usar:
+
+```bash title="Terminal"
+$ go test ./...                  # tudo, com cache
+$ go test -count=1 -v ./...      # tudo, sem cache, verboso
+$ go test -run 'TestSum/um' ./... # só um subtest, para debugar
+$ go test -race -count=1 ./...   # o comando do CI: sem cache, com detector
+```
+
 ## 2. O problema
 
-Teste "exemplo único" apodrece: cobre o caminho feliz, esconde bordas (vazio, nil, zero), e quando quebra ninguém sabe qual caso. Pior: concorrência sem `-race` passa verde com race escondido — o detector existe justamente porque olho humano não pega intercalação.
+Teste "exemplo único" apodrece: cobre o caminho feliz, esconde bordas (vazio, nil, zero), e quando quebra ninguém sabe qual caso. A saída clássica é copiar a função e trocar os valores — três funções quase iguais, cada uma com seu `t.Errorf("test failed")` que não diz nada. Pior: concorrência sem `-race` passa verde com race escondido — o detector existe justamente porque olho humano não pega intercalação.
 
 ## 3. Modelo mental
 
 **Caso é dado, não código.** Tabela separa *o quê* (linhas) do *como* (runner). Nome do caso vira documentação executável (`TestSum/vazio`).
+
+**Subtest isola.** `t.Run(name, ...)` transforma cada linha em teste endereçável: `-run` roda um só, o debugger para num só, a falha mostra o nome.
+
+**Ordem aleatória pega dependência.** Tabela em map roda em ordem indefinida — se um caso depende do anterior, quebra de forma intermitente e revela estado global vazando.
 
 **`-race` instrumenta, não adivinha.** Rastreia acessos entre goroutines em runtime; custa ~10x — por isso vive no CI, não em produção.
 
@@ -58,7 +73,57 @@ Teste "exemplo único" apodrece: cobre o caminho feliz, esconde bordas (vazio, n
 
 ## 4. Implementação
 
-```go title="sum_test.go" showLineNumbers
+Função sob teste, a mesma do passo 1 ao 3:
+
+```go title="sum.go" showLineNumbers
+package tdd
+
+func Sum(ns []int) int {
+	total := 0
+	for _, n := range ns {
+		total += n
+	}
+	return total
+}
+```
+
+### 4.1 Passo 1 — o copia-e-cola que dói
+
+```go title="sum_test.go (passo 1)" showLineNumbers
+package tdd
+
+import "testing"
+
+func TestSumVazio(t *testing.T) {
+	if got := Sum(nil); got != 0 {
+		t.Errorf("test failed")
+	}
+}
+
+func TestSumUm(t *testing.T) {
+	if got := Sum([]int{5}); got != 5 {
+		t.Errorf("test failed")
+	}
+}
+
+func TestSumVarios(t *testing.T) {
+	if got := Sum([]int{1, 2, 3}); got != 6 {
+		t.Errorf("test failed")
+	}
+}
+```
+
+Três dores concretas: cada caso novo exige função nova com nome novo; `"test failed"` não diz qual entrada, qual saída, qual esperado; o corpo é igual nos três — o que muda (entrada, esperado) está afogado no boilerplate.
+
+### 4.2 Passo 2 — tabela + subtest
+
+Extraia o que varia para dados. Arquivo inteiro — substitui o passo 1:
+
+```go title="sum_test.go (passo 2)" showLineNumbers
+package tdd
+
+import "testing"
+
 func TestSum(t *testing.T) {
 	tests := []struct {
 		name string
@@ -68,6 +133,7 @@ func TestSum(t *testing.T) {
 		{"vazio", nil, 0},
 		{"um", []int{5}, 5},
 		{"varios", []int{1, 2, 3}, 6},
+		{"negativos", []int{-1, -2, 3}, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -79,28 +145,270 @@ func TestSum(t *testing.T) {
 }
 ```
 
+Duas decisões que parecem detalhe e são o essencial:
+
+1. **Campo `name`.** Sem ele, a falha mostra índice (`test 4`) e você conta chaves para achar o caso. Com ele, a falha mostra `TestSum/negativos` — pesquisável, legível.
+2. **`t.Run` em vez de `t.Fatalf` no loop.** `Fatalf` direto no `for` para no primeiro caso quebrado e esconde os demais. Cada subtest é uma função: falha um, os outros rodam, e você vê se é um caso ou todos.
+
 ```bash title="Terminal"
+$ go test -v -count=1 .
 === RUN   TestSum
 === RUN   TestSum/vazio
 === RUN   TestSum/um
 === RUN   TestSum/varios
+=== RUN   TestSum/negativos
 --- PASS: TestSum (0.00s)
     --- PASS: TestSum/vazio (0.00s)
     --- PASS: TestSum/um (0.00s)
     --- PASS: TestSum/varios (0.00s)
+    --- PASS: TestSum/negativos (0.00s)
 PASS
-ok  	tdd	1.396s
+ok  	tdd	0.392s
 ```
 
-Comando completo do CI: `go test -race -count=1 ./...` — sem cache, com detector, em tudo. Para logs: handler em `bytes.Buffer` + `json.Unmarshal` afirmando `order_id` e `[REDACTED]` (padrão do post de erros). Para leaks: `runtime.NumGoroutine()` antes/depois do cenário (padrão do post de concorrência: 1 → 1).
+E o ganho que só aparece no dia do debug — isolar um caso:
+
+```bash title="Terminal"
+$ go test -v -count=1 -run 'TestSum/um' .
+=== RUN   TestSum
+=== RUN   TestSum/um
+--- PASS: TestSum (0.00s)
+    --- PASS: TestSum/um (0.00s)
+PASS
+ok  	tdd	0.248s
+```
+
+Breakpoint ou `printf` disparam só no caso suspeito, não nos 33 anteriores.
+
+### 4.3 Passo 3 — paralelo sem tiro no pé
+
+Subtests podem rodar em paralelo — basta `t.Parallel()` dentro de cada um:
+
+```go title="sum_test.go (passo 3, diff do loop)" showLineNumbers
+for _, tt := range tests {
+	tt := tt // rebinda no escopo do loop
+	t.Run(tt.name, func(t *testing.T) {
+		t.Parallel() // cada caso numa goroutine
+		if got := Sum(tt.in); got != tt.want {
+			t.Fatalf("Sum(%v) = %d, want %d", tt.in, got, tt.want)
+		}
+	})
+}
+```
+
+A armadilha: `t.Parallel()` pausa o subtest e o agenda numa goroutine — quando ela roda, o `for` já andou e `tt` vale outro caso. Sem o rebinda, todos os casos testam a última linha (e passam verdes, o pior tipo de falso-positivo).
+
+**Nota de versão.** Desde Go 1.22 a variável do `for` já é por iteração — o rebinda `tt := tt` é redundante neste post (Go 1.26), mas inofensivo. Se seu CI ainda compila com Go \< 1.22, ele é obrigatório, não estilo.
+
+**Slice ou map?** Slice preserva ordem e aceita `-run` por nome igual. Map (`map[string]struct{...}` com o nome na chave) embaralha a ordem a cada execução — de graça, você ganha um detector de dependência entre casos: se a suíte fica flaky no map, algum caso lê estado que outro escreveu. Regra: slice por padrão; map quando desconfiar de acoplamento.
+
+### 4.4 Passo 4 — `-race` pegando um race de verdade
+
+Teste que passa verde e mente. Contador sem mutex, 100 goroutines:
+
+```go title="counter.go (COM BUG, para ver o detector acusar)" showLineNumbers
+package tdd
+
+type Counter struct {
+	n int
+}
+
+func (c *Counter) Inc() { c.n++ }
+
+func (c *Counter) N() int { return c.n }
+```
+
+```go title="counter_test.go" showLineNumbers
+package tdd
+
+import (
+	"sync"
+	"testing"
+)
+
+func TestCounter(t *testing.T) {
+	var c Counter
+	var wg sync.WaitGroup
+	for range 100 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			c.Inc()
+		}()
+	}
+	wg.Wait()
+	if got := c.N(); got != 100 {
+		t.Fatalf("N() = %d, want 100", got)
+	}
+}
+```
+
+Sem `-race`, esse teste às vezes passa — a intercalação que corrompe nem sempre acontece. Com `-race`, a instrumentação acusa sempre:
+
+```bash title="Terminal"
+$ go test -race -count=1 -run TestCounter .
+WARNING: DATA RACE
+WARNING: DATA RACE
+--- FAIL: TestCounter (0.00s)
+FAIL
+FAIL	tdd	0.406s
+```
+
+O fix é o mutex do post de [concorrência](/go-concorrencia) — e o mesmo comando vira verde:
+
+```go title="counter.go (corrigido)" showLineNumbers
+package tdd
+
+import "sync"
+
+type Counter struct {
+	mu sync.Mutex
+	n  int
+}
+
+func (c *Counter) Inc() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.n++
+}
+
+func (c *Counter) N() int {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.n
+}
+```
+
+```bash title="Terminal"
+$ go test -race -count=1 ./...
+ok  	tdd	1.272s
+```
+
+Por isso o comando do CI é `go test -race -count=1 ./...`: sem cache (para não herdar verde velho), com detector (para não herdar race novo), em tudo. Custa ~10x de CPU — barato no CI, impensável em produção.
+
+### 4.5 Passo 5 — o que realmente validar
+
+Contrato, não implementação. Dois exemplos que o caminho feliz nunca cobre.
+
+**Redaction: o cartão nunca sai cru.** Tabela para a função pura + asserção no JSON do log:
+
+```go title="mask.go" showLineNumbers
+package tdd
+
+// MaskCard devolve só os 4 últimos dígitos; o resto nunca sai do processo.
+func MaskCard(card string) string {
+	d := ""
+	for _, r := range card {
+		if r >= '0' && r <= '9' {
+			d += string(r)
+		}
+	}
+	if len(d) <= 4 {
+		return "[REDACTED]"
+	}
+	return "[REDACTED]-" + d[len(d)-4:]
+}
+```
+
+```go title="mask_test.go" showLineNumbers
+package tdd
+
+import (
+	"encoding/json"
+	"log/slog"
+	"strings"
+	"testing"
+)
+
+func TestMaskCard(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"visa", "4111 1111 1111 1111", "[REDACTED]-1111"},
+		{"curto", "123", "[REDACTED]"},
+		{"vazio", "", "[REDACTED]"},
+		{"com-mascara", "4111-1111-1111-1111", "[REDACTED]-1111"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := MaskCard(tt.in)
+			if got != tt.want {
+				t.Fatalf("MaskCard(%q) = %q, want %q", tt.in, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLogNaoVazaCartao(t *testing.T) {
+	var buf strings.Builder
+	log := slog.New(slog.NewJSONHandler(&buf, nil))
+	card := "4111 1111 1111 1111"
+	log.Info("pagamento", slog.String("order_id", "o-1"), slog.String("card", MaskCard(card)))
+	var m map[string]string
+	if err := json.Unmarshal([]byte(buf.String()), &m); err != nil {
+		t.Fatal(err)
+	}
+	if m["card"] != "[REDACTED]-1111" {
+		t.Fatalf("card = %q", m["card"])
+	}
+	if strings.Contains(buf.String(), "4111 1111") {
+		t.Fatalf("cartão cru no log: %s", buf.String())
+	}
+}
+```
+
+O segundo teste é o que importa: não testa a função, testa a saída — o log serializado não contém o número. Redaction afirmada no log, não na intenção (padrão do post de [erros](/go-erros-logs)).
+
+**Leak: goroutine que nasce, morre.** `NumGoroutine` antes e depois, com prazo em vez de `Sleep` fixo:
+
+```go title="worker_test.go" showLineNumbers
+package tdd
+
+import (
+	"runtime"
+	"testing"
+	"time"
+)
+
+func TestWorkerNaoVaza(t *testing.T) {
+	antes := runtime.NumGoroutine()
+	w := NewWorker()
+	w.Stop()
+	prazo := time.Now().Add(2 * time.Second)
+	for runtime.NumGoroutine() > antes && time.Now().Before(prazo) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	if got := runtime.NumGoroutine(); got != antes {
+		t.Fatalf("goroutines: antes %d, depois %d", antes, got)
+	}
+}
+```
+
+```bash title="Terminal"
+$ go test -v -count=1 -run TestWorkerNaoVaza .
+=== RUN   TestWorkerNaoVaza
+--- PASS: TestWorkerNaoVaza (0.00s)
+PASS
+ok  	tdd	0.384s
+```
+
+Scheduler precisa de margem — por isso o loop com prazo, não um `Sleep` chutado nem uma comparação imediata (padrão do post de [concorrência](/go-concorrencia)).
 
 ## 5. Falhas e trade-offs
 
 **Testar implementação.** Afirmar chamadas internas ou ordem de locks quebra a cada refatoração honesta. Mire saídas e efeitos.
 
+**`Fatalf` no loop sem `t.Run`.** Para no primeiro caso e esconde os demais — você conserta um, roda, descobre o próximo. Subtest ou `Errorf` mostram todos de uma vez.
+
 **`time.Sleep` para sincronizar teste.** Flaky por construção: quebra em CI lento, atrasa em CI rápido. Sincronize com channels/`Wait`/contexto com timeout — nunca com chute.
 
-**Cobertura como meta.** 100% com asserts vazios mente melhor que 70% honesto. Cobertura guia onde falta caso; não prova nada sozinha.
+**Paralelo com estado compartilhado.** `t.Parallel()` em casos que escrevem no mesmo mapa/global contamina o vizinho e cria o flaky mais difícil de debugar. Paralelize caso puro; o resto roda sequencial sem vergonha.
+
+**Tabela gigante sem `-run`.** Com 30+ linhas, debugar um caso vira loteria de breakpoint. Truque: campo `debug bool` na struct + `if tt.debug { t.Log("debug aqui") }` com breakpoint na linha do `Log` — só a linha marcada para.
+
+**Cobertura como meta.** 100% com asserts vazios mente melhor que 70% honesto. Cobertura guia onde falta caso; não prova nada sozinha. Para diffs legíveis em structs aninhadas, `cmp.Diff` (go-cmp) mostra o caminho do campo em vez de dois dumps.
 
 **Teste de terceiro.** Mockar biblioteca para afirmar comportamento dela testa o mock. Teste sua integração (contrato que você usa), não a lib.
 
@@ -108,15 +416,19 @@ Comando completo do CI: `go test -race -count=1 ./...` — sem cache, com detect
 
 | Assunto | Fonte principal |
 |---|---|
+| Table-driven tests (wiki) | [Go Wiki](https://go.dev/wiki/TableDrivenTests) |
+| Anatomia da tabela evolutiva | [Dave Cheney](https://dave.cheney.net/2019/05/07/prefer-table-driven-tests) |
 | `testing`, subtests, benchmarks | [pkg.go.dev/testing](https://pkg.go.dev/testing) |
 | Race detector | [Go Docs](https://go.dev/doc/articles/race_detector) |
+| Diff legível (`cmp.Diff`) | [go-cmp](https://github.com/google/go-cmp) |
 | Casos: logs e leaks | [Erros](/go-erros-logs) e [concorrência](/go-concorrencia) |
 
 <Summary>
 
-- tabela + `t.Run`: casos como dados, nomes como documentação
+- copia-e-cola → tabela → `t.Run` → `t.Parallel`: cada degrau remove uma classe de dor
+- nome no caso + `-run` isolam o debug; map embaralha e revela dependência
 - `go test -race -count=1 ./...` no CI, sempre
-- valide observável: campos de log, redaction, contagem de goroutines
+- valide observável: redaction no log serializado, `NumGoroutine` antes/depois
 - bug novo entra como caso antes do fix; cobertura guia, não prova
 
 </Summary>

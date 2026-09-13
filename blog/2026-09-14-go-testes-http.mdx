@@ -1,0 +1,430 @@
+---
+slug: go-testes-http
+title: "Testes de API HTTP em Go: handler, rotas, client e adapters"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-14T11:00:00
+description: "httptest passo a passo: handler sem socket, mux em tabela, middleware em cadeia, client contra servidor efêmero e regra de negócio com fake — e quando mock é a escolha errada."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+Handler em Go é função pura disfarçada: entra `Request`, sai resposta no `Recorder`. Você não precisa subir servidor para testar rota, nem de mock para testar regra — `httptest.NewRecorder` cobre o primeiro, `httptest.NewServer` cobre o client, e um fake em memória cobre o adapter. Vamos construir nessa ordem, um teste por camada.
+
+Post avulso, continuação de [Testes](/go-testes) e [API HTTP](/go-http-api). Saídas reais, Go 1.26, sem dependências externas.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- handler sem socket: `httptest.NewRecorder` + chamada direta
+- rotas em tabela: método, path, body e status esperado
+- middleware em cadeia: `X-Request-ID` e `recover` afirmados no teste
+- client real: `httptest.NewServer` em vez de mockar `http`
+- adapter com fake: interface fina + mapa em memória
+- test doubles: quando usar fake, stub, mock — e quando não usar nenhum
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- [Testes em Go](/go-testes): tabela, subtests, `-race`
+- [API HTTP em Go](/go-http-api): handler, mux, middleware
+- Go básico: interfaces, pacotes
+
+</Prerequisites>
+
+## 1. Contexto
+
+O post de [API HTTP](/go-http-api) terminou com um layout que separa `handler`, `server` e `middleware`. Este post responde o que ficou pendente: como testar cada peça sem acoplar o teste à infra. A estratégia é uma por camada — direta onde dá, efêmera onde precisa de rede, fake onde precisa de persistência.
+
+O que vamos testar, nesta ordem:
+
+```text title="As seis camadas deste post"
+4.1 handler puro (Recorder, sem socket)
+4.2 mux e rotas (tabela de requests)
+4.3 middleware (cadeia RequestID + Recover)
+4.4 client (NewServer + http.Client real)
+4.5 adapter (interface Store + fake em memória)
+4.6 doubles (fake vs stub vs mock)
+```
+
+Todos os exemplos usam o mesmo domínio mínimo: `POST /double` lê `{"n":21}` e devolve `{"result":42}`. JSON inválido responde 400.
+
+## 2. O problema
+
+Três atalhos comuns quebram suítes HTTP. Subir o servidor real no teste (`go run` + porta fixa) cria flaky de porta ocupada e ordem de execução. Mockar `http.Client` para "testar o client" testa o mock, não o wire: headers, status e timeout passam batidos. E mockar o banco em cada teste de handler acopla o teste à implementação — cada refatoração honesta quebra dezenas de expectativas de mock.
+
+A causa é a mesma: testar na camada errada. Handler testa como função, client testa contra HTTP real efêmero, regra testa contra fake com o mesmo contrato do adapter.
+
+## 3. Modelo mental
+
+Três definições antes do código.
+
+> **Definição (proposta): handler testável.** Função `func(w http.ResponseWriter, r *http.Request)` que só fala HTTP: decode, chama regra, encode. Sem log global, sem DB direto. Se precisa de dado externo, recebe por parâmetro ou interface.
+
+> **Definição (proposta): fake.** Implementação real e simples do contrato, em memória. Um `map` com mutex é um `Store` legítimo para teste. Roda rápido, sem rede, sem estado entre testes se criado por teste.
+
+> **Definição (proposta): test double.** Guarda-chuva: fake (funciona de verdade, simplificado), stub (resposta fixa), mock (expectativa de chamadas). Mock responde "foi chamado como eu previ?"; fake responde "o comportamento está certo?". Prefira o segundo sempre que possível.
+
+**Regra prática.** Mocke interfaces, nunca tipos concretos. E só mocke o que você não controla ou não quer executar: relógio, gateway externo, serviço pago. O resto vira fake.
+
+## 4. Implementação
+
+Go 1.26, stdlib apenas. Cada seção é um arquivo `_test.go` completo que você copia e roda com `go test -race -count=1 -v ./...`.
+
+Base compartilhada dos exemplos:
+
+```go title="double.go" showLineNumbers
+package handler
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+// Double lê {"n":21} e devolve {"result":42}. JSON inválido = 400.
+func Double(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		N int `json:"n"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, "json inválido", http.StatusBadRequest)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int{"result": in.N * 2})
+}
+```
+
+### 4.1 Passo 1 — handler sem socket
+
+`httptest.NewRecorder` é um `ResponseWriter` em memória. Chame o handler como função comum:
+
+```go title="double_test.go (passo 1)" showLineNumbers
+package handler
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestDouble(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		wantStatus int
+		wantBody   string
+	}{
+		{"dobra", `{"n":21}`, http.StatusOK, "{\"result\":42}\n"},
+		{"zero", `{"n":0}`, http.StatusOK, "{\"result\":0}\n"},
+		{"json-invalido", `xxx`, http.StatusBadRequest, "json inválido\n"},
+		{"vazio", ``, http.StatusBadRequest, "json inválido\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest("POST", "/double", strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			Double(rec, req)
+
+			if rec.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d", rec.Code, tt.wantStatus)
+			}
+			if rec.Body.String() != tt.wantBody {
+				t.Fatalf("body = %q, want %q", rec.Body.String(), tt.wantBody)
+			}
+			if tt.wantStatus == http.StatusOK &&
+				rec.Header().Get("Content-Type") != "application/json" {
+				t.Fatalf("Content-Type = %q", rec.Header().Get("Content-Type"))
+			}
+		})
+	}
+}
+```
+
+```bash title="Terminal"
+$ go test -race -count=1 -v -run TestDouble .
+=== RUN   TestDouble/dobra
+=== RUN   TestDouble/json-invalido
+--- PASS: TestDouble (0.00s)
+PASS
+ok  	handler	0.4s
+```
+
+Nenhum `ListenAndServe`, nenhuma porta. O teste mira o contrato observável: status, corpo, header. Refatorar o interior do handler sem mudar o contrato mantém o teste verde — é assim que você sabe que o teste mira o comportamento, não a implementação.
+
+### 4.2 Passo 2 — rotas em tabela
+
+Handler verde não prova que a rota existe. Teste o mux — o mesmo `NewMux` da produção:
+
+```go title="mux_test.go (passo 2)" showLineNumbers
+package server
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func TestRotas(t *testing.T) {
+	mux := NewMux()
+	tests := []struct {
+		name       string
+		method     string
+		path       string
+		body       string
+		wantStatus int
+	}{
+		{"health", "GET", "/health", "", http.StatusOK},
+		{"double", "POST", "/double", `{"n":2}`, http.StatusOK},
+		{"double-metodo-errado", "GET", "/double", "", http.StatusMethodNotAllowed},
+		{"rota-inexistente", "GET", "/nada", "", http.StatusNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
+			rec := httptest.NewRecorder()
+
+			mux.ServeHTTP(rec, req)
+
+			if rec.Code != tt.wantStatus {
+				t.Fatalf("%s %s: status = %d, want %d",
+					tt.method, tt.path, rec.Code, tt.wantStatus)
+			}
+		})
+	}
+}
+```
+
+Dois casos que o passo 1 nunca pegaria: método errado (`405`, cortesia do roteamento `"POST /double"` da stdlib desde Go 1.22) e path inexistente (`404`). Adicionar rota nova é adicionar linha na tabela.
+
+### 4.3 Passo 3 — middleware em cadeia
+
+Middleware recebe handler e devolve handler. Teste a cadeia montada igual à produção:
+
+```go title="middleware_test.go (passo 3)" showLineNumbers
+package middleware
+
+import (
+	"io"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
+
+func discardLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
+func TestCadeia(t *testing.T) {
+	final := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+	h := Recover(discardLogger(), RequestID(Logger(discardLogger(), final)))
+
+	t.Run("carimba-request-id", func(t *testing.T) {
+		req := httptest.NewRequest("GET", "/", nil)
+		rec := httptest.NewRecorder()
+
+		h.ServeHTTP(rec, req)
+
+		if rec.Header().Get("X-Request-ID") == "" {
+			t.Fatal("X-Request-ID ausente")
+		}
+	})
+
+	t.Run("panic-vira-500", func(t *testing.T) {
+		bomba := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			panic("boom")
+		})
+		h := Recover(discardLogger(), bomba)
+		req := httptest.NewRequest("GET", "/", nil)
+		rec := httptest.NewRecorder()
+
+		h.ServeHTTP(rec, req)
+
+		if rec.Code != http.StatusInternalServerError {
+			t.Fatalf("status = %d, want 500", rec.Code)
+		}
+	})
+}
+```
+
+O que está sendo afirmado: identidade na borda (header presente em toda resposta) e `recover` por fora de tudo (panic vira 500, servidor continua vivo). A ordem da montagem importa — `RequestID` por fora do `Logger`, `Recover` por fora de todos — e o teste trava essa ordem: inverta e o logger registra `req-unknown`.
+
+> Nota: `discardLogger()` é um `*slog.Logger` descartando saída (`slog.New(slog.NewTextHandler(io.Discard, nil))`). Logger real no teste polui a saída e acopla o teste ao formato do log.
+
+### 4.4 Passo 4 — client contra servidor efêmero
+
+Não mocke `http.Client`. Suba o mux real numa porta efêmera com `httptest.NewServer` e fale HTTP de verdade:
+
+```go title="client_test.go (passo 4)" showLineNumbers
+package client_test
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"example.com/httpapi/internal/handler"
+)
+
+func TestDoubleViaHTTP(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /double", handler.Double)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c := &http.Client{Timeout: 2 * time.Second}
+	resp, err := c.Post(srv.URL+"/double", "application/json",
+		strings.NewReader(`{"n":21}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("status = %d", resp.StatusCode)
+	}
+	var out struct {
+		Result int `json:"result"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	if out.Result != 42 {
+		t.Fatalf("result = %d, want 42", out.Result)
+	}
+}
+```
+
+`NewServer` escolhe porta livre sozinho — adeus flaky de `address already in use`. O client é o mesmo da produção, com `Timeout` de verdade. Timeout, redirect e header atravessam o wire; com mock, passariam batidos.
+
+**Regra prática.** Teste de client afirma wire (status, corpo, timeout), nunca chamada interna. Se o teste precisa de rede externa real, virou teste de integração: build tag `//go:build integration` e URL por env, como no post de [Testes](/go-testes).
+
+### 4.5 Passo 5 — adapter com fake em memória
+
+Quando a regra precisa persistir, extraia a porta. Handler fala com interface, produção injeta Postgres, teste injeta mapa:
+
+```go title="store_test.go (passo 5)" showLineNumbers
+package user
+
+import (
+	"context"
+	"sync"
+	"testing"
+)
+
+// Store é a porta: o que a regra precisa, nada mais.
+type Store interface {
+	Save(ctx context.Context, id string, n int) error
+	Load(ctx context.Context, id string) (int, error)
+}
+
+// fakeStore é o adapter de teste: implementa Store de verdade, em memória.
+type fakeStore struct {
+	mu sync.Mutex
+	m  map[string]int
+}
+
+func (f *fakeStore) Save(_ context.Context, id string, n int) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.m == nil {
+		f.m = map[string]int{}
+	}
+	f.m[id] = n
+	return nil
+}
+
+func (f *fakeStore) Load(_ context.Context, id string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.m[id], nil
+}
+
+func TestServiceComFake(t *testing.T) {
+	svc := NewService(&fakeStore{})
+	ctx := context.Background()
+
+	if err := svc.Save(ctx, "u-1", 21); err != nil {
+		t.Fatal(err)
+	}
+	got, err := svc.Load(ctx, "u-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != 21 {
+		t.Fatalf("Load = %d, want 21", got)
+	}
+}
+```
+
+A interface mora onde é consumida (no service), não no adapter. É fina — dois métodos, não vinte. O fake tem mutex porque o service real é concorrente e o teste roda com `-race`. Cada teste cria seu fake: sem estado vazando entre casos, sem ordem de execução, sem Docker.
+
+### 4.6 Passo 6 — qual double, quando
+
+| Double | O que é | Quando usar |
+|---|---|---|
+| Fake | implementação real simplificada (mapa, slice, memória) | padrão para Store, fila, cache em teste unitário |
+| Stub | resposta fixa (`return 42, nil`) | dependência com poucas respostas relevantes, sem lógica |
+| Mock | expectativa de chamadas (`EXPECT().Save().Times(1)`) | borda que você não quer executar: gateway pago, relógio, serviço externo instável |
+| Nada | chame direto | função pura, handler, mux — `Recorder` já basta |
+
+Trade-off honesto: mock prova interação, não comportamento. Cada `EXPECT()` é um acoplamento à implementação — renomeou a ordem das chamadas internas, dez testes quebram sem nenhum bug. Fake custa uma struct a mais e paga com testes que sobrevivem a refatoração.
+
+**Regra prática.** Comece sem double. Doeu (rede, disco, tempo)? Fake. Fake ficou complexo demais (lógica condicional por teste)? Stub para o caso raro. Só então considere mock — e mocke a interface que você definiu, nunca o tipo concreto de terceiros.
+
+## 5. Falhas e trade-offs
+
+**Servidor real no teste unitário.** Porta fixa + `go run` + `Sleep` para "esperar subir": flaky por construção. `NewServer` resolve a porta, `defer Close` resolve a vida útil.
+
+**Mockar `http.Client` ou `net/http`.** Você testa sua expectativa do wire, não o wire. Client testa contra `NewServer`; handler contra `Recorder`.
+
+**Mockar o banco em teste de handler.** Acopla N testes à sequência de queries. Extraia `Store`, injete fake, teste a regra uma vez.
+
+**`Sleep` para sincronizar.** Quebra em CI lento, atrasa em CI rápido. Sincronize com channels, `WaitGroup` ou contexto com timeout — o mesmo aviso do post de [Testes](/go-testes).
+
+**Log real no teste.** Polui saída e acopla ao formato. `io.Discard` no logger de teste; redaction se testa no JSON serializado, como no exemplo `MaskCard` do post de [Testes](/go-testes).
+
+**Cobertura como meta.** 100% com asserts vazios mente melhor que 70% honesto. Mire contrato: status, corpo, header, timeout, persistência via fake.
+
+### Fontes e nível de autoridade
+
+| Assunto | Fonte principal |
+|---|---|
+| `httptest`: `NewRecorder`, `NewServer`, `NewRequest` | [pkg.go.dev/net/http/httptest](https://pkg.go.dev/net/http/httptest) |
+| Table-driven, `-race`, integração com tags | [Testes em Go](/go-testes) |
+| Handler, mux, middleware, layout | [API HTTP em Go](/go-http-api) |
+| Mock vs fake, interfaces onde consumidas | [Go Wiki — TableDrivenTests](https://go.dev/wiki/TableDrivenTests) |
+
+<Summary>
+
+- handler testa como função: `NewRequest` + `NewRecorder`, sem socket nem porta
+- rotas testam no mux real em tabela: método errado e path inexistente entram como linhas
+- middleware testa na cadeia de produção: `X-Request-ID` presente, panic virando 500
+- client testa contra `httptest.NewServer` com `http.Client` real e timeout
+- regra testa com fake em memória atrás de interface fina definida no consumidor
+- mock é último recurso: borda instável ou paga; o resto é fake, stub ou nada
+
+</Summary>
+
+<NextSteps href="/go-concorrencia" title="Concorrência em Go">
+
+Handlers testados, o próximo gargalo é runtime: goroutines, channels e shutdown gracioso sob carga — com `-race` ligado.
+
+</NextSteps>
+
+<SkillsGained skills={["HTTP", "Testes", "httptest", "Test doubles"]} />

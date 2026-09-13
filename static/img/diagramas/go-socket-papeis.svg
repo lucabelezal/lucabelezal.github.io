@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 250" role="img" aria-label="Diagrama: Listen pede socket, Accept devolve Conn, Write envia bytes">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .goodbox{stroke:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ahpap" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <text x="25" y="28" font-size="13" class="lbl">três chamadas, três papéis</text>
+  <rect x="25" y="40" width="185" height="150" rx="10" class="box"/>
+  <text x="41" y="70" font-size="14" font-weight="bold">1 · Listen</text>
+  <text x="41" y="94" font-size="13">bind + listen</text>
+  <text x="41" y="118" font-size="13">socket :18081</text>
+  <text x="41" y="142" font-size="13" class="lbl">Go pede,</text>
+  <text x="41" y="162" font-size="13" class="lbl">kernel registra</text>
+  <line x1="215" y1="115" x2="255" y2="115" class="arrow" marker-end="url(#ahpap)"/>
+  <rect x="260" y="40" width="185" height="150" rx="10" class="box"/>
+  <text x="276" y="70" font-size="14" font-weight="bold">2 · Accept</text>
+  <text x="276" y="94" font-size="13">bloqueia e</text>
+  <text x="276" y="118" font-size="13">devolve Conn</text>
+  <text x="276" y="142" font-size="13" class="lbl">Local + Remote</text>
+  <text x="276" y="162" font-size="13" class="lbl">4 valores</text>
+  <line x1="450" y1="115" x2="490" y2="115" class="arrow" marker-end="url(#ahpap)"/>
+  <rect x="495" y="40" width="140" height="150" rx="10" class="goodbox"/>
+  <text x="511" y="70" font-size="14" font-weight="bold">3 · Write</text>
+  <text x="511" y="94" font-size="13">Olá! + Close</text>
+  <text x="511" y="118" font-size="13">só bytes,</text>
+  <text x="511" y="142" font-size="13" class="lbl">sem HTTP</text>
+  <text x="511" y="162" font-size="13" class="lbl">ainda</text>
+  <text x="25" y="222" font-size="13" class="lbl">127.0.0.1 = loopback · :18081 sozinho = todas as interfaces locais</text>
+</svg>

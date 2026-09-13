@@ -1,0 +1,210 @@
+---
+slug: go-socket-ao-handler
+title: "Do socket ao handler: como um programa Go recebe algo da internet"
+authors: [lucabelezal]
+tags: [go, backend]
+date: 2026-09-14T10:00:00
+description: "net.Listen pede um socket ao kernel, Accept entrega conexões TCP e net/http transforma bytes em Request: o caminho do SYN até o handler, com código executável."
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+`http.ListenAndServe(":8080", handler)` parece mágica até você ver o que está por baixo: o programa pede um socket ao sistema operacional, o kernel associa esse socket à porta 8080, cada conexão TCP vira um `net.Conn`, e só então o `net/http` transforma bytes em `http.Request`. Vamos construir nessa ordem — TCP cru primeiro, HTTP depois.
+
+Post avulso. Saídas reais, Go 1.26, macOS/Linux.
+
+{/* truncate */}
+
+<WhatYouWillLearn>
+
+- IP, porta e socket: qual máquina, qual serviço, qual conversa
+- `net.Listen`, `Accept`, `Read` e `Write`: o servidor TCP mínimo
+- three-way handshake e stream de bytes: por que não existem mensagens no TCP
+- onde o kernel termina e o Go começa: bind, listen, accept
+- como `net/http` vira bytes TCP em `http.Request` e `ResponseWriter`
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go básico: funções, pacotes, `go run`
+- Terminal com `nc` (netcat) ou `curl` para testar
+
+</Prerequisites>
+
+## 1. Contexto
+
+Todo backend responde à mesma pergunta: "eu escrevi um programa, como ele passa a receber algo que vem da rede?". A resposta tem três camadas, cada uma resolvendo um problema diferente: IP encontra a máquina, TCP cria uma conversa confiável entre endpoints, HTTP define o formato dos bytes da aplicação.
+
+O que vamos construir:
+
+![Diagrama: passo 1 servidor TCP cru com nc e passo 2 mesmo endereço servindo HTTP com curl](/img/diagramas/go-socket-handler.svg)
+
+Cada passo é um `main.go` inteiro. Rode, conecte, observe. Depois o `ListenAndServe` deixa de ser mágica.
+
+## 2. O problema
+
+Duas máquinas, um "Olá". Parece trivial até listar o que falta: como o computador A endereça o computador B? Chegando em B, que tem SSH, banco e aplicação rodando juntos, como escolher o programa certo? E se os bytes se perderem, duplicarem ou chegarem fora de ordem no caminho?
+
+O IP resolve o primeiro problema e declara os outros fora do seu escopo: ele entrega datagramas entre hosts com melhor esforço, sem garantir entrega, ordem ou integridade. O TCP adiciona por cima exatamente isso — transferência confiável, em ordem, em um stream de bytes, com controle de fluxo e de congestionamento. O HTTP, por fim, é só uma convenção sobre esses bytes: `GET /hello HTTP/1.1` não cria porta nem conexão, só diz como a aplicação estrutura o que o TCP transporta.
+
+## 3. Modelo mental
+
+Três definições antes do código. Todo o resto do post é aplicação delas.
+
+> **Definição (proposta): endpoint.** Par `IP:porta`. O IP identifica a máquina na rede, a porta identifica o serviço dentro da máquina. `192.168.1.10:8080` significa "máquina X, serviço Y".
+
+> **Definição (proposta): socket.** A abstração que o sistema operacional entrega ao programa para conversar pela rede. O Go pede (`net.Listen`), o kernel registra (`socket → porta → processo`), e cada conexão aceita vira um objeto (`net.Conn`) com `Read` e `Write`.
+
+> **Definição (proposta): conexão TCP.** Estado compartilhado entre dois endpoints, identificado pelos quatro valores `IP origem + porta origem + IP destino + porta destino`. Por isso milhares de clientes chegam na mesma porta `:8080` sem se misturar: a porta de origem de cada um é diferente.
+
+![Diagrama: duas conexões na mesma porta separadas pela origem, e stream TCP fragmentando writes em reads diferentes](/img/diagramas/go-socket-modelo.svg)
+
+Duas consequências que pegam quem está começando:
+
+1. **TCP é stream, não mensagem.** `Write("ABC")` seguido de `Write("DEF")` pode chegar como `"AB"` + `"CDEF"`, ou `"ABCDEF"` de uma vez. O receptor nunca deve assumir que um `Read` corresponde a um `Write`. Quem precisa de mensagens (como o HTTP) coloca o enquadramento por cima: headers, `Content-Length`, chunks.
+2. **A rede não sabe que é Go.** Quando bytes chegam em `IP:porta`, o kernel procura o socket registrado. Pode ser Go, Nginx, Java — a rede não distingue. O Go só recebe porque pediu a porta primeiro.
+
+O handshake `SYN → SYN-ACK → ACK` é o ritual que cria esse estado compartilhado. Sequence numbers numeram cada byte para detectar lacunas, ACKs confirmam "recebi tudo até aqui", retransmissões preenchem o que se perdeu. O detalhe do protocolo importa menos agora do que o modelo: bytes numerados, confirmações, reenvio.
+
+## 4. Implementação
+
+Go 1.26, sem dependências. Cada passo substitui o anterior.
+
+### 4.1 Passo 1 — o servidor TCP mais simples possível
+
+Arquivo inteiro:
+
+```go title="main.go (passo 1)" showLineNumbers
+package main
+
+import (
+	"fmt"
+	"net"
+)
+
+func main() {
+	listener, err := net.Listen("tcp", "127.0.0.1:18081")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("ouvindo em 127.0.0.1:18081")
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			continue
+		}
+		fmt.Println("cliente conectado:", conn.RemoteAddr())
+		conn.Write([]byte("Olá!\n"))
+		conn.Close()
+	}
+}
+```
+
+Três chamadas, três papéis:
+
+- **`net.Listen("tcp", "127.0.0.1:18081")`** — pede ao kernel: crie um socket TCP associado a esse endpoint. É o equivalente a `bind` + `listen`. O `127.0.0.1` restringe ao loopback local; `":18081"` sozinho escutaria em todas as interfaces locais. Porta `18081` em vez de `8080` só para não colidir com nada na sua máquina.
+- **`listener.Accept()`** — bloqueia até chegar uma conexão e devolve um `net.Conn`. Cada `Conn` carrega `LocalAddr` e `RemoteAddr`: os quatro valores que identificam a conversa.
+- **`conn.Write` / `conn.Close`** — envia bytes pelo stream e encerra. Ainda não há HTTP aqui: qualquer byte que o cliente mandar é ignorado, qualquer cliente TCP recebe `Olá!`.
+
+![Diagrama: Listen registra o socket, Accept devolve uma Conn por cliente, Write envia bytes e encerra](/img/diagramas/go-socket-papeis.svg)
+
+Teste sem HTTP, em dois terminais:
+
+```bash title="Terminal 1"
+$ go run .
+ouvindo em 127.0.0.1:18081
+```
+
+```bash title="Terminal 2"
+$ nc 127.0.0.1 18081
+Olá!
+```
+
+O terminal 1 imprime `cliente conectado: 127.0.0.1:XXXXX` — repare que a porta do cliente muda a cada conexão. É a quarta coordenada da conexão em ação: mesmo servidor, conversas distintas.
+
+**Regra prática.** Segunda tentativa de `Listen` na mesma porta retorna `bind: address already in use`. Uma porta, um dono por vez — se o erro aparecer, outro processo já registrou aquele socket.
+
+### 4.2 Passo 2 — a mesma porta, agora falando HTTP
+
+O servidor acima só conhece bytes. Para entender `GET /hello`, precisa de um parser de protocolo de aplicação. A stdlib entrega:
+
+```go title="main.go (passo 2)" showLineNumbers
+package main
+
+import (
+	"fmt"
+	"net/http"
+)
+
+func main() {
+	http.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "Olá!")
+	})
+	http.ListenAndServe("127.0.0.1:18081", nil)
+}
+```
+
+```bash title="Terminal"
+$ go run .
+$ curl http://127.0.0.1:18081/hello
+Olá!
+```
+
+O que o `ListenAndServe` fez por você, conceitualmente:
+
+![Diagrama: pilha do ListenAndServe, do socket e Accept até o handler](/img/diagramas/go-socket-pilha.svg)
+
+Seu handler recebe `r.Method == "GET"` e `r.URL.Path == "/hello"` sem nunca ter tocado em socket. E quando escreve `fmt.Fprintln(w, "Olá!")`, o caminho inverso acontece: `ResponseWriter` → resposta HTTP → conexão TCP → rede → cliente.
+
+### 4.3 Quem chama quem — o desenho da sequência
+
+Duas direções diferentes. Na subida, o programa pede; na descida, a rede entrega:
+
+![Diagrama: subida registra socket no kernel, descida entrega cada request ao handler](/img/diagramas/go-socket-sequencia.svg)
+
+**Regra prática.** Quando algo não conecta, leia a pilha de baixo para cima: processo vivo? porta registrada? firewall? Só então olhe o handler.
+
+## 5. Falhas e trade-offs
+
+**Assumir fronteira de mensagem no TCP.** `Write` duas vezes, `Read` duas vezes, esperar as mesmas fatias — quebra em produção sob fragmentação real. Teste com writes grandes e reads pequenos de propósito.
+
+**`":8080"` em todo lugar.** Em desenvolvimento é conveniente; em produção, escutar em todas as interfaces sem querer expõe o serviço. Prefira endereço explícito (`127.0.0.1:porta` local, endereço ou interface específica no servidor) e documente.
+
+**Dois processos na mesma porta.** O segundo morre com `address already in use`. Não é bug do Go, é o kernel protegendo o roteamento. Troque a porta ou encerre o dono anterior.
+
+**Fazer parse HTTP na mão.** Dá para ler bytes do `net.Conn` e procurar `GET` — e é um ótimo exercício uma vez. Depois disso, use `net/http`: chunked encoding, keep-alive e edge cases já foram debugados por você não precisar debugar.
+
+**TCP explica transporte, não aplicação.** Timeouts, retries, idempotência e autenticação moram acima. Confundir as camadas gera diagnósticos errados ("a rede perdeu" quando foi o handler que demorou).
+
+### Fontes e nível de autoridade
+
+| Assunto | Fonte principal |
+|---|---|
+| Transport layer, TCP, reliable transfer | [Kurose & Ross, UMass — chapters & labs](https://gaia.cs.umass.edu/kurose_ross/online_lectures.htm) |
+| IP/TCP split, conexões, congestionamento | [MIT OCW 6.829 Computer Networks](https://ocw.mit.edu/courses/6-829-computer-networks-fall-2002/) |
+| `Listen`, `Accept`, `Conn` | [pkg.go.dev/net](https://pkg.go.dev/net) |
+| `ListenAndServe`, `Request`, `HandleFunc` | [pkg.go.dev/net/http](https://pkg.go.dev/net/http) |
+
+<Summary>
+
+- IP acha a máquina, porta acha o serviço, socket é o handle que o kernel entrega ao processo
+- `net.Listen` registra, `Accept` entrega cada conexão como `net.Conn` com `Read`/`Write`
+- TCP é stream confiável de bytes: sem fronteira de mensagem, com sequence, ACK e retransmissão
+- `net/http` é parser + dispatcher sobre o TCP: bytes viram `Request`, retorno via `ResponseWriter`
+- a rede não sabe que é Go — o kernel sabe qual PID detém cada socket
+
+</Summary>
+
+<NextSteps href="/go-http-api" title="API HTTP em Go">
+
+Você viu o caminho do SYN ao handler. Agora suba uma camada: roteamento por método, middleware e JSON na stdlib, validado com curl.
+
+</NextSteps>
+
+<SkillsGained skills={["TCP", "Sockets", "HTTP", "net/http"]} />

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 480" role="img" aria-label="Diagrama: pilha por trás do ListenAndServe, do socket ao handler">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .goodbox{stroke:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ahpilha" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <text x="140" y="28" font-size="13" class="lbl">uma linha, seis camadas (leia de cima para baixo)</text>
+  <rect x="140" y="40" width="380" height="52" rx="10" class="box"/>
+  <text x="156" y="62" font-size="14" font-weight="bold">http.ListenAndServe</text>
+  <text x="156" y="82" font-size="13" class="lbl">uma linha no seu main</text>
+  <line x1="330" y1="92" x2="330" y2="110" class="arrow" marker-end="url(#ahpilha)"/>
+  <rect x="140" y="112" width="380" height="52" rx="10" class="box"/>
+  <text x="156" y="134" font-size="14" font-weight="bold">net.Listen tcp :18081</text>
+  <text x="156" y="154" font-size="13" class="lbl">socket + porta, igual ao passo 1</text>
+  <line x1="330" y1="164" x2="330" y2="182" class="arrow" marker-end="url(#ahpilha)"/>
+  <rect x="140" y="184" width="380" height="52" rx="10" class="box"/>
+  <text x="156" y="206" font-size="14" font-weight="bold">Accept() em loop</text>
+  <text x="156" y="226" font-size="13" class="lbl">uma goroutine por conexão</text>
+  <line x1="330" y1="236" x2="330" y2="254" class="arrow" marker-end="url(#ahpilha)"/>
+  <rect x="140" y="256" width="380" height="52" rx="10" class="box"/>
+  <text x="156" y="278" font-size="14" font-weight="bold">ler bytes do TCP</text>
+  <text x="156" y="298" font-size="13" class="lbl">stream, sem fronteira de mensagem</text>
+  <line x1="330" y1="308" x2="330" y2="326" class="arrow" marker-end="url(#ahpilha)"/>
+  <rect x="140" y="328" width="380" height="52" rx="10" class="box"/>
+  <text x="156" y="350" font-size="14" font-weight="bold">parsear HTTP → Request</text>
+  <text x="156" y="370" font-size="13" class="lbl">método, path, headers, body</text>
+  <line x1="330" y1="380" x2="330" y2="394" class="arrow" marker-end="url(#ahpilha)"/>
+  <rect x="140" y="396" width="380" height="52" rx="10" class="goodbox"/>
+  <text x="156" y="418" font-size="14" font-weight="bold">handler func(w, r)</text>
+  <text x="156" y="438" font-size="13" class="lbl">r.Method, r.URL.Path</text>
+</svg>

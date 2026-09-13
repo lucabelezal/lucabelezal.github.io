@@ -13,7 +13,7 @@ import Summary from '@site/src/components/blog/Summary';
 import NextSteps from '@site/src/components/blog/NextSteps';
 import SkillsGained from '@site/src/components/blog/SkillsGained';
 
-Uma API HTTP em Go precisa de quatro coisas: ouvir numa porta, rotear path para função, ler/escrever JSON e logar com identidade. A stdlib entrega as quatro desde Go 1.22 — sem framework. Vamos construir nessa ordem, terminando com o layout multi-arquivo que você usaria no trabalho e o mapa mental para quem vem do Spring.
+Uma API HTTP em Go precisa de quatro coisas: ouvir numa porta, rotear path para função, ler/escrever JSON e logar com identidade. A stdlib entrega as quatro desde Go 1.22 — sem framework. Vamos construir nessa ordem, um arquivo inteiro por passo, terminando com o layout multi-arquivo que você usaria no trabalho e o mapa mental para quem vem do Spring.
 
 Post avulso, validado com `curl` de verdade. Saídas reais, Go 1.26.
 
@@ -21,21 +21,23 @@ Post avulso, validado com `curl` de verdade. Saídas reais, Go 1.26.
 
 <WhatYouWillLearn>
 
-- servidor mínimo: 10 linhas que respondem
+- servidor mínimo: arquivo inteiro que responde
 - roteamento stdlib por método (Go 1.22+): `"GET /health"`
 - handler: a assinatura `func(w, r)` destrinchada
 - JSON: decode com erro 400 honesto, encode com Content-Type
-- middleware em cadeia: `request_id`, duração, recover
+- middleware: definição, cebola, `request_id`, duração, recover
 - layout completo: `cmd/api` + `internal/` pronto para crescer
-- mapa Spring → Go: Controller, Jackson, Filter em stdlib
+- quem chama quem: setas da montagem e de cada request
+- mapa Spring (Java e Kotlin) → Go: Controller, Jackson, Filter em stdlib
+- MVC em Go: onde encaixa e onde estoura (handler → service → repository)
 
 </WhatYouWillLearn>
 
 <Prerequisites>
 
 - Go básico: funções, pacotes, `go run`
-- [Erros e logs](/go-erros-logs): `slog` (usado no fim)
-- Spring noções (opcional): Controller, Filter — só para a seção 6
+- [Erros e logs](/go-erros-logs): `slog` (usado a partir do passo 3)
+- Spring noções (opcional): Controller, Filter — só para a seção 5
 
 </Prerequisites>
 
@@ -43,9 +45,9 @@ Post avulso, validado com `curl` de verdade. Saídas reais, Go 1.26.
 
 Framework resolve o que a stdlib já resolve desde 1.22: rotear por método e padrão, servir com timeouts, encerrar com drenagem. Comece stdlib: menos camada para debugar, upgrade sem breaking. Framework entra quando doer de verdade (validação complexa, OpenAPI gerado) — não antes.
 
-O que vamos construir:
+O que vamos construir, um passo por vez — cada passo é o arquivo inteiro, substitui o anterior e roda:
 
-```text title="Layout final"
+```text title="Layout final (passo 4)"
 go-http-api/
   go.mod
   cmd/api/main.go              // Server + timeouts + shutdown
@@ -67,19 +69,25 @@ API sem request_id: três requests falham juntos e o log não diz qual é qual. 
 
 ## 3. Modelo mental
 
-Três definições antes do código:
+Três definições antes do código. Leia esta seção uma vez — todo o resto do post é aplicação dela.
 
-- **`Handler`** — qualquer coisa com `ServeHTTP(w, r)`. Na prática, `func(w http.ResponseWriter, r *http.Request)`: `w` é por onde a resposta sai, `r` é o que chegou.
-- **`Mux`** — tabela de padrão → handler. `http.NewServeMux()` cria a tabela, `HandleFunc("GET /x", f)` registra uma linha.
-- **Middleware** — função que recebe um handler e devolve outro: `func(next http.Handler) http.Handler`. Request entra por fora, resposta sai por dentro. É cebola: a camada externa vê tudo primeiro.
+> **Definição (proposta): Handler.** Qualquer coisa com `ServeHTTP(w, r)`. Na prática, `func(w http.ResponseWriter, r *http.Request)`: `w` é por onde a resposta sai, `r` é o que chegou.
 
-Ordem da cebola neste post: `recover` por fora de tudo → `request_id` (gera identidade) → `logger` (mede com identidade) → `mux`.
+> **Definição (proposta): Mux.** Tabela de padrão → handler. `http.NewServeMux()` cria a tabela, `HandleFunc("GET /x", f)` registra uma linha. Na hora do request, ele casa método + path e chama o handler.
+
+> **Definição (proposta): Middleware.** Função que recebe um handler e devolve outro: `func(next http.Handler) http.Handler`. Não é o destino — é a camada no meio. Intercepta antes (prepara), chama `next.ServeHTTP` (desce), intercepta depois (finaliza).
+
+Middleware é cebola: a camada externa vê o request primeiro e a resposta por último. Ordem neste post, de fora para dentro: `recover` → `request_id` → `logger` → `mux`.
+
+Middleware não é gateway. Middleware mora *dentro* de uma app (`server → middleware → handler`, a portaria do prédio). Gateway mora *na frente* de várias apps (`client → gateway → service A/B/C`, a entrada do condomínio). Gateway fica para um post futuro.
 
 ## 4. Implementação
 
-Go 1.26, sem dependência. Cada passo roda antes do próximo.
+Go 1.26, sem dependência. Passos 1–3: um `main.go` cada, rode com `go run .`. Passo 4: o módulo completo, rode com `go run ./cmd/api`.
 
 ### 4.1 Passo 1 — o menor servidor que responde
+
+Arquivo inteiro:
 
 ```go title="main.go (passo 1)" showLineNumbers
 package main
@@ -102,30 +110,44 @@ Três peças, nada mais:
 - **A função handler** — sempre `func(w http.ResponseWriter, r *http.Request)`: `w` é por onde a resposta sai, `r` é o que chegou.
 
 ```bash title="Terminal"
+$ go run .
 $ curl http://127.0.0.1:18098/health
 ok
 ```
 
-Servidor no ar. Todo o resto deste post é camada sobre essas 10 linhas.
+Servidor no ar. Todo o resto deste post é camada sobre esse arquivo.
 
 ### 4.2 Passo 2 — JSON de verdade
 
-Texto puro não é API. Trocamos a resposta por JSON e adicionamos uma rota POST que lê JSON:
+Texto puro não é API. Trocamos a resposta por JSON e adicionamos uma rota POST que lê JSON. Arquivo inteiro — substitui o passo 1:
 
 ```go title="main.go (passo 2)" showLineNumbers
-mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-})
-mux.HandleFunc("POST /double", func(w http.ResponseWriter, r *http.Request) {
-	var in struct{ N int `json:"n"` }
-	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
-		http.Error(w, "json inválido", http.StatusBadRequest)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]int{"result": in.N * 2})
-})
+package main
+
+import (
+	"encoding/json"
+	"net/http"
+)
+
+func main() {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	})
+	mux.HandleFunc("POST /double", func(w http.ResponseWriter, r *http.Request) {
+		var in struct {
+			N int `json:"n"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			http.Error(w, "json inválido", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"result": in.N * 2})
+	})
+	http.ListenAndServe("127.0.0.1:18098", mux)
+}
 ```
 
 Duas regras que evitam bugs clássicos:
@@ -134,6 +156,7 @@ Duas regras que evitam bugs clássicos:
 2. **JSON inválido = 400 honesto**, não 500. 400 diz "sua requisição está errada"; 500 diz "eu quebrei". Confundir os dois corrompe alerta e dashboard.
 
 ```bash title="Terminal"
+$ go run .
 $ curl http://127.0.0.1:18098/health
 {"status":"ok"}
 $ curl -X POST http://127.0.0.1:18098/double -d '{"n":21}'
@@ -144,33 +167,96 @@ json inválido
 
 ### 4.3 Passo 3 — middleware: quem é cada request
 
-Com duas rotas, o log já mistura tudo. Middleware resolve: uma função que embrulha o roteador, carimba `request_id` e mede duração:
+Com duas rotas, o log já mistura tudo. Separe em dois middlewares pequenos: um gera a identidade, o outro mede e loga. Arquivo inteiro — mesmos handlers do passo 2, agora embrulhados:
 
 ```go title="main.go (passo 3)" showLineNumbers
-func mw(log *slog.Logger, next http.Handler) http.Handler {
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"time"
+)
+
+type ctxKey string
+
+const reqKey ctxKey = "request_id"
+
+// RequestID gera a identidade na borda e pendura no contexto.
+func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		id := fmt.Sprintf("req-%d", time.Now().UnixNano()%100000)
-		ctx := context.WithValue(r.Context(), reqKey, id)
-		l := log.With(slog.String("request_id", id))
-		start := time.Now()
-		next.ServeHTTP(w, r.WithContext(ctx))
-		l.Info("done", slog.String("method", r.Method), slog.String("path", r.URL.Path), slog.Duration("ms", time.Since(start)))
+		w.Header().Set("X-Request-ID", id)
+		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), reqKey, id)))
 	})
+}
+
+// FromContext lê o id sem parâmetro extra no handler.
+func FromContext(ctx context.Context) string {
+	if v, _ := ctx.Value(reqKey).(string); v != "" {
+		return v
+	}
+	return "req-unknown"
+}
+
+// Logger mede a duração e loga com o request_id do contexto.
+func Logger(log *slog.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		next.ServeHTTP(w, r)
+		log.Info("done",
+			slog.String("request_id", FromContext(r.Context())),
+			slog.String("method", r.Method),
+			slog.String("path", r.URL.Path),
+			slog.Duration("ms", time.Since(start)),
+		)
+	})
+}
+
+func main() {
+	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+	})
+	mux.HandleFunc("POST /double", func(w http.ResponseWriter, r *http.Request) {
+		var in struct {
+			N int `json:"n"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			http.Error(w, "json inválido", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]int{"result": in.N * 2})
+	})
+
+	h := RequestID(Logger(log, mux))
+	http.ListenAndServe("127.0.0.1:18098", h)
 }
 ```
 
-Leia de dentro para fora: gera `id`, pendura no `ctx` (handlers abaixo leem sem parâmetro extra), deriva logger com o id, anota o relógio, **chama a próxima camada**, loga método + path + duração. Middleware é cebola: request_id primeiro (tudo abaixo loga com ele), recovery por fora de tudo.
+Leia a montagem de dentro para fora: `mux` no centro, `Logger` embrulha o mux, `RequestID` embrulha tudo. `RequestID` por fora porque o `Logger` lê o id do contexto — se inverter, o logger loga `req-unknown`.
+
+Leia um request de fora para dentro: gera `id`, carimba `ctx` e header, anota o relógio, **chama a próxima camada** (`next.ServeHTTP`), loga método + path + duração na volta.
 
 ```bash title="Terminal"
+$ go run .
 {"level":"INFO","msg":"done","request_id":"req-69000","method":"GET","path":"/health",...}
 {"level":"INFO","msg":"done","request_id":"req-20000","method":"POST","path":"/double",...}
 ```
 
-Três requests, três identidades — o log agora responde "qual falhou".
+Três requests, três identidades — o log agora responde "qual falhou". Falta só o `recover` por fora de tudo e os timeouts: eles chegam no passo 4, junto com a divisão em arquivos.
 
 ### 4.4 Passo 4 — layout completo por arquivo
 
-Snippets acima moram num `main.go` só para aprender. No trabalho, separe por responsabilidade: `cmd` monta, `internal` implementa. Cada arquivo abaixo compila junto — copie nessa estrutura e rode `go run ./cmd/api`.
+O passo 3 funciona, mas não cresce: tudo num `main.go` só. No trabalho, separe por responsabilidade — `cmd` monta, `internal` implementa. `RequestID` e `Logger` mudam de endereço sem mudar de corpo; o novo aqui é `Recover` + `http.Server` com timeouts e shutdown. Copie nessa estrutura e rode `go run ./cmd/api`.
 
 ```go title="go.mod"
 module example.com/httpapi
@@ -373,26 +459,36 @@ $ curl -X POST http://127.0.0.1:18098/double -d '{"n":21}'
 
 Por que essa divisão: `handler` não conhece log nem middleware — só `w` e `r`. `server` só conhece rotas. `cmd/api` monta cebola e timeouts. Teste de handler vira chamada direta de função, sem subir servidor.
 
-## 5. Para quem vem do Spring
+### Quem chama quem — o desenho da sequência
 
-Tabela de equivalência para consulta — aula está nas seções acima, não aqui:
+Duas sequências diferentes. A primeira acontece **uma vez** (montagem). A segunda acontece **a cada request**.
 
-| Spring | Go stdlib (este post) | No lugar do quê |
-|---|---|---|
-| `@RestController` + `@GetMapping("/health")` | `mux.HandleFunc("GET /health", handler.Health)` | Registro método + path fica explícito no `ServeMux`, sem reflexão |
-| `@RequestBody` + Jackson | `json.NewDecoder(r.Body).Decode(&in)` | Decode manual: você decide 400 vs 500 |
-| `@ResponseBody` / Jackson | `w.Header().Set("Content-Type", ...)` + `json.NewEncoder(w).Encode` | Header antes do primeiro byte, sem serializador implícito |
-| `OncePerRequestFilter` | `func(next http.Handler) http.Handler` | Cebola montada na `main`, ordem visível |
-| `server.port`, `server.tomcat.*-timeout` | `http.Server{Addr, ReadTimeout, WriteTimeout}` | Timeout no mesmo lugar onde serve, não em properties |
-| `@ControllerAdvice` + 500 | `middleware.Recover` com `recover()` | Panic vira 500 sem derrubar processo |
-| `MDC` / `traceId` | `request_id` no `context.Context` | Propagação explícita via `ctx`, sem thread-local |
+![Montagem no boot: main cria log, NewMux registra handlers, middlewares embrulham, http.Server escuta](/img/diagramas/go-http-montagem.svg)
 
-Exemplo lado a lado do mesmo endpoint:
+Leia: `main` chama `server`, `server` aponta para `handler`, `main` embrulha tudo com `middleware`. Nenhum handler chama middleware — é o contrário.
+
+![Cada request desce Recover, RequestID, Logger e Mux até o handler; a resposta sobe logando](/img/diagramas/go-http-request.svg)
+
+**Regra prática.** Seta sempre desce na montagem e desce-volta no request. Se um handler importa middleware ou log, a seta inverteu — quebrou a camada.
+
+## 5. Para quem vem do Spring (Java e Kotlin)
+
+![Equivalência Spring para Go: Controller vira HandleFunc, Filter vira middleware, Jackson vira Encoder e Decoder](/img/diagramas/go-http-spring.svg)
+
+Mesmo endpoint nas três formas — Java, Kotlin, Go. Note o que some: anotação, binding automático, serializador implícito.
 
 ```java title="DoubleController.java"
 @PostMapping("/double")
 public Map<String, Integer> doubleIt(@RequestBody Map<String, Integer> in) {
     return Map.of("result", in.get("n") * 2);
+}
+```
+
+```kotlin title="DoubleController.kt"
+@PostMapping("/double")
+fun doubleIt(@RequestBody body: Map<String, Int>): Map<String, Int> {
+    val n = body["n"] ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "campo n ausente")
+    return mapOf("result" to n * 2)
 }
 ```
 
@@ -410,13 +506,56 @@ func Double(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-Trade-off honesto: Spring entrega DI, validação (`@Valid`), OpenAPI gerado — cobra runtime maior, proxy/reflexão no stacktrace, lock-in de convenção. Stdlib entrega controle total e binário pequeno — cobra verbo: cada 400, cada header, cada timeout é código seu.
+O Kotlin deixa visível o que o Java esconde: o `400` precisa ser dito (`?: throw ... BAD_REQUEST`). Em Go ele também é dito — com `http.Error`. Nos três, a regra é a mesma; só muda onde ela mora: anotação/exceção vs chamada explícita.
 
-**Regra prática.** Vindo do Spring, resista a recriar anotação com framework no dia um. Fique na stdlib até sentir falta de validação complexa ou doc gerada — aí Chi/Gin pagam o custo.
+Middleware também tem as três formas. Kotlin primeiro:
+
+```kotlin title="RequestIdFilter.kt"
+@Component
+class RequestIdFilter : OncePerRequestFilter() {
+    override fun doFilterInternal(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        chain: FilterChain,
+    ) {
+        val id = "req-${System.nanoTime() % 100000}"
+        MDC.put("request_id", id)
+        response.setHeader("X-Request-ID", id)
+        try {
+            chain.doFilter(request, response)
+        } finally {
+            MDC.clear()
+        }
+    }
+}
+```
+
+```go title="internal/middleware/requestid.go (resumo)"
+func RequestID(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// ... gera id, carimba ctx + header ...
+		next.ServeHTTP(w, r.WithContext(ctx)) // = chain.doFilter
+	})
+}
+```
+
+`chain.doFilter` é o `next.ServeHTTP`. `MDC` é o `context.Context` — com uma diferença que pega gente vindo do Spring: `MDC` é thread-local implícito, `ctx` é parâmetro explícito que viaja no `r`. Por isso a ordem da cebola importa mais em Go: se o `Logger` ficar por fora do `RequestID`, ele lê o contexto antes do carimbo e loga `req-unknown`.
+
+### E MVC, faz sentido em Go?
+
+![MVC em Go: Model é struct com tag, View é JSON na resposta, Controller é o handler; regra que cresce vira service mais repository](/img/diagramas/go-http-mvc.svg)
+
+Onde o MVC estoura: quando a regra cresce, o handler vira controller gordo — Decode + regra + banco + Encode no mesmo lugar. No Spring você quebraria em `@Service` + `@Repository`; em Go, quebre igual: `handler` (HTTP: Decode 400 / Encode) → `service`/use case (regra pura, `n * 2`, testável sem servidor) → `repository` (interface; postgres/memória implementa, só se precisar persistir). É a porta de entrada da arquitetura hexagonal — sem framework, sem nome de pasta obrigatório, só direção de dependência para dentro, como no desenho acima.
+
+Trade-off honesto: Spring entrega DI, validação (`@Valid` / `jakarta.validation`), OpenAPI gerado — cobra runtime maior, proxy/reflexão no stacktrace, lock-in de convenção. Stdlib entrega controle total e binário pequeno — cobra verbo: cada 400, cada header, cada timeout é código seu.
+
+**Regra prática.** Vindo do Spring/Kotlin, resista a recriar anotação com framework no dia um — e resista a enfiar regra no handler. Fique na stdlib até sentir falta de validação complexa ou doc gerada — aí Chi/Gin pagam o custo; quando o handler engordar, extraia service antes de adotar framework.
 
 ## 6. Falhas e trade-offs
 
 **Framework no dia um.** Chi/Gin/Fiber antes da primeira dor: camada para debugar, upgrade com breaking, lock-in de convenção. Adote quando a stdlib provar limite.
+
+**Middleware único que faz tudo.** Um `mw` gigante (id + log + recover juntos) funciona no passo 3, mas não se testa nem se reordena. Separe um verbo por middleware — a divisão do passo 4 existe para isso.
 
 **Sem timeout no servidor.** Handler com `ctx` não salva conexão sem `ReadTimeout`/`WriteTimeout` no `http.Server`: Slowloris ocupa workers de graça. Timeouts nas duas pontas + shutdown gracioso (a `main` real acima, mesmo padrão do post de [concorrência](/go-concorrencia)).
 
@@ -433,10 +572,12 @@ Trade-off honesto: Spring entrega DI, validação (`@Valid`), OpenAPI gerado —
 <Summary>
 
 - servidor mínimo: mux + `HandleFunc("GET /x")` + handler `(w, r)`
+- middleware: recebe handler, devolve handler; cebola com `next.ServeHTTP` no meio
 - JSON com Content-Type antes do Encode; inválido = 400, não 500
-- middleware: request_id na borda, timer, recover por fora
+- request_id na borda, timer, recover por fora; um verbo por middleware
 - layout: `cmd/api` monta, `internal/` implementa, handler puro de infra
-- Spring → Go: Controller vira HandleFunc, Filter vira cebola, Jackson vira Encoder/Decoder explícito
+- Spring → Go: Controller vira HandleFunc, Filter vira cebola, Jackson vira Encoder/Decoder explícito; Kotlin mostra o 400 que o Java esconde
+- MVC encaixa até certo ponto (Model=struct, View=JSON, Controller=handler); regra que cresce vira service + repository
 - servidor sempre com timeout + shutdown; handler sempre com ctx
 
 </Summary>

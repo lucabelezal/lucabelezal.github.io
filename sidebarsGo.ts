@@ -102,6 +102,20 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'link',
+          label: 'Testes de API HTTP em Go',
+          href: '/go-testes-http',
+          description: 'Handler, rotas, client e fakes.',
+          customProps: {date: '14 set 2026'},
+        },
+        {
+          type: 'link',
+          label: 'Do socket ao handler',
+          href: '/go-socket-ao-handler',
+          description: 'Socket, TCP e net/http.',
+          customProps: {date: '14 set 2026'},
+        },
+        {
+          type: 'link',
           label: 'API HTTP em Go',
           href: '/go-http-api',
           description: 'Stdlib, middleware e JSON sem framework.',

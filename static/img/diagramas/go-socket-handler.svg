@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 320" role="img" aria-label="Diagrama: passo 1 servidor TCP cru e passo 2 mesmo endereço servindo HTTP">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .goodbox{stroke:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ahsock" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <text x="25" y="28" font-size="13" class="lbl">passo 1 — TCP cru</text>
+  <rect x="25" y="40" width="180" height="100" rx="10" class="box"/>
+  <text x="41" y="70" font-size="14" font-weight="bold">nc 127.0.0.1</text>
+  <text x="41" y="94" font-size="13">cliente TCP</text>
+  <text x="41" y="118" font-size="13" class="lbl">bytes, sem HTTP</text>
+  <line x1="210" y1="90" x2="260" y2="90" class="arrow" marker-end="url(#ahsock)"/>
+  <rect x="265" y="40" width="180" height="100" rx="10" class="box"/>
+  <text x="281" y="70" font-size="14" font-weight="bold">kernel :18081</text>
+  <text x="281" y="94" font-size="13">socket → PID</text>
+  <text x="281" y="118" font-size="13" class="lbl">bind + listen</text>
+  <line x1="450" y1="90" x2="500" y2="90" class="arrow" marker-end="url(#ahsock)"/>
+  <rect x="505" y="40" width="130" height="100" rx="10" class="goodbox"/>
+  <text x="521" y="70" font-size="14" font-weight="bold">Go</text>
+  <text x="521" y="94" font-size="13">Accept → Conn</text>
+  <text x="521" y="118" font-size="13">Write Olá!</text>
+  <text x="25" y="178" font-size="13" class="lbl">passo 2 — mesmo endereço, falando HTTP</text>
+  <rect x="25" y="190" width="180" height="100" rx="10" class="box"/>
+  <text x="41" y="220" font-size="14" font-weight="bold">curl /hello</text>
+  <text x="41" y="244" font-size="13">GET HTTP/1.1</text>
+  <text x="41" y="268" font-size="13" class="lbl">client HTTP</text>
+  <line x1="210" y1="240" x2="260" y2="240" class="arrow" marker-end="url(#ahsock)"/>
+  <rect x="265" y="190" width="180" height="100" rx="10" class="box"/>
+  <text x="281" y="220" font-size="14" font-weight="bold">net/http</text>
+  <text x="281" y="244" font-size="13">parse → Request</text>
+  <text x="281" y="268" font-size="13" class="lbl">TCP → HTTP</text>
+  <line x1="450" y1="240" x2="500" y2="240" class="arrow" marker-end="url(#ahsock)"/>
+  <rect x="505" y="190" width="130" height="100" rx="10" class="goodbox"/>
+  <text x="521" y="220" font-size="14" font-weight="bold">handler</text>
+  <text x="521" y="244" font-size="13">func(w, r)</text>
+  <text x="521" y="268" font-size="13">Olá! via w</text>
+</svg>

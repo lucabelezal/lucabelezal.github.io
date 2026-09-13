@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 392" role="img" aria-label="Diagrama: equivalência Spring para Go stdlib — Controller vira HandleFunc, Filter vira middleware, Jackson vira Encoder e Decoder">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .goodbox{stroke:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah33" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <text x="16" y="28" font-size="15" font-weight="bold">Spring</text>
+  <text x="348" y="28" font-size="15" font-weight="bold">Go stdlib</text>
+  <rect x="16" y="44" width="296" height="40" rx="10" class="box"/>
+  <text x="30" y="69" font-size="13">@RestController @GetMapping</text>
+  <line x1="312" y1="64" x2="348" y2="64" class="arrow" marker-end="url(#ah33)"/>
+  <rect x="348" y="44" width="296" height="40" rx="10" class="goodbox"/>
+  <text x="362" y="69" font-size="13">HandleFunc("GET /health")</text>
+  <rect x="16" y="100" width="296" height="40" rx="10" class="box"/>
+  <text x="30" y="125" font-size="13">@RequestBody + Jackson</text>
+  <line x1="312" y1="120" x2="348" y2="120" class="arrow" marker-end="url(#ah33)"/>
+  <rect x="348" y="100" width="296" height="40" rx="10" class="goodbox"/>
+  <text x="362" y="125" font-size="13">json.Decoder.Decode + 400</text>
+  <rect x="16" y="156" width="296" height="40" rx="10" class="box"/>
+  <text x="30" y="181" font-size="13">@ResponseBody + Jackson</text>
+  <line x1="312" y1="176" x2="348" y2="176" class="arrow" marker-end="url(#ah33)"/>
+  <rect x="348" y="156" width="296" height="40" rx="10" class="goodbox"/>
+  <text x="362" y="181" font-size="13">Header + json.Encoder</text>
+  <rect x="16" y="212" width="296" height="40" rx="10" class="box"/>
+  <text x="30" y="237" font-size="13">OncePerRequestFilter</text>
+  <line x1="312" y1="232" x2="348" y2="232" class="arrow" marker-end="url(#ah33)"/>
+  <rect x="348" y="212" width="296" height="40" rx="10" class="goodbox"/>
+  <text x="362" y="237" font-size="13">func(next) Handler</text>
+  <rect x="16" y="268" width="296" height="40" rx="10" class="box"/>
+  <text x="30" y="293" font-size="13">server.port + timeouts</text>
+  <line x1="312" y1="288" x2="348" y2="288" class="arrow" marker-end="url(#ah33)"/>
+  <rect x="348" y="268" width="296" height="40" rx="10" class="goodbox"/>
+  <text x="362" y="293" font-size="13">http.Server{timeouts}</text>
+  <rect x="16" y="324" width="296" height="40" rx="10" class="box"/>
+  <text x="30" y="349" font-size="13">@ControllerAdvice / MDC</text>
+  <line x1="312" y1="344" x2="348" y2="344" class="arrow" marker-end="url(#ah33)"/>
+  <rect x="348" y="324" width="296" height="40" rx="10" class="goodbox"/>
+  <text x="362" y="349" font-size="13">Recover / ctx request_id</text>
+</svg>

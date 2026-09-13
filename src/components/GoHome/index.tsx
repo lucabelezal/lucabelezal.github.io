@@ -3,6 +3,18 @@ import styles from './styles.module.css';
 
 const contents = [
   {
+    title: 'Testes de API HTTP em Go',
+    description: 'Handler, rotas, client e adapters com httptest e fakes.',
+    href: '/go-testes-http',
+    date: '14 set 2026',
+  },
+  {
+    title: 'Do socket ao handler',
+    description: 'net.Listen, Accept e como bytes TCP viram Request.',
+    href: '/go-socket-ao-handler',
+    date: '14 set 2026',
+  },
+  {
     title: 'API HTTP em Go',
     description: 'Stdlib sem framework: roteamento, middleware, JSON e contrato com curl.',
     href: '/go-http-api',

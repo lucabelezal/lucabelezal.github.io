@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 572" role="img" aria-label="Diagrama: cada request desce Recover, RequestID, Logger, Mux até o handler e a resposta sobe logando">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .goodbox{stroke:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ah32" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <rect x="110" y="16" width="440" height="48" rx="10" class="box"/>
+  <text x="126" y="38" font-size="14" font-weight="bold">curl POST /double</text>
+  <text x="126" y="58" font-size="13" class="lbl">{"n": 21}</text>
+  <line x1="330" y1="64" x2="330" y2="88" class="arrow" marker-end="url(#ah32)"/>
+  <rect x="110" y="88" width="440" height="48" rx="10" class="box"/>
+  <text x="126" y="110" font-size="14" font-weight="bold">http.Server</text>
+  <text x="126" y="130" font-size="13" class="lbl">aceita conexão · checa timeout</text>
+  <line x1="330" y1="136" x2="330" y2="160" class="arrow" marker-end="url(#ah32)"/>
+  <rect x="110" y="160" width="440" height="48" rx="10" class="box"/>
+  <text x="126" y="182" font-size="14" font-weight="bold">Recover</text>
+  <text x="126" y="202" font-size="13" class="lbl">panic? 500 e vivo · senão desce</text>
+  <line x1="330" y1="208" x2="330" y2="232" class="arrow" marker-end="url(#ah32)"/>
+  <rect x="110" y="232" width="440" height="48" rx="10" class="box"/>
+  <text x="126" y="254" font-size="14" font-weight="bold">RequestID</text>
+  <text x="126" y="274" font-size="13" class="lbl">gera req-48213 · ctx + X-Request-ID</text>
+  <line x1="330" y1="280" x2="330" y2="304" class="arrow" marker-end="url(#ah32)"/>
+  <rect x="110" y="304" width="440" height="48" rx="10" class="box"/>
+  <text x="126" y="326" font-size="14" font-weight="bold">Logger</text>
+  <text x="126" y="346" font-size="13" class="lbl">anota relógio · loga na volta</text>
+  <line x1="330" y1="352" x2="330" y2="376" class="arrow" marker-end="url(#ah32)"/>
+  <rect x="110" y="376" width="440" height="48" rx="10" class="box"/>
+  <text x="126" y="398" font-size="14" font-weight="bold">ServeMux</text>
+  <text x="126" y="418" font-size="13" class="lbl">"POST /double" → handler.Double</text>
+  <line x1="330" y1="424" x2="330" y2="448" class="arrow" marker-end="url(#ah32)"/>
+  <rect x="110" y="448" width="440" height="52" rx="10" class="goodbox"/>
+  <text x="126" y="470" font-size="14" font-weight="bold">handler.Double</text>
+  <text x="126" y="491" font-size="13">Decode → 400 · Encode {"result": 42}</text>
+  <text x="110" y="530" font-size="13" class="lbl">resposta sobe: Logger (done req-48213) → Recover → Server → curl</text>
+  <text x="110" y="552" font-size="13" class="lbl">seta desce no request, resposta volta subindo</text>
+</svg>

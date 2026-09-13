@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 360" role="img" aria-label="Diagrama: endpoint, socket, conexão 4-tuple e stream TCP">
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .goodbox{fill:none;stroke:#238636;stroke-width:2}
+    .lbl{fill:#57606a}
+    .arrow{stroke:#0969da;stroke-width:2;fill:none}
+    .head{fill:#0969da;stroke:none}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .goodbox{stroke:#3fb950}
+      .lbl{fill:#8b949e}
+      .arrow{stroke:#58a6ff}
+      .head{fill:#58a6ff}
+    }
+  </style>
+  <defs>
+    <marker id="ahmm" markerWidth="10" markerHeight="8" refX="8" refY="4" orient="auto">
+      <polygon points="0,0 8,4 0,8" class="head"/>
+    </marker>
+  </defs>
+  <text x="25" y="28" font-size="13" class="lbl">conexão = 4 valores (não se mistura na mesma porta)</text>
+  <rect x="25" y="40" width="170" height="86" rx="10" class="box"/>
+  <text x="41" y="70" font-size="14" font-weight="bold">cliente A</text>
+  <text x="41" y="94" font-size="13">.1.5:53142</text>
+  <text x="41" y="114" font-size="13" class="lbl">SYN →</text>
+  <rect x="25" y="134" width="170" height="86" rx="10" class="box"/>
+  <text x="41" y="164" font-size="14" font-weight="bold">cliente B</text>
+  <text x="41" y="188" font-size="13">.1.5:53143</text>
+  <text x="41" y="208" font-size="13" class="lbl">SYN →</text>
+  <line x1="200" y1="83" x2="290" y2="83" class="arrow" marker-end="url(#ahmm)"/>
+  <line x1="200" y1="177" x2="290" y2="177" class="arrow" marker-end="url(#ahmm)"/>
+  <rect x="295" y="40" width="200" height="180" rx="10" class="goodbox"/>
+  <text x="311" y="70" font-size="14" font-weight="bold">servidor :8080</text>
+  <text x="311" y="94" font-size="13">socket → PID Go</text>
+  <text x="311" y="118" font-size="13">conn A ≠ conn B</text>
+  <text x="311" y="142" font-size="13" class="lbl">kernel separa pela</text>
+  <text x="311" y="162" font-size="13" class="lbl">porta de origem</text>
+  <text x="311" y="186" font-size="13" class="lbl">SYN-ACK + ACK</text>
+  <text x="311" y="206" font-size="13" class="lbl">estado compartilhado</text>
+  <rect x="510" y="40" width="125" height="180" rx="10" class="box"/>
+  <text x="526" y="70" font-size="14" font-weight="bold">net.Conn</text>
+  <text x="526" y="94" font-size="13">Read()</text>
+  <text x="526" y="118" font-size="13">Write()</text>
+  <text x="526" y="142" font-size="13" class="lbl">por conexão</text>
+  <text x="25" y="252" font-size="13" class="lbl">stream: Write ≠ Read (HTTP enquadra por cima)</text>
+  <rect x="25" y="264" width="290" height="76" rx="10" class="box"/>
+  <text x="41" y="294" font-size="13">Write ABC + Write DEF</text>
+  <text x="41" y="318" font-size="13" class="lbl">emissor: duas chamadas</text>
+  <line x1="320" y1="302" x2="365" y2="302" class="arrow" marker-end="url(#ahmm)"/>
+  <rect x="370" y="264" width="265" height="76" rx="10" class="goodbox"/>
+  <text x="386" y="294" font-size="13">Read AB + Read CDEF</text>
+  <text x="386" y="318" font-size="13" class="lbl">receptor: outra divisão</text>
+</svg>
