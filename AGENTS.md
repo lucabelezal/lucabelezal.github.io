@@ -75,9 +75,10 @@ Harness: muitas skills no projeto (~67). AGENTS.md é roteador leve; detalhes fi
   **fora** de `all-posts.json` e da home — como o guia AWS.
 - Shell: padrão **Posts** (`PageShell`/`.pageGrid`, rails de nav + TOC), não o
   shell de docs do Docusaurus. Ver `rules/architecture.md`.
-- Uma página por projeto: `projects/<slug>.mdx` com
-  `displayed_sidebar: projectsSidebar`. Projeto novo = `.mdx` + entrada em
-  `sidebarsProjects.ts` + entrada em `projectsTrack.ts`. Checklist em
+- Projeto de uma página só: `projects/<slug>.mdx`. Projeto com capítulos: pasta
+  `projects/<slug>/` com `index.mdx` (visão geral) + um `.mdx` por capítulo.
+  Sempre `displayed_sidebar: projectsSidebar`. Projeto novo = `.mdx`/pasta +
+  entrada em `sidebarsProjects.ts` + entrada em `projectsTrack.ts`. Checklist em
   `.ai/projects-guide.md`.
 - Capítulos inacabados usam `draft: true`; publicar = remover `draft` + atualizar
   o roadmap. Nunca linkar página inexistente (`onBrokenLinks: 'throw'`).
