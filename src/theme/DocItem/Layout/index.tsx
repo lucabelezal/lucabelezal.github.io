@@ -41,14 +41,14 @@ export default function DocItemLayout({children}: Props): ReactNode {
   const docTOC = useDocTOC();
   const {metadata, frontMatter, toc} = useDoc();
   const {pathname} = useLocation();
-  const isHome = isGoHome(pathname);
 
-  // Homes de área já trazem o próprio PageShell.
-  if (isDocsAreaHome(pathname)) {
+  // Homes editoriais (áreas de docs e /go) já trazem o próprio PageShell.
+  if (isDocsAreaHome(pathname) || isGoHome(pathname)) {
     return <>{children}</>;
   }
 
-  // Áreas editoriais (/aws, /projects): shell do Posts, sem chrome de docs.
+  // Áreas editoriais (/aws, /projects, /fundamentals, /design): shell do Posts,
+  // sem chrome de docs.
   if (isDocsArea(pathname)) {
     return (
       <PageShell
@@ -65,27 +65,25 @@ export default function DocItemLayout({children}: Props): ReactNode {
   }
 
   return (
-    <div className={clsx('row', styles.docItemRow, isHome && 'rowFull')}>
+    <div className={clsx('row', styles.docItemRow)}>
       <div className={clsx('col', !docTOC.hidden && styles.docItemCol)}>
         <ContentVisibility metadata={metadata} />
         <DocVersionBanner />
         <div className={styles.docItemContainer}>
           <article>
-            {!isHome && <DocBreadcrumbs />}
+            <DocBreadcrumbs />
             <DocVersionBadge />
             {docTOC.mobile}
             <DocItemContent>{children}</DocItemContent>
-            {!isHome && <DocItemFooter />}
+            <DocItemFooter />
           </article>
-          {!isHome && <DocItemPaginator />}
+          <DocItemPaginator />
         </div>
       </div>
-      {!isHome && (
-        <div className={clsx('col col--3', styles.docItemAside)}>
-          <ProgressIndicator />
-          {docTOC.desktop}
-        </div>
-      )}
+      <div className={clsx('col col--3', styles.docItemAside)}>
+        <ProgressIndicator />
+        {docTOC.desktop}
+      </div>
     </div>
   );
 }
