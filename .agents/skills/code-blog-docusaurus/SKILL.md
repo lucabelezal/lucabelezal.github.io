@@ -17,11 +17,14 @@ Receber especificação textual (saída de `code-blog-ui`) e gerar componentes R
 
 Fluxo: **Spec → Tokens → Layout → Componentes atômicos → Integração → Build**
 
+Invariantes de arquitetura (shells, i18n, áreas de docs): `rules/architecture.md`.
+Referências a arquivos são simbólicas (`arquivo → símbolo`), nunca número de linha.
+
 ## Princípios Docusaurus
 
 ### Preferir nativo, customizar o mínimo
 
-- Use recursos nativos `preset-classic`, `theme-classic`, `swizzle`, `customCss` (`docusaurus.config.ts:34`)
+- Use recursos nativos `preset-classic`, `theme-classic`, `swizzle`, `customCss` (`docusaurus.config.ts` → `presets[0].theme.customCss`)
 - Customização via:
   ```
   src/
@@ -35,13 +38,13 @@ Fluxo: **Spec → Tokens → Layout → Componentes atômicos → Integração �
   └── theme/                  # swizzled theme (evitar sem necessidade)
   ```
 - Não substituir sistema inteiro de tema sem necessidade. Aparência = identidade própria sobre base sólida Docusaurus.
-- `onBrokenLinks: 'throw'` (`docusaurus.config.ts:28`) — todo link interno deve ser válido.
+- `onBrokenLinks: 'throw'` (`docusaurus.config.ts` → `onBrokenLinks`) — todo link interno deve ser válido.
 
 ### Stack do projeto
 
 - Docusaurus `3.10` (`package.json`), React 19, TypeScript
-- Tema custom `src/css/custom.css`: Inter + JetBrains Mono (`@import` linha 2), paleta GitHub Light `#0969da` / Dark `#0d1117` linha 9/142, Infima vars `--ifm-*`, `prism-react-renderer` `github`/`oneDark` (`docusaurus.config.ts:91`)
-- i18n `pt-BR` (default), `en`, `es` — blog route `/`, docs `go-by-example` em `/go` (`docusaurus.config.ts:29/38`)
+- Tema custom `src/css/custom.css`: Inter + JetBrains Mono (`@import` no topo), paleta GitHub Light `#0969da` / Dark `#0d1117`, Infima vars `--ifm-*`, `prism-react-renderer` `github`/`oneDark` (`docusaurus.config.ts` → `themeConfig.prism`)
+- i18n `pt-BR` (default), `en`, `es` — blog route `/`, docs `go-by-example` em `/go` (`docusaurus.config.ts` → `i18n` / `presets[0].docs`)
 
 ## Design tokens — mapear spec para `custom.css`
 
@@ -57,9 +60,9 @@ Extraia da spec e traduza para Infima vars já existentes; não crie novo sistem
 | Code bg | `--ifm-code-background` / `--ifm-pre-background` | Light `#f6f8fa`, Dark `#21262d`/`#161b22` |
 | Border | `--ifm-color-emphasis-200` | Light `#d0d7de`, Dark `#30363d` |
 
-- Fontes: `--ifm-font-family-base: Inter`, `--ifm-font-family-monospace: JetBrains Mono` (`custom.css:31/33`)
-- Tamanhos: `--ifm-font-size-base: 17px`, `--ifm-line-height-base: 1.7`, body `.blog-wrapper article 1.02rem/1.75` (`custom.css:50`)
-- Seções: `.blogSection` com `border-left-width: 4px`, `border-radius: 8px`, variantes `--learn #0969da`, `--prereqs #8b949e`, `--summary #238636`, `--next #8957e5`, `--skills #d29922` (`custom.css:79/95`)
+- Fontes: `--ifm-font-family-base: Inter`, `--ifm-font-family-monospace: JetBrains Mono` (`custom.css` → `--ifm-font-family-*`)
+- Tamanhos: `--ifm-font-size-base: 17px`, `--ifm-line-height-base: 1.7`, body `.blog-wrapper article 1.02rem/1.75` (`custom.css` → `--ifm-font-size-base`)
+- Seções: `.blogSection` com `border-left-width: 4px`, `border-radius: 8px`, variantes `--learn #0969da`, `--prereqs #8b949e`, `--summary #238636`, `--next #8957e5`, `--skills #d29922` (`custom.css` → `.blogSection` e variantes)
 
 Se spec pedir cor/tipografia/espaçamento novo, avalie: estende `custom.css` com nova var ou reusa existente? Prefira reuso.
 
@@ -81,15 +84,15 @@ export default function WhatYouWillLearn({children}: {children: ReactNode}) {
 }
 ```
 
-- `WhatYouWillLearn`, `Prerequisites`, `Summary`, `NextSteps`, `SkillsGained` (pills `9999px` `custom.css:101`), `SeriesNav` (`custom.css:117`)
-- Use em posts `.mdx` via `import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn'` (ver `.ai/templates/blog-post.mdx:8`)
+- `WhatYouWillLearn`, `Prerequisites`, `Summary`, `NextSteps`, `SkillsGained` (pills `9999px` `custom.css` → `.blogSection--skills`), `SeriesNav` (`custom.css` → `.blogSection--series`)
+- Use em posts `.mdx` via `import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn'` (ver `.ai/templates/blog-post.mdx`)
 
 ### CodeExplanation (`src/components/CodeExplanation/`)
 
 Padrão **explicação | código** lado a lado com sticky:
 
-- Props: `{title, code, language='go', locale, sections: {text, highlight?}[]}` (`index.tsx:9`)
-- Layout: `grid 1fr 1fr gap 2.5rem max-width 1400px` (`styles.module.css:1`), `left` com `border-left 3px primary`, `right` sticky `top 80px` com `CodeBlock` + `prism-code 14px/1.65`
+- Props: `{title, code, language='go', locale, sections: {text, highlight?}[]}` (`CodeExplanation/index.tsx`)
+- Layout: `grid 1fr 1fr gap 2.5rem max-width 1400px` (`CodeExplanation/styles.module.css`), `left` com `border-left 3px primary`, `right` sticky `top 80px` com `CodeBlock` + `prism-code 14px/1.65`
 - Mobile `@media (max-width: 900px)` → `grid 1fr`, sticky vira relative
 - Terminal detection: `isTerminalSection` para `Saída:` / `Output:` / `$ go ` → `CodeBlock language="bash" title="Terminal"`
 
@@ -97,7 +100,7 @@ Use como referência para novo `CodeWalkthrough` — copie padrões de grid/stic
 
 ### GoExample (`src/components/GoExample/`)
 
-Tabela `docs | code` (`index.tsx:13`): `<table><tbody>{children}</tbody></table>` com `GoExampleRow` (`docs: ReactNode, code: string, language, title, empty`). Link `go.dev/play/p/${playHash}`. Use para páginas `/go` (`sidebarsGo.ts`, `go-by-example/`).
+Tabela `docs | code` (`GoExample/index.tsx`): `<table><tbody>{children}</tbody></table>` com `GoExampleRow` (`docs: ReactNode, code: string, language, title, empty`). Link `go.dev/play/p/${playHash}`. Use para páginas `/go` (`sidebarsGo.ts`, `go-by-example/`).
 
 ## Como implementar nova spec
 
@@ -111,7 +114,7 @@ Tabela `docs | code` (`index.tsx:13`): `<table><tbody>{children}</tbody></table>
 
 - Macro: `Header | [Sidebar | Conteúdo | TOC] | Footer` — use Docusaurus `Layout`, não recrie
 - Conteúdo: `max-width 640-720px` confortável, `margin 0 auto`, Infima container
-- Responsivo obrigatório: Desktop (3 col), Tablet (colapsa secundário), Mobile (stack + drawer + code scroll). Siga breakpoints de `CodeExplanation/styles.module.css:86` (`900px`).
+- Responsivo obrigatório: Desktop (3 col), Tablet (colapsa secundário), Mobile (stack + drawer + code scroll). Siga o breakpoint de `CodeExplanation/styles.module.css` (`900px`).
 
 ### 3. Componente atômico
 
@@ -154,7 +157,7 @@ export default function NovoComp({title, children, code, language='ts'}: Props) 
 
 - `CodeBlock` com `language`, `title="arquivo.ext"`, `showLineNumbers` quando relevante, `// highlight-next-line` para foco
 - Syntax highlighting via `prismThemes.github` / `oneDark` já configurado
-- Fundo code: `--ifm-pre-background` (`#f6f8fa` / `#161b22`), borda `1px solid --ifm-color-emphasis-200`, radius `8px`, font `0.9rem`, `prism-code 14px/1.65` (ver `custom.css:63/73`)
+- Fundo code: `--ifm-pre-background` (`#f6f8fa` / `#161b22`), borda `1px solid --ifm-color-emphasis-200`, radius `8px`, font `0.9rem`, `prism-code 14px/1.65` (ver `custom.css` → bloco de código)
 - Copy button nativo `CodeBlock`; scroll horizontal em mobile
 - Não force lado-a-lado para blocos grandes — use empilhado (explicação acima, code abaixo)
 
@@ -177,7 +180,7 @@ Entregue um componente por vez: `tokens → layout → componente → review →
 ## Checklist antes de entregar
 
 - [ ] Reusa `CodeBlock`, `custom.css` vars, `blogSection` onde couber
-- [ ] Suporta light/dark (teste `colorMode: respectPrefersColorScheme` `docusaurus.config.ts:73`)
+- [ ] Suporta light/dark (teste `colorMode: respectPrefersColorScheme` `docusaurus.config.ts` → `themeConfig.colorMode`)
 - [ ] Responsivo: desktop lado-a-lado, mobile empilhado + drawer + code scroll
 - [ ] `npm run typecheck` passa
 - [ ] `npm run build` passa (3 locales, broken links throw)

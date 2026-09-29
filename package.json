@@ -16,7 +16,8 @@
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
     "typecheck": "tsc",
-    "posts:index": "node scripts/all-posts.mjs"
+    "posts:index": "node scripts/all-posts.mjs",
+    "skills:sync": "node scripts/sync-skills.mjs"
   },
   "dependencies": {
     "@docusaurus/core": "3.10.2",

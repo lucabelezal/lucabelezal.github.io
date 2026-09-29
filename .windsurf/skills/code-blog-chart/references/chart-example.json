@@ -1,0 +1,11 @@
+{
+  "type": "horizontal_bar",
+  "title": "Throughput por número de workers (tarefas/s)",
+  "source": "go test -bench, Go 1.27, MacBook M3",
+  "data": [
+    {"label": "1 worker", "value": 1200},
+    {"label": "4 workers", "value": 4300},
+    {"label": "8 workers", "value": 6100},
+    {"label": "16 workers", "value": 5900}
+  ]
+}
