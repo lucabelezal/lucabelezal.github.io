@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 210" role="img" aria-label="Diagrama: redirecionamento 301 — cliente pede URL curta, servidor devolve Location, cliente segue para o site original">
+  <title>Fluxo de redirecionamento 301</title>
+  <desc>O cliente pede a URL curta ao servidor; o servidor responde 301 com Location apontando para a URL longa; o cliente segue para o servidor de destino.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .store{fill:none;stroke:#d29922;stroke-width:2}
+    .proc{fill:none;stroke:#8957e5;stroke-width:2}
+    .flow{fill:none;stroke:#0969da;stroke-width:1.6}
+    .lbl{fill:#57606a}
+    .mono{fill:#57606a}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .store{stroke:#e3b341}
+      .proc{stroke:#a371f7}
+      .flow{stroke:#58a6ff}
+      .lbl{fill:#8b949e}
+      .mono{fill:#8b949e}
+    }
+  </style>
+  <text x="18" y="22" font-size="11" text-anchor="start" class="lbl">Redirecionamento 301: o servidor só aponta o destino</text>
+  <rect x="18" y="74" width="170" height="64" rx="8" class="box"/>
+  <text x="103" y="104" font-size="12" text-anchor="middle">Cliente</text>
+  <text x="103" y="121" font-size="10" text-anchor="middle" class="mono">navegador</text>
+  <rect x="320" y="74" width="180" height="64" rx="8" class="proc"/>
+  <text x="410" y="104" font-size="12" text-anchor="middle">Servidor URL curta</text>
+  <text x="410" y="121" font-size="10" text-anchor="middle" class="mono">tinyurl</text>
+  <rect x="632" y="74" width="170" height="64" rx="8" class="store"/>
+  <text x="717" y="104" font-size="12" text-anchor="middle">Site original</text>
+  <text x="717" y="121" font-size="10" text-anchor="middle" class="mono">amazon</text>
+  <path d="M 188 92 L 320 92" class="flow" marker-end="url(#arrow)"/>
+  <text x="254" y="84" font-size="10" text-anchor="middle" class="lbl">GET /qtj5opu</text>
+  <path d="M 320 120 L 188 120" class="flow" marker-end="url(#arrow)"/>
+  <text x="254" y="136" font-size="10" text-anchor="middle" class="lbl">301 Location: amazon</text>
+  <path d="M 103 138 L 103 176 L 717 176 L 717 138" class="flow" marker-end="url(#arrow)"/>
+  <text x="410" y="192" font-size="10" text-anchor="middle" class="lbl">cliente segue o redirect sozinho</text>
+</svg>

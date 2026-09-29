@@ -1,0 +1,142 @@
+---
+title: Key-value store
+sidebar_label: Key-value store
+sidebar_position: 5
+displayed_sidebar: fundamentalsSidebar
+description: Um key-value store distribuído de ponta a ponta — CAP, particionamento, replicação, quorum, vector clocks, gossip, Merkle tree e write/read path.
+---
+
+> **Baseado em:** [ByteByteGo — Design A Key-value Store](https://bytebytego.com/courses/system-design-interview/design-a-key-value-store).
+> Texto reescrito em pt-BR na minha leitura; os diagramas são próprios.
+
+Um key-value store guarda pares **chave → valor**, onde a chave é única e o valor é tratado como opaco (string, lista, objeto). As operações são duas: `put(key, value)` e `get(key)`. Parece pouco — mas construir um que escale, resista a falhas e mantenha consistência toca quase todo conceito de sistemas distribuídos.
+
+## Escopo e características
+
+O design deste capítulo busca: pares pequenos (< 10 KB), capacidade de guardar **muitos** dados, alta disponibilidade, alta escalabilidade, escala automática, consistência ajustável e baixa latência.
+
+Um servidor único é fácil (hash table em memória), mas memória acaba. Duas otimizações ajudam: **compressão** e guardar só o que é frequente em memória. Ainda assim, para volume grande, é preciso **distribuir**.
+
+## CAP
+
+Um sistema distribuído não garante ao mesmo tempo:
+
+- **Consistência:** todos os clientes veem o mesmo dado, não importa o nó.
+- **Disponibilidade:** todo pedido recebe resposta, mesmo com nós fora.
+- **Tolerância a partição:** o sistema segue operando apesar de quebras de comunicação.
+
+![Diagrama: teorema CAP — escolha dois dos três](/img/diagramas/sd-cap.svg)
+
+Na prática escolhem-se dois:
+
+- **CP:** consistência + partição (sacrifica disponibilidade). Ex.: sistemas bancários, que preferem erro a dado desatualizado.
+- **AP:** disponibilidade + partição (sacrifica consistência). Aceita leitura possivelmente desatualizada e sincroniza depois.
+- **CA:** não existe em rede real — falha de rede é inevitável, então partição tem que ser tolerada.
+
+## Componentes
+
+### Particionamento
+
+Com dados demais para um servidor, divide-se em **partições**. Os dois desafios: distribuir uniformemente e mover pouco ao adicionar/remover nós. É exatamente o caso do [consistent hashing](/fundamentals/consistent-hashing): servidores e chaves no anel, e a chave pertence ao primeiro servidor no sentido horário.
+
+### Replicação
+
+Para disponibilidade, replica-se em **N** servidores: após mapear a chave, anda-se no anel e escolhem-se os N primeiros **servidores únicos**.
+
+![Diagrama: replicação nos N primeiros servidores após a chave no anel](/img/diagramas/sd-kv-replicacao.svg)
+
+Replicas devem ficar em **data centers distintos** — nós do mesmo DC tendem a falhar juntos (energia, rede, desastre).
+
+### Consistência: quorum
+
+Com réplicas, é preciso sincronizá-las. O **quorum consensus** usa:
+
+- **N:** número de réplicas.
+- **W:** quantas réplicas precisam confirmar uma **escrita**.
+- **R:** quantas réplicas precisam responder uma **leitura**.
+
+![Diagrama: o coordenador espera W acks na escrita e R respostas na leitura](/img/diagramas/sd-kv-quorum.svg)
+
+Ajustes possíveis:
+
+- `R = 1, W = N`: leitura rápida.
+- `W = 1, R = N`: escrita rápida.
+- **`W + R > N`:** consistência forte garantida (há sobreposição de nós com o dado mais recente).
+
+Quanto maior `W`/`R`, mais consistente e mais lento (espera a réplica mais devagar).
+
+### Modelos de consistência
+
+- **Forte:** toda leitura vê a última escrita.
+- **Fraca:** leituras podem ver valor desatualizado.
+- **Eventual:** forma de consistência fraca em que, dado tempo, todas as réplicas convergem.
+
+Dynamo e Cassandra adotam consistência eventual — é o modelo recomendado aqui.
+
+### Inconsistência: versionamento e vector clocks
+
+Replicação gera inconsistência. O **versionamento** trata cada modificação como uma nova versão imutável, e o **vector clock** detecta conflitos.
+
+Um vector clock é um par `[servidor, versão]` por participante. Ao escrever num servidor, incrementa-se a versão dele (ou cria-se a entrada). Assim, uma versão X é **ancestral** de Y (sem conflito) se todos os contadores de Y forem ≥ aos de X. Se algum for menor, há **conflito** (versões irmãs).
+
+![Diagrama: D3 e D4 são versões irmãs em conflito; D5 reconcilia](/img/diagramas/sd-vector-clock.svg)
+
+Dois custos: o cliente precisa implementar a resolução de conflito, e os pares `[servidor, versão]` podem crescer. A saída é limitar o tamanho e descartar os pares mais antigos (a Dynamo relata nunca ter batido nesse limite em produção).
+
+## Falhas
+
+### Detecção: gossip
+
+Não basta um servidor dizer que outro caiu. O **gossip protocol** funciona assim: cada nó mantém uma lista de membros com contadores de heartbeat; incrementa o seu periodicamente; envia heartbeats a nós aleatórios, que propagam; se o contador de um membro não sobe por tempo suficiente, ele é considerado **offline**.
+
+### Falhas temporárias: sloppy quorum e hinted handoff
+
+Em vez de bloquear quando um nó está fora, o **sloppy quorum** escolhe os primeiros W/R servidores **saudáveis** no anel. Quando o nó volta, os dados são repassados a ele (**hinted handoff**).
+
+### Falhas permanentes: Merkle tree
+
+Para ressincronizar réplicas, usa-se **anti-entropy** com **Merkle tree**: uma árvore em que cada nó é o hash dos filhos. Compara-se a raiz; se diferem, desce-se só nos ramos divergentes — sincroniza-se só o que mudou.
+
+![Diagrama: compara a raiz da Merkle tree e desce só nos buckets divergentes](/img/diagramas/sd-merkle.svg)
+
+### Data center outage
+
+Replicar entre data centers permite continuar no ar mesmo com um DC inteiro fora.
+
+## Arquitetura
+
+![Diagrama: cliente, coordenador e nós num anel por consistent hashing](/img/diagramas/sd-kv-arquitetura.svg)
+
+- Clientes usam `get(key)` / `put(key, value)`.
+- O **coordenador** é o proxy entre cliente e store.
+- Nós ficam num **anel** por consistent hashing.
+- O sistema é **descentralizado**: não há ponto único de falha; cada nó acumula as mesmas responsabilidades (API, detecção de falha, resolução de conflito, replicação, storage).
+
+### Write path e read path
+
+Inspirado no Cassandra:
+
+- **Escrita:** grava no **commit log** (durabilidade), depois na **memory cache**; quando a cache enche, despeja em **SSTable** no disco (lista ordenada de pares chave-valor).
+- **Leitura:** checa a memory cache; se não está, usa um **Bloom filter** para saber qual SSTable pode conter a chave, busca nos SSTables e devolve.
+
+## Resumo
+
+| Objetivo / problema | Técnica |
+|---|---|
+| Guardar muitos dados | Consistent hashing |
+| Alta disponibilidade de leitura | Replicação + multi-data center |
+| Alta disponibilidade de escrita | Versionamento + vector clocks |
+| Particionar o dataset | Consistent hashing |
+| Escala incremental | Consistent hashing |
+| Heterogeneidade | Consistent hashing (mais vnodes em servidores maiores) |
+| Consistência ajustável | Quorum consensus (W, R, N) |
+| Falhas temporárias | Sloppy quorum + hinted handoff |
+| Falhas permanentes | Merkle tree |
+| Queda de data center | Replicação entre data centers |
+
+## Referências
+
+- [ByteByteGo — Design A Key-value Store](https://bytebytego.com/courses/system-design-interview/design-a-key-value-store)
+- [Dynamo: Amazon's Highly Available Key-value Store](https://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf)
+- [Cassandra](https://cassandra.apache.org/)
+- [Merkle tree](https://en.wikipedia.org/wiki/Merkle_tree)

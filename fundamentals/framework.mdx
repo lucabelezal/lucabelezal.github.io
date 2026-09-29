@@ -1,0 +1,88 @@
+---
+title: Framework de entrevista
+sidebar_label: Framework de entrevista
+sidebar_position: 3
+displayed_sidebar: fundamentalsSidebar
+description: O processo de 4 passos para resolver um problema de system design em aberto — e os erros que reprovam.
+---
+
+> **Baseado em:** [ByteByteGo — A Framework For System Design Interviews](https://bytebytego.com/courses/system-design-interview/a-framework-for-system-design-interviews).
+> Texto reescrito em pt-BR na minha leitura.
+
+A pergunta é vaga de propósito ("projete o produto X"). Ninguém espera que você reproduza em uma hora um sistema que levou centenas de engenheiros. A entrevista **simula** a resolução de um problema em aberto por duas pessoas: o que se avalia é o **processo**, não a resposta final.
+
+## O que a entrevista testa
+
+Além da habilidade técnica, ela mede: colaborar, trabalhar sob pressão, resolver ambiguidade e **fazer boas perguntas**.
+
+Red flags que reprovam:
+
+- **Over-engineering** — pureza de design ignorando trade-offs, sem enxergar o custo acumulado.
+- **Mente fechada** e **teimosia**.
+
+## O processo de 4 passos
+
+![Diagrama: entender o problema, propor o alto nível, aprofundar e fechar](/img/diagramas/sd-framework-4-passos.svg)
+
+### Passo 1 — Entender o problema e fechar o escopo
+
+Não saia respondendo. Quem responde rápido sem entender os requisitos não ganha ponto — perde. Faça perguntas para fechar o escopo:
+
+- Quais **funcionalidades** vamos construir?
+- Quantos **usuários** o produto tem?
+- Como a empresa espera **escalar** (3, 6, 12 meses)?
+- Qual a **stack** existente? Há serviços que simplifiquem o design?
+
+Quando a resposta for "assuma", **escreva a premissa** — você vai precisar dela.
+
+### Passo 2 — Propor o alto nível e buscar buy-in
+
+Trate o entrevistador como colega. Desenhe um **blueprint** com os componentes-chave (clientes, APIs, servidores, stores, cache, CDN, fila) e faça a estimativa back-of-the-envelope para checar se o desenho cabe na escala. Percorra alguns **casos de uso** concretos — eles revelam arestas que você não considerou.
+
+Incluir endpoints e schema de banco aqui **depende do problema**: para "projete o Google Search" é baixo nível demais; para o backend de um jogo de cartas, faz sentido.
+
+### Passo 3 — Deep dive
+
+Com o alto nível acordado, aprofunde nos **componentes críticos**. Onde aprofundar varia: num encurtador, a função de hash; num chat, latência e presença online. Não se perca em detalhes que não demonstram habilidade — gestão de tempo é essencial.
+
+### Passo 4 — Fechar
+
+- Aponte **gargalos** e melhorias. Nunca diga que o design é perfeito.
+- Faça um **recap** do que foi decidido.
+- Fale de **falhas** (servidor, rede), **operação** (métricas, logs, rollout) e **próxima curva de escala** (de 1M para 10M usuários).
+- Proponha refinamentos que faria com mais tempo.
+
+## Gestão de tempo
+
+Numa entrevista de 45 minutos, uma distribuição aproximada:
+
+| Passo | Tempo |
+|---|---|
+| 1. Entender e fechar escopo | 3–10 min |
+| 2. Alto nível + buy-in | 10–15 min |
+| 3. Deep dive | 10–25 min |
+| 4. Fechar | 3–5 min |
+
+É um guia, não uma regra: o escopo do problema manda.
+
+## Dos e Don'ts
+
+**Faça:**
+
+- Sempre peça clarificação; não presuma.
+- Entenda os requisitos — não existe "a resposta certa".
+- Pense em voz alta e comunique.
+- Sugira mais de um caminho quando possível.
+- Depois do blueprint acordado, detalhe primeiro os componentes mais críticos.
+- Nunca desista.
+
+**Não faça:**
+
+- Ir para a solução sem clarificar requisitos e premissas.
+- Aprofundar num componente logo no começo — alto nível primeiro, depois desça.
+- Travar em silêncio; peça dica se precisar.
+- Achar que acabou quando entregou o design. Só acabou quando o entrevistador diz.
+
+## Referências
+
+- [ByteByteGo — A Framework For System Design Interviews](https://bytebytego.com/courses/system-design-interview/a-framework-for-system-design-interviews)

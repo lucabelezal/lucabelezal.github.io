@@ -26,12 +26,21 @@ const config: Config = {
   onBrokenLinks: 'throw',
 
   // Blog canônico em pt-BR; traduções em en/es geradas sob demanda.
+  // Idioma padrão sempre pt-BR; o seletor mostra Português por padrão.
   i18n: {
     defaultLocale: 'pt-BR',
     locales: ['pt-BR', 'en', 'es'],
+    localeConfigs: {
+      'pt-BR': {label: 'Português', htmlLang: 'pt-BR'},
+      en: {label: 'English', htmlLang: 'en'},
+      es: {label: 'Español', htmlLang: 'es'},
+    },
   },
 
   plugins: [
+    // Corrige canonical/hreflang de /aws e /projects nas locales en/es
+    // (áreas pt-BR only, servidas com fallback pt-BR).
+    './plugins/pt-br-canonical',
     // Segunda instância de docs: guia de consulta AWS em /aws.
     // Não conta em all-posts.json (é referência, como o Go by Example).
     [
@@ -43,6 +52,45 @@ const config: Config = {
         sidebarPath: './sidebarsAws.ts',
         editUrl:
           'https://github.com/lucabelezal/lucabelezal.github.io/tree/main/aws-guide/',
+      },
+    ],
+    // Terceira instância de docs: projetos de system design em /projects.
+    // Um sidebar por projeto; não conta em all-posts.json (é referência).
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'projects',
+        path: 'projects',
+        routeBasePath: 'projects',
+        sidebarPath: './sidebarsProjects.ts',
+        editUrl:
+          'https://github.com/lucabelezal/lucabelezal.github.io/tree/main/projects/',
+      },
+    ],
+    // Quarta instância de docs: fundamentos de system design em /fundamentals.
+    // Referência (fora de all-posts.json), pt-BR only.
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'fundamentals',
+        path: 'fundamentals',
+        routeBasePath: 'fundamentals',
+        sidebarPath: './sidebarsFundamentals.ts',
+        editUrl:
+          'https://github.com/lucabelezal/lucabelezal.github.io/tree/main/fundamentals/',
+      },
+    ],
+    // Quinta instância de docs: design de software em /design (SOLID + padrões).
+    // Referência (fora de all-posts.json), pt-BR only.
+    [
+      '@docusaurus/plugin-content-docs',
+      {
+        id: 'design',
+        path: 'design',
+        routeBasePath: 'design',
+        sidebarPath: './sidebarsDesign.ts',
+        editUrl:
+          'https://github.com/lucabelezal/lucabelezal.github.io/tree/main/design/',
       },
     ],
   ],
@@ -103,6 +151,21 @@ const config: Config = {
           to: '/aws',
           position: 'left',
           label: 'AWS',
+        },
+        {
+          to: '/projects',
+          position: 'left',
+          label: 'Projetos',
+        },
+        {
+          to: '/fundamentals',
+          position: 'left',
+          label: 'Fundamentos',
+        },
+        {
+          to: '/design',
+          position: 'left',
+          label: 'Design',
         },
         {
           type: 'localeDropdown',

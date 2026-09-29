@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 380" role="img" aria-label="Diagrama: teorema CAP — consistência, disponibilidade e tolerância a partição; escolha dois de três">
+  <title>Teorema CAP</title>
+  <desc>Um sistema distribuído não garante consistência, disponibilidade e tolerância a partição ao mesmo tempo; escolhe-se dois.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .store{fill:none;stroke:#d29922;stroke-width:2}
+    .proc{fill:none;stroke:#8957e5;stroke-width:2}
+    .flow{fill:none;stroke:#0969da;stroke-width:1.6}
+    .ring{fill:none;stroke:#d0d7de;stroke-width:2}
+    .keydot{fill:#57606a}
+    .lbl{fill:#57606a}
+    .mono{fill:#57606a}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .store{stroke:#e3b341}
+      .proc{stroke:#a371f7}
+      .flow{stroke:#58a6ff}
+      .ring{stroke:#30363d}
+      .keydot{fill:#8b949e}
+      .lbl{fill:#8b949e}
+      .mono{fill:#8b949e}
+    }
+  </style>
+  <text x="18" y="22" font-size="11" text-anchor="start" class="lbl">CAP: escolha dois dos três</text>
+  <path d="M 320 60 L 120 320 L 520 320 Z" class="flow"/>
+  <rect x="250" y="20" width="140" height="46" rx="8" class="box"/>
+  <text x="320" y="47" font-size="12" text-anchor="middle">Consistência</text>
+  <rect x="30" y="320" width="190" height="46" rx="8" class="box"/>
+  <text x="125" y="347" font-size="12" text-anchor="middle">Disponibilidade</text>
+  <rect x="430" y="320" width="190" height="46" rx="8" class="box"/>
+  <text x="525" y="347" font-size="12" text-anchor="middle">Partição</text>
+  <text x="190" y="200" font-size="13" text-anchor="start" class="lbl" font-weight="bold">CP</text>
+  <text x="430" y="200" font-size="13" text-anchor="start" class="lbl" font-weight="bold">AP</text>
+  <text x="320" y="350" font-size="13" text-anchor="start" class="lbl" font-weight="bold">CA</text>
+  <text x="18" y="300" font-size="10" text-anchor="start" class="lbl">CA não existe em rede real</text>
+</svg>

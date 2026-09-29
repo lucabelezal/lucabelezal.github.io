@@ -1,0 +1,109 @@
+---
+title: Estimativa back-of-the-envelope
+sidebar_label: Estimativa back-of-the-envelope
+sidebar_position: 2
+displayed_sidebar: fundamentalsSidebar
+description: Como estimar capacidade sem calculadora — potências de 2, números de latência, disponibilidade em nines e um exemplo de QPS e storage.
+---
+
+> **Baseado em:** [ByteByteGo — Back-of-the-envelope Estimation](https://bytebytego.com/courses/system-design-interview/back-of-the-envelope-estimation).
+> Texto reescrito em pt-BR na minha leitura.
+
+Estimativa back-of-the-envelope é, na definição de Jeff Dean, "um cálculo feito com experimentos mentais e números comuns de desempenho para ter uma noção de qual design atende ao requisito". Não é para acertar — é para saber se o sistema é de milhares ou de bilhões, antes de escolher a tecnologia.
+
+O método se apoia em três blocos de referência: potências de 2, números de latência e números de disponibilidade.
+
+## Potências de 2
+
+Volume de dados se mede em potências de 2. Um byte são 8 bits; um caractere ASCII ocupa 1 byte.
+
+| Potência | Valor aproximado | Nome |
+|---|---|---|
+| 2^10 | 1 mil | 1 KB |
+| 2^20 | 1 milhão | 1 MB |
+| 2^30 | 1 bilhão | 1 GB |
+| 2^40 | 1 trilhão | 1 TB |
+| 2^50 | 1 quatrilhão | 1 PB |
+
+## Números de latência
+
+Ordens de grandeza de operações comuns (base do Dr. Dean, 2010 — os valores absolutos envelheceram, mas as **relações** seguem válidas):
+
+| Operação | Tempo |
+|---|---|
+| Referência à L1 cache | 0,5 ns |
+| Branch mal previsto | 5 ns |
+| Referência à L2 cache | 7 ns |
+| Mutex lock/unlock | 100 ns |
+| Referência à memória principal | 100 ns |
+| Comprimir 1 KB (Zippy) | 10 µs |
+| Enviar 2 KB por rede de 1 Gbps | 20 µs |
+| Ler 1 MB sequencial da memória | 250 µs |
+| Round trip no mesmo data center | 500 µs |
+| Busca em disco (disk seek) | 10 ms |
+| Ler 1 MB sequencial da rede | 10 ms |
+| Ler 1 MB sequencial do disco | 30 ms |
+| Pacote CA → Holanda → CA | 150 ms |
+
+Conclusões que saem direto desses números:
+
+- **Memória é rápida; disco é lento.**
+- **Evite disk seeks** quando possível.
+- **Compressão simples é rápida** — comprima antes de mandar pela rede.
+- **Data centers em regiões diferentes custam tempo** para trocar dados.
+
+## Disponibilidade e nines
+
+**Alta disponibilidade** é a fração do tempo em que o sistema fica no ar. Mede-se em **nines**:
+
+| Disponibilidade | Downtime/dia | Downtime/mês | Downtime/ano |
+|---|---|---|---|
+| 99% | 14,4 min | 7,31 h | 3,65 dias |
+| 99,99% | 8,64 s | 4,38 min | 52,6 min |
+| 99,999% | 864 ms | 26,3 s | 5,26 min |
+| 99,9999% | 86,4 ms | 2,63 s | 31,56 s |
+
+Um **SLA** (service level agreement) é o contrato que formaliza esse nível de uptime. Provedores de nuvem costumam trabalhar em **99,9% ou mais**.
+
+## Exemplo: QPS e storage
+
+Premissas de um exercício (números fictícios):
+
+- 300 milhões de usuários ativos por mês
+- 50% usam diariamente
+- 2 posts por usuário por dia
+- 10% dos posts têm mídia
+- dados guardados por 5 anos
+
+**QPS:**
+
+```
+usuários ativos/dia = 300M × 50% = 150M
+QPS = 150M × 2 posts ÷ 86.400 s ≈ 3.500
+QPS de pico = 2 × QPS ≈ 7.000
+```
+
+**Storage (só mídia):**
+
+```
+tamanho médio: id 64 B + texto 140 B + mídia 1 MB
+mídia/dia = 150M × 2 × 10% × 1 MB = 30 TB/dia
+5 anos    = 30 TB × 365 × 5 ≈ 55 PB
+```
+
+O valor exato importa menos que o raciocínio: pico é maior que a média, e o armazenamento cresce linearmente com o tempo.
+
+## Dicas
+
+- **Arredonde.** Ninguém espera precisão. `99.987 / 9,1` vira `100.000 / 10`.
+- **Anote as premissas.** Você vai precisar delas depois.
+- **Rotule as unidades.** "5" é 5 KB ou 5 MB? Escreva "5 MB".
+- **Pratique o que cai:** QPS, QPS de pico, storage, cache, número de servidores.
+
+Para ver esse método aplicado a um problema concreto, veja a estimativa de capacidade em [Design a URL Shortener](/projects/url-shortener).
+
+## Referências
+
+- [ByteByteGo — Back-of-the-envelope Estimation](https://bytebytego.com/courses/system-design-interview/back-of-the-envelope-estimation)
+- [Google Pro Tip: Use Back-Of-The-Envelope Calculations](http://highscalability.com/blog/2011/1/26/google-pro-tip-use-back-of-the-envelope-calculations-to-choo.html)
+- [Latency Numbers Every Programmer Should Know](https://colin-scott.github.io/personal_website/research/interactive_latency.html)

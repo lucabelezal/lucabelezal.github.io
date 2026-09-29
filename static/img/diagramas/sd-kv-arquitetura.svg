@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 340" role="img" aria-label="Diagrama: arquitetura descentralizada — cliente, coordenador e nós num anel por consistent hashing">
+  <title>Arquitetura do key-value store</title>
+  <desc>O cliente fala com um coordenador, que distribui os nós num anel usando consistent hashing; não há ponto único de falha.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .store{fill:none;stroke:#d29922;stroke-width:2}
+    .proc{fill:none;stroke:#8957e5;stroke-width:2}
+    .flow{fill:none;stroke:#0969da;stroke-width:1.6}
+    .ring{fill:none;stroke:#d0d7de;stroke-width:2}
+    .keydot{fill:#57606a}
+    .lbl{fill:#57606a}
+    .mono{fill:#57606a}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .store{stroke:#e3b341}
+      .proc{stroke:#a371f7}
+      .flow{stroke:#58a6ff}
+      .ring{stroke:#30363d}
+      .keydot{fill:#8b949e}
+      .lbl{fill:#8b949e}
+      .mono{fill:#8b949e}
+    }
+  </style>
+  <text x="18" y="22" font-size="11" text-anchor="start" class="lbl">Arquitetura: descentralizada, cada nó com todas as responsabilidades</text>
+  <rect x="20" y="130" width="130" height="50" rx="8" class="box"/>
+  <text x="85" y="159" font-size="12" text-anchor="middle">Cliente</text>
+  <rect x="210" y="130" width="150" height="50" rx="8" class="proc"/>
+  <text x="285" y="153" font-size="12" text-anchor="middle">Coordenador</text>
+  <text x="285" y="170" font-size="10" text-anchor="middle" class="mono">proxy</text>
+  <circle cx="560" cy="170" r="100" class="ring"/>
+  <circle cx="560" cy="70" r="22" class="proc"/>
+  <text x="560" y="74" font-size="10" text-anchor="middle">n0</text>
+  <circle cx="631" cy="99" r="22" class="proc"/>
+  <text x="631" y="103" font-size="10" text-anchor="middle">n1</text>
+  <circle cx="660" cy="170" r="22" class="proc"/>
+  <text x="660" y="174" font-size="10" text-anchor="middle">n2</text>
+  <circle cx="631" cy="241" r="22" class="proc"/>
+  <text x="631" y="245" font-size="10" text-anchor="middle">n3</text>
+  <circle cx="560" cy="270" r="22" class="proc"/>
+  <text x="560" y="274" font-size="10" text-anchor="middle">n4</text>
+  <circle cx="489" cy="241" r="22" class="proc"/>
+  <text x="489" y="245" font-size="10" text-anchor="middle">n5</text>
+  <circle cx="460" cy="170" r="22" class="proc"/>
+  <text x="460" y="174" font-size="10" text-anchor="middle">n6</text>
+  <circle cx="489" cy="99" r="22" class="proc"/>
+  <text x="489" y="103" font-size="10" text-anchor="middle">n7</text>
+  <path d="M 150 155 L 210 155" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 360 145 L 490 110" class="flow" marker-end="url(#arrow)"/>
+  <text x="410" y="120" font-size="10" text-anchor="start" class="lbl">get / put</text>
+</svg>

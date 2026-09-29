@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 400" role="img" aria-label="Diagrama: adicionar um servidor no anel redistribui apenas a fração de chaves da faixa afetada">
+  <title>Adicionar ou remover servidor</title>
+  <desc>Ao adicionar s4, apenas as chaves entre s3 e s4 migram; o resto permanece onde estava.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .store{fill:none;stroke:#d29922;stroke-width:2}
+    .proc{fill:none;stroke:#8957e5;stroke-width:2}
+    .flow{fill:none;stroke:#0969da;stroke-width:1.6}
+    .ring{fill:none;stroke:#d0d7de;stroke-width:2}
+    .keydot{fill:#57606a}
+    .lbl{fill:#57606a}
+    .mono{fill:#57606a}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .store{stroke:#e3b341}
+      .proc{stroke:#a371f7}
+      .flow{stroke:#58a6ff}
+      .ring{stroke:#30363d}
+      .keydot{fill:#8b949e}
+      .lbl{fill:#8b949e}
+      .mono{fill:#8b949e}
+    }
+  </style>
+  <text x="18" y="22" font-size="11" text-anchor="start" class="lbl">Add/remove: só a faixa afetada migra</text>
+  <circle cx="310" cy="200" r="130" class="ring"/>
+  <path d="M 234 305 A 130 130 0 0 1 186 160" class="flow" stroke-width="4"/>
+  <circle cx="310" cy="70" r="22" class="proc"/>
+  <text x="310" y="74" font-size="10" text-anchor="middle">s0</text>
+  <circle cx="434" cy="160" r="22" class="proc"/>
+  <text x="434" y="164" font-size="10" text-anchor="middle">s1</text>
+  <circle cx="386" cy="305" r="22" class="proc"/>
+  <text x="386" y="309" font-size="10" text-anchor="middle">s2</text>
+  <circle cx="234" cy="305" r="22" class="proc"/>
+  <text x="234" y="309" font-size="10" text-anchor="middle">s3</text>
+  <circle cx="186" cy="160" r="22" class="proc"/>
+  <text x="186" y="164" font-size="10" text-anchor="middle">s4</text>
+  <text x="150" y="360" font-size="10" text-anchor="start" class="lbl">chaves entre s3 e s4 migram para s4</text>
+</svg>

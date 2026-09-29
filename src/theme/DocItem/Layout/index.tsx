@@ -13,8 +13,11 @@ import DocItemContent from '@theme/DocItem/Content';
 import DocBreadcrumbs from '@theme/DocBreadcrumbs';
 import ContentVisibility from '@theme/ContentVisibility';
 import ProgressIndicator from '@site/src/components/ProgressIndicator';
+import PageShell from '@site/src/components/PageShell';
+import {AreaNav, SectionSummary} from '@site/src/components/DocRails';
 import type {Props} from '@theme/DocItem/Layout';
 import {isGoHome} from '@site/src/components/CompletionTracker/progress';
+import {isDocsArea, isDocsAreaHome} from '@site/src/utils/areas';
 
 import styles from './styles.module.css';
 
@@ -36,9 +39,30 @@ function useDocTOC() {
 
 export default function DocItemLayout({children}: Props): ReactNode {
   const docTOC = useDocTOC();
-  const {metadata} = useDoc();
+  const {metadata, frontMatter, toc} = useDoc();
   const {pathname} = useLocation();
   const isHome = isGoHome(pathname);
+
+  // Homes de área já trazem o próprio PageShell.
+  if (isDocsAreaHome(pathname)) {
+    return <>{children}</>;
+  }
+
+  // Áreas editoriais (/aws, /projects): shell do Posts, sem chrome de docs.
+  if (isDocsArea(pathname)) {
+    return (
+      <PageShell
+        left={<AreaNav />}
+        right={
+          <SectionSummary toc={toc} hidden={frontMatter.hide_table_of_contents} />
+        }>
+        <article>
+          <ContentVisibility metadata={metadata} />
+          <DocItemContent>{children}</DocItemContent>
+        </article>
+      </PageShell>
+    );
+  }
 
   return (
     <div className={clsx('row', styles.docItemRow, isHome && 'rowFull')}>
