@@ -11,7 +11,7 @@ Blog de aprendizados em engenharia de software, feito com Docusaurus.
 
 ## Skills — roteamento
 
-Carregue a skill certa antes de agir. Fonte canônica: `skills/` → sync para `.claude/skills/` e `.agents/skills/`.
+Carregue a skill certa antes de agir. Skills do projeto: canônicas em `skills/`, sincronizadas por `npm run skills:sync` para `.claude/skills`, `.agents/skills`, `.cursor/skills`, `.windsurf/skills` — edite só `skills/`, nunca as cópias. Skills externas são geridas pelos lock files (`skills-lock.json`, `.agents/.skill-lock.json`); não editar.
 
 | Intenção do usuário | Skill | Onde |
 |---|---|---|
@@ -23,16 +23,37 @@ Carregue a skill certa antes de agir. Fonte canônica: `skills/` → sync para `
 | Frontend genérico (design system, blueprint, audit) | `frontend-design`, `frontend-blueprint`, `web-design-guidelines`, `web-quality-audit`, `perf-web-optimization` | `.claude/skills/` |
 | SEO/docs | `seo`, `ai-seo`, `docs-writer` | `.claude/skills/` |
 | Go / backend (trilhas `go-by-example/`) | `golang-*` (50 skills: code-style, concurrency, testing, etc) | `.agents/skills/` |
+| Documentar projeto de system design em `/projects` | `code-blog-content`, `code-blog-chart`, `code-blog-docusaurus` | `skills/` |
+| Escrever capítulo de fundamentos de system design em `/fundamentals` | `code-blog-content`, `code-blog-chart`, `code-blog-docusaurus` | `skills/` |
+| Escrever capítulo de princípio/padrão de design de software em `/design` | `code-blog-content`, `code-blog-docusaurus`, `didactic-writing` | `skills/` |
 
 Fluxo blog: `referência visual → code-blog-ui (spec) → code-blog-content (estrutura) → code-blog-docusaurus (código) → npm run build`.
 
 Harness: muitas skills no projeto (~67). AGENTS.md é roteador leve; detalhes ficam nas skills. Avalie harness com `harness-eval` (`.claude/skills/harness-eval/SKILL.md`) — Track A sempre, B/C sob demanda.
+
+**Invariantes de arquitetura** (shells de página, áreas de docs, i18n, estrutura): `rules/architecture.md`. Leia antes de criar página, área de conteúdo ou componente.
 
 ## Estrutura
 
 - `blog/` — posts canônicos em **pt-BR** (frontmatter + `.mdx`).
 - `i18n/<locale>/docusaurus-plugin-content-blog/` — traduções (en/es).
 - `src/pages/` — páginas React; `src/css/custom.css` — tema (Infima).
+- `projects/` — docs vivas de system design em `/projects` (guia:
+  `.ai/projects-guide.md`).
+- `fundamentals/` — fundamentos de system design em `/fundamentals` (guia:
+  `.ai/fundamentals-guide.md`).
+- `design/` — princípios SOLID e padrões de projeto em `/design` (guia:
+  `.ai/design-guide.md`).
+- `src/data/areas.json` — fonte única das áreas no shell Posts (aws, projects,
+  fundamentals, design); consumida por `src/utils/areas.ts` e
+  `plugins/pt-br-canonical`.
+- `rules/architecture.md` — invariantes (shells, áreas de docs, i18n, estrutura).
+- `plugins/pt-br-canonical/` — canonical pt-BR de `/aws`, `/projects`,
+  `/fundamentals` e `/design` em en/es.
+- `skills/` — skills canônicas do projeto; `npm run skills:sync` propaga.
+- `web/` — app Next.js (encurtador de URL). Independente do Docusaurus: tem
+  `package.json`, build e deploy próprios (`web/README.md`). Excluído do
+  `tsconfig` raiz.
 
 ## Área Go
 
@@ -47,6 +68,49 @@ Harness: muitas skills no projeto (~67). AGENTS.md é roteador leve; detalhes fi
 - Ao publicar post novo: nada manual nas listas — `npm run build` regenera
   o índice via `prebuild`. Só garanta `tag: go` no frontmatter se o post
   pertence à área Go.
+
+## Área Projetos
+
+- `/projects` é docs de referência (3ª instância de `plugin-content-docs`),
+  **fora** de `all-posts.json` e da home — como o guia AWS.
+- Shell: padrão **Posts** (`PageShell`/`.pageGrid`, rails de nav + TOC), não o
+  shell de docs do Docusaurus. Ver `rules/architecture.md`.
+- Uma página por projeto: `projects/<slug>.mdx` com
+  `displayed_sidebar: projectsSidebar`. Projeto novo = `.mdx` + entrada em
+  `sidebarsProjects.ts` + entrada em `projectsTrack.ts`. Checklist em
+  `.ai/projects-guide.md`.
+- Capítulos inacabados usam `draft: true`; publicar = remover `draft` + atualizar
+  o roadmap. Nunca linkar página inexistente (`onBrokenLinks: 'throw'`).
+- Material externo entra reescrito em pt-BR, com diagramas próprios e citação —
+  nunca tradução integral. Diagramas: SVGs theme-aware gerados por script em
+  `static/img/diagramas/` (prefixo do projeto, ex.: `us-`).
+- Áreas `aws` e `projects` são **pt-BR only** (en/es servem fallback com
+  canonical pt-BR).
+
+## Área Fundamentos
+
+- `/fundamentals` é docs de referência (4ª instância de `plugin-content-docs`):
+  os capítulos-base de system design que os projetos reutilizam. **Fora** de
+  `all-posts.json` e da home. pt-BR only.
+- Shell: padrão **Posts**, igual a `aws`/`projects` (ver `rules/architecture.md`).
+- Uma página por capítulo: `fundamentals/<slug>.mdx` com
+  `displayed_sidebar: fundamentalsSidebar`. Capítulo novo = `.mdx` + entrada em
+  `sidebarsFundamentals.ts` + entrada em `fundamentalsTrack.ts`. Guia:
+  `.ai/fundamentals-guide.md`.
+- Diagramas: `scripts/fundamentals-diagrams.mjs`, prefixo `sd-`.
+
+## Área Design
+
+- `/design` é docs de referência (5ª instância de `plugin-content-docs`):
+  princípios SOLID e padrões de projeto (GoF) com código Go. **Fora** de
+  `all-posts.json` e da home. pt-BR only.
+- Shell: padrão **Posts**, igual a `aws`/`projects`/`fundamentals` (ver
+  `rules/architecture.md`).
+- Uma página por capítulo: `design/<slug>.mdx` com `displayed_sidebar:
+  designSidebar`. Capítulo novo = `.mdx` + entrada em `sidebarsDesign.ts` +
+  entrada em `src/data/designTrack.ts`. Guia: `.ai/design-guide.md`.
+- Citação de livro: original em inglês (verbatim) + tradução livre marcada.
+- Diagramas: `scripts/design-diagrams.mjs`, prefixo `design-`.
 
 ## Regras de escrita
 
@@ -68,6 +132,21 @@ Harness: muitas skills no projeto (~67). AGENTS.md é roteador leve; detalhes fi
 
 ## Tradução (en/es) — só sob demanda
 
+**Idioma padrão é sempre pt-BR.** Toda página, área, componente ou conteúdo novo
+nasce em pt-BR, e o seletor de idioma mostra **Português** por padrão. Nunca
+criar algo cujo default seja en/es. Rótulos do seletor: `i18n.localeConfigs` em
+`docusaurus.config.ts`. Invariantes completos: `rules/architecture.md`.
+
+`/` é sempre pt-BR e **não existe redirect automático** por idioma do navegador
+— só se chega a `/en/` ou `/es/` escolhendo no seletor. Se uma página aparecer em
+espanhol, a URL está em `/es/` (seleção manual ou dev server iniciado com
+`npm run start:es`), não é o default.
+
+Áreas **pt-BR only** (`aws`, `projects`, `fundamentals`, `design`) **não** têm
+pasta em `i18n/`. Em en/es o Docusaurus serve o pt-BR como **fallback** e o
+`plugins/pt-br-canonical` aponta o canonical para a URL pt-BR. Ver o conteúdo
+pt-BR aparecendo em `/es/design/...` é o fallback esperado — a fonte é pt-BR.
+
 Tradução NUNCA é automática. O usuário pede explicitamente (ex.: "traduz esse
 post"). Então:
 
@@ -82,4 +161,5 @@ post"). Então:
 ## Verificação antes de entregar
 
 - `npm run build` passa sem erro (broken links quebram o build).
+- `/` serve pt-BR (não `/es/`) e o seletor mostra **Português**.
 - Traduções revisadas por humano antes do push.

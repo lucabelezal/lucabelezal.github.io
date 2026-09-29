@@ -1,0 +1,180 @@
+---
+title: Escala de zero a milhões
+sidebar_label: Escala de zero a milhões
+sidebar_position: 1
+displayed_sidebar: fundamentalsSidebar
+description: A jornada canônica de system design — de um servidor único a milhões de usuários, passando por load balancer, replicação, cache, CDN, data centers, message queue e sharding.
+---
+
+> **Baseado em:** [ByteByteGo — Scale From Zero To Millions Of Users](https://bytebytego.com/courses/system-design-interview/scale-from-zero-to-millions-of-users).
+> Texto reescrito em pt-BR na minha leitura; os diagramas são próprios.
+
+Quase todo sistema começa igual: um servidor. O que separa um protótipo de um sistema que aguenta milhões de usuários é uma sequência de decisões que resolvem problemas concretos — cada uma nascendo de uma dor da anterior. Este capítulo percorre essa sequência na ordem em que ela acontece.
+
+## Servidor único
+
+No começo, tudo roda numa máquina: aplicação, banco e cache. O usuário resolve o domínio no DNS e fala direto com o servidor.
+
+![Diagrama: usuário resolve o DNS e fala com um servidor único que hospeda app, banco e cache](/img/diagramas/sd-servidor-unico.svg)
+
+O fluxo de uma requisição:
+
+1. O usuário acessa por um domínio (`api.mysite.com`). O DNS costuma ser um serviço de terceiros.
+2. O DNS devolve o IP (por exemplo, `15.125.23.214`).
+3. Com o IP em mãos, o cliente envia a requisição HTTP direto ao servidor.
+4. O servidor devolve HTML (site) ou JSON (app mobile).
+
+O tráfego vem de dois lugares: **aplicação web** (lógica no servidor + HTML/JS no cliente) e **aplicação mobile** (HTTP + JSON como formato de resposta).
+
+## Banco de dados
+
+Com o crescimento, um servidor só não basta. O primeiro corte é separar o **web tier** (tráfego) do **data tier** (banco), para que cada um escale sozinho.
+
+A escolha entre relacional e não-relacional:
+
+| Relacional (SQL) | Não-relacional (NoSQL) |
+|---|---|
+| Tabelas e linhas; `JOIN` entre tabelas | Chave-valor, grafo, coluna ou documento |
+| MySQL, PostgreSQL, Oracle | DynamoDB, Cassandra, Neo4j, HBase |
+| Padrão há décadas; funciona bem na maioria | `JOIN` geralmente não suportado |
+
+Considere NoSQL quando: precisa de latência muito baixa, dados sem relação, só serializar/desserializar (JSON, XML), ou volume gigante de dados.
+
+## Escala vertical vs horizontal
+
+- **Vertical (scale up):** mais CPU/RAM numa máquina. Simples, mas tem **limite físico** e **não tem failover** — se a máquina cai, tudo cai.
+- **Horizontal (scale out):** mais máquinas no pool. É o caminho para escala grande.
+
+Com o servidor único, o usuário fica preso a ele: se cair, o site cai. É aqui que entra o load balancer.
+
+## Load balancer
+
+O load balancer distribui o tráfego entre os servidores de um pool.
+
+![Diagrama: usuários acessam o IP público do load balancer, que distribui para servidores com IP privado](/img/diagramas/sd-load-balancer.svg)
+
+Pontos importantes:
+
+- Os usuários falam com o **IP público** do balanceador; os servidores ficam com **IP privado**, inacessível pela internet.
+- **Failover:** se um servidor cai, o tráfego vai para os outros. Um servidor saudável entra no lugar.
+- **Escala:** tráfego crescendo? Basta adicionar servidores ao pool.
+
+## Replicação de banco
+
+O web tier está resolvido; o data tier ainda é um ponto único. A solução é **replicar**: um **master** recebe escritas, e os **slaves** recebem cópias e servem leituras.
+
+![Diagrama: master recebe escritas e replica para slaves, que servem leituras](/img/diagramas/sd-replicacao.svg)
+
+Vantagens: **performance** (leituras em paralelo), **confiabilidade** (dados em vários lugares) e **alta disponibilidade** (o site sobrevive a um banco fora do ar).
+
+Falhas:
+
+- **Slave cai:** as leituras vão para outro slave ou, temporariamente, para o master. Um novo slave substitui o antigo.
+- **Master cai:** um slave é promovido a master. Em produção isso é mais delicado — o slave pode estar desatualizado e exigir recuperação de dados.
+
+## Cache
+
+Ler o banco a cada requisição é caro. O cache guarda respostas frequentes em memória.
+
+![Diagrama: cache read-through — o servidor consulta o cache e só vai ao banco no miss](/img/diagramas/sd-cache.svg)
+
+A estratégia mostrada é **read-through**: o servidor busca no cache; no acerto devolve direto; no miss vai ao banco, popula o cache e devolve.
+
+Considerações ao usar cache:
+
+- **Quando usar:** dados lidos com frequência e modificados raramente. Cache é volátil — reiniciou, perdeu.
+- **Expiração:** nem curta demais (recarrega demais) nem longa demais (dados velhos).
+- **Consistência:** manter banco e cache em sincronia é difícil, especialmente multi-região.
+- **Falhas:** um cache único é **SPOF** (single point of failure). Use vários, em data centers distintos, e dimensione com folga.
+- **Eviction:** quando enche, algo sai. A política mais comum é **LRU** (menos recentemente usado); há também LFU e FIFO.
+
+## Content delivery network (CDN)
+
+A CDN serve **conteúdo estático** (imagens, vídeos, CSS, JS) a partir do servidor mais próximo do usuário.
+
+![Diagrama: cliente busca conteúdo na CDN; no miss, a CDN busca na origem](/img/diagramas/sd-cdn.svg)
+
+Fluxo: o usuário pede a URL da CDN; se o arquivo não está em cache, a CDN busca na **origem**, guarda respeitando o **TTL** e passa a servir.
+
+Considerações:
+
+- **Custo:** você paga transferência. Asset pouco usado não vale a pena na CDN.
+- **Expiração:** conteúdo sensível ao tempo precisa de TTL bem calibrado.
+- **Fallback:** se a CDN cair, o cliente deve conseguir buscar da origem.
+- **Invalidação:** remover antes do TTL via API do provedor, ou usar versionamento na URL (`image.png?v=2`).
+
+## Web tier sem estado
+
+Para escalar o web tier horizontalmente, o **estado** (por exemplo, sessão) precisa sair dos servidores.
+
+![Diagrama: à esquerda, arquitetura com estado (sticky); à direita, sem estado com store compartilhado](/img/diagramas/sd-stateful-stateless.svg)
+
+- **Com estado:** cada usuário fica preso a um servidor (sessão local). Exige **sticky sessions**, dificulta adicionar/remover servidores e tratar falhas.
+- **Sem estado:** os servidores não guardam estado; buscam num **store compartilhado** (banco, Redis, NoSQL). Qualquer servidor atende qualquer requisição — simples, robusto e escalável.
+
+Com o estado fora, o **autoscaling** do web tier fica trivial: adiciona ou remove servidores conforme a carga.
+
+## Data centers
+
+Para usuários no mundo todo, um data center só não basta. Com vários, o **geoDNS** roteia cada usuário para o data center mais próximo.
+
+Desafios do setup multi-DC:
+
+- **Redirecionamento de tráfego:** geoDNS decide o destino por localização.
+- **Sincronização de dados:** replicar entre regiões; em failover, o tráfego pode cair num DC sem o dado.
+- **Teste e deploy:** testar em várias localidades e automatizar o deploy para manter consistência.
+
+Se um DC cai, todo o tráfego vai para o saudável.
+
+## Message queue
+
+Para desacoplar componentes, entra a **fila**: produtores publicam mensagens, consumidores as processam de forma assíncrona.
+
+![Diagrama: produtores publicam na fila; consumidores processam de forma assíncrona](/img/diagramas/sd-message-queue.svg)
+
+A fila serve de **buffer**: o produtor publica mesmo se o consumidor estiver fora, e vice-versa. Exemplo: web servers publicam jobs de processamento de imagem; workers fazem o trabalho pesado (crop, blur) em segundo plano. Cada lado escala sozinho — fila grande, mais workers.
+
+## Logging, métricas e automação
+
+Quando o site vira negócio, observar deixa de ser opcional:
+
+- **Logging:** agregar logs de erro num serviço central para busca e análise.
+- **Métricas:** host (CPU, memória, disco), agregadas (desempenho do banco, do cache) e de negócio (DAU, retenção, receita).
+- **Automação:** CI/CD para detectar problemas cedo e ganhar produtividade.
+
+## Escala do banco
+
+O banco vira o gargalo. Há dois caminhos:
+
+- **Vertical:** máquina maior. Tem limites físicos, mais risco de SPOF e custo alto.
+- **Horizontal (sharding):** dividir os dados em **shards**, cada um com o mesmo schema e dados distintos.
+
+![Diagrama: sharding por user_id % 4 distribui as linhas entre quatro shards](/img/diagramas/sd-sharding.svg)
+
+A peça-chave é o **sharding key** (a coluna que decide o shard) — ele precisa distribuir os dados de forma uniforme. No exemplo, `user_id % 4`.
+
+O sharding resolve, mas cobra:
+
+- **Resharding:** quando um shard enche ou a distribuição é desigual, é preciso mudar a função e mover dados. **Consistent hashing** resolve isso.
+- **Celebrity problem (hotspot):** uma chave muito acessada sobrecarrega um shard. A saída é dar um shard dedicado a ela.
+- **Join e desnormalização:** `JOIN` entre shards é difícil; o workaround é desnormalizar.
+
+## Milhões e além
+
+A escala é iterativa. O resumo das técnicas deste capítulo:
+
+- Web tier **sem estado**
+- Redundância em **todos os tiers**
+- **Cache** o máximo possível
+- **Múltiplos data centers**
+- Conteúdo estático em **CDN**
+- Data tier escalado por **sharding**
+- Tiers divididos em **serviços** independentes
+- **Monitoramento** e automação
+
+## Referências
+
+- [ByteByteGo — Scale From Zero To Millions Of Users](https://bytebytego.com/courses/system-design-interview/scale-from-zero-to-millions-of-users)
+- [Replication](https://en.wikipedia.org/wiki/Replication_(computing))
+- [Single point of failure](https://en.wikipedia.org/wiki/Single_point_of_failure)
+- [Scaling Memcache at Facebook](https://www.usenix.org/system/files/conference/nsdi13/nsdi13-final170_update.pdf)

@@ -1,0 +1,499 @@
+---
+title: SOLID em Go — Inversão de Dependências (DIP) com o padrão Adapter
+sidebar_label: DIP + Adapter
+sidebar_position: 1
+displayed_sidebar: designSidebar
+description: O princípio que sustenta arquiteturas em camadas — por que depender de concreto dói, como a interface inverte a seta e como o padrão Adapter conecta um SDK de terceiros sem poluir a regra de negócio. Com código Go executável.
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+> **Epígrafe.** "Source code dependencies must point only inward, toward higher-level policies."
+> — Robert C. Martin, *Clean Architecture*, cap. 22 (The Dependency Rule).
+>
+> *Tradução livre: dependências de código-fonte devem apontar apenas para dentro, na direção das políticas de alto nível.*
+
+> **Baseado em:** [SOLID: Inversão de Dependências + Padrão de Projeto ADAPTER](https://www.youtube.com/watch?v=s8g32ePcPps) (Renato Augusto), nas obras de Robert C. Martin e no padrão **Adapter** do GoF. Texto reescrito em pt-BR na minha leitura; os diagramas são próprios.
+
+Todo software começa legível. Depois de seis meses, mexer num arquivo exige abrir outros cinco, e trocar uma biblioteca vira uma cirurgia. A causa quase sempre é a mesma: a regra de negócio ficou amarrada a um detalhe de infraestrutura.
+
+O **Princípio de Inversão de Dependências (DIP)** existe para cortar esse nó. É o princípio por trás de Clean, Onion e Hexagonal — e a razão pela qual o teste da sua regra de negócio não precisa de banco, rede ou SDK de pagamento. O **padrão Adapter** é o mecanismo que coloca o DIP em prática quando o detalhe é uma biblioteca de terceiros que você não pode alterar.
+
+<WhatYouWillLearn>
+
+- o que é o DIP, nas palavras do próprio Martin
+- a diferença entre **política** (alto nível) e **detalhe** (baixo nível)
+- por que o código que você não controla é o pior detalhe para depender
+- por que injetar uma classe **concreta** pelo construtor ainda não resolve
+- o que é a inversão do **fluxo de controle** em relação à **dependência de código-fonte**
+- quem é o **dono** da interface (a inversão da posse, o ponto mais sutil do DIP)
+- o padrão **Adapter** como ponte para SDKs e bibliotecas externas
+- como testar a regra de negócio com um fake, sem tocar no gateway
+- quando **não** aplicar o DIP (o trade-off que separa sênior de pleno)
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go básico: structs, métodos, interfaces e pacotes
+- [Interfaces em Go](/go-interfaces) — a satisfação implícita é a base de tudo aqui
+- [Erros e logs](/go-erros-logs) — `errors.Is` e erros sentinela, usados na seção de teste
+
+</Prerequisites>
+
+## 1. Contexto
+
+Imagine um serviço que processa pedidos. Ele aplica desconto, calcula imposto e, no fim, cobra o cliente. A cobrança é feita por um gateway: Stripe, Mercado Pago, PagSeguro.
+
+No começo, o código é direto. A regra chama o gateway e segue. O problema aparece devagar:
+
+- a biblioteca do gateway é de terceiros — você não controla o código dela;
+- o teste da regra precisa de rede (ou de um sandbox) para rodar;
+- trocar de gateway exige mexer no coração da regra de negócio.
+
+Cada um desses sintomas é o mesmo sintoma: **acoplamento a um detalhe volátil**. O DIP é a resposta.
+
+O que vamos construir, um passo por vez:
+
+```text title="Evolução do código"
+1. acoplado      OrderProcessorService faz new StripeSDK() e chama direto
+2. tentativa     injeta StripeClient pelo construtor — ainda concreto
+3. adapter       StripeAdapter envolve o SDK e expõe Pay(Order)
+4. interface     PaymentGateway (porta) — o serviço depende da abstração
+5. composição    main escolhe o adapter e injeta no serviço
+6. teste         fakeGateway substitui o gateway real, sem rede
+```
+
+![Diagrama: o serviço de alto nível cria e chama o SDK externo direto](/img/diagramas/design-dip-acoplado.svg)
+
+## 2. O problema
+
+Comece pelo código que dói. Um serviço de pedido que cobra direto no SDK da Stripe:
+
+```go title="internal/order/processor.go (o problema)"
+package order
+
+import (
+	"fmt"
+
+	"github.com/stripe/stripe-go/v76"
+	"github.com/stripe/stripe-go/v76/charge"
+)
+
+type Order struct {
+	ID     string
+	Amount int64
+}
+
+type OrderProcessorService struct{}
+
+func (s *OrderProcessorService) Process(order Order) error {
+	fmt.Printf("processando pedido %s\n", order.ID)
+
+	// Regra de negócio acoplada ao SDK externo.
+	params := &stripe.ChargeParams{
+		Amount:   stripe.Int64(order.Amount),
+		Currency: stripe.String("brl"),
+	}
+	_, err := charge.New(params)
+	return err
+}
+```
+
+Um detalhe que confunde no começo: são **dois pacotes** do mesmo módulo. `stripe` traz os tipos e helpers (`stripe.ChargeParams`, `stripe.Int64`, `stripe.String`); `charge` é o subpacote que executa a cobrança (`charge.New`). Importar o módulo raiz não traz o subpacote — por isso os dois imports. E como o pacote já se chama `stripe`, o import funciona sem alias.
+
+Funciona. Até a primeira mudança. Três problemas aparecem juntos:
+
+1. **Acoplamento.** O serviço conhece a Stripe. `stripe.ChargeParams`, `stripe.Int64`, `charge.New` — tudo isso é detalhe da biblioteca, dentro da regra.
+2. **Teste impossível.** Não há como testar `Process` sem instanciar o SDK e, com ele, bater na API da Stripe. O teste de unidade vira teste de integração por acidente.
+3. **Detalhe fora do seu controle.** Se o SDK muda — e ele vai mudar numa atualização de versão — quem quebra é o seu código.
+
+**Regra prática.** Toda vez que você vê um `new` de uma classe de infraestrutura dentro da regra de negócio, há acoplamento ali.
+
+## 3. A tentativa ingênua
+
+A reação natural é criar um construtor e injetar o cliente de fora:
+
+```go title="internal/order/processor.go (tentativa)"
+type OrderProcessorService struct {
+	client *stripe.Client
+}
+
+func NewOrderProcessorService(client *stripe.Client) *OrderProcessorService {
+	return &OrderProcessorService{client: client}
+}
+```
+
+Parece resolvido. Não está. Duas coisas continuam erradas:
+
+- o campo `client` é uma **classe concreta** (`*stripe.Client`), não uma abstração;
+- o `new` não desapareceu — ele só mudou de lugar. Agora quem chama o serviço (um controller, por exemplo) precisa criar o `*stripe.Client`. O acoplamento subiu um nível.
+
+![Diagrama: injetar uma classe concreta move o new, mas não inverte nada](/img/diagramas/design-dip-tentativa.svg)
+
+**Regra prática.** Injeção de dependência não é o mesmo que inversão de dependência. Injetar uma classe concreta é só empurrar o `new` para outra camada.
+
+## 4. Fundamentos: o DIP
+
+### As duas afirmações
+
+Robert C. Martin publicou o princípio em 1996, no artigo *The Dependency Inversion Principle* (C++ Report), e o reaproveitou no livro *Agile Software Development: Principles, Patterns, and Practices* (2002). A definição tem duas partes:
+
+> **A.** High-level modules should not depend on low-level modules. Both should depend on abstractions.
+> **B.** Abstractions should not depend on details. Details should depend on abstractions.
+> — Martin, 1996
+
+Tradução livre: *módulos de alto nível não devem depender de módulos de baixo nível — ambos devem depender de abstrações. Abstrações não devem depender de detalhes — detalhes devem depender de abstrações.*
+
+Em *Clean Architecture* (2017), Martin reafirma:
+
+> The code that implements high-level policy should not depend on the code that implements low-level details. Rather, details should depend on policies.
+> — *Clean Architecture*, cap. 11
+
+**Alto nível** é a **política**: as decisões e regras que definem o que o sistema faz. No nosso caso, "processar um pedido e cobrar". **Baixo nível** é o **detalhe**: o mecanismo que realiza a política. O SDK da Stripe, o driver do banco, o cliente HTTP.
+
+### Fluxo de controle × dependência de código-fonte
+
+Aqui está o "porquê" do nome *inversão*. No código acoplado, o fluxo de controle e a dependência apontam para o mesmo lado: o serviço **chama** a Stripe e **depende** da Stripe. Quando você insere uma interface, o fluxo de controle continua o mesmo, mas a dependência de código-fonte se inverte:
+
+> Flow of control crosses the curved line in the opposite direction of the source code dependencies. Source code dependencies are inverted against the flow of control — which is why we refer to this principle as Dependency Inversion.
+> — *Clean Architecture*, cap. 11
+
+Em runtime, a chamada ainda vai do serviço para o adapter. Em tempo de compilação, porém, o adapter é quem depende do serviço — porque ele importa a interface que o serviço define. Duas setas opostas.
+
+### Quem é dono da interface
+
+O ponto mais sutil, e o que quase todo mundo erra: **a abstração pertence ao módulo de alto nível**, não a quem implementa.
+
+> The inversion here is not just dependency inversion but interface ownership inversion… clients often own the abstract interfaces, and their services derive from those interfaces. Hollywood principle: "Don't call us, we'll call you."
+> — Martin, PPP, cap. 11 (DIP)
+
+Se a interface `PaymentGateway` morasse no pacote da Stripe, o domínio precisaria importar a Stripe para conhecê-la — e a seta voltaria a apontar para o detalhe. Por isso a porta mora junto de quem **consome** (a regra), e o adapter importa o domínio.
+
+### O que é "volátil"
+
+Martin é explícito: o DIP não vale para tudo.
+
+> The most flexible systems are those in which source code dependencies refer only to abstractions, not to concretions. This only applies to *volatile* concrete elements of our system.
+> — *Clean Architecture*, cap. 11
+
+Depender de `string`, de `time.Time` ou da stdlib não é problema: são estáveis. O DIP mira o **concreto volátil** — o módulo em desenvolvimento ativo, que muda com frequência. O SDK do gateway é o exemplo perfeito.
+
+### O padrão Adapter
+
+Quando o detalhe é uma biblioteca de terceiros, você não consegue abrir o código dela e fazer a classe implementar a sua interface. A saída é envelopar.
+
+> Convert the interface of a class into another interface clients expect. Adapter lets classes work together that couldn't otherwise because of incompatible interfaces.
+> — Gamma et al., *Design Patterns* (GoF), p. 139
+
+Martin descreve exatamente o caso de terceiros:
+
+> When inserting an abstract interface is infeasible because the server is third-party software… an ADAPTER can be used to bind the abstract interface to the server. The adapter is an object that implements the abstract interface to delegate to the server. All the adapter's methods simply translate and then delegate.
+> — Martin, PPP (cap. Abstract Server, Adapter, and Bridge)
+
+O adapter faz duas coisas: **implementa** a porta (para o serviço) e **traduz** a chamada (para o SDK). O `new` do SDK mora dentro do adapter — e ali ele é permitido, porque o adapter **é** a fronteira com o detalhe.
+
+### Adapter × Facade × Decorator × Proxy
+
+Esses padrões se parecem porque todos compõem objetos. O que muda é a intenção:
+
+| Padrão | Intenção | Interface |
+|---|---|---|
+| **Adapter** | Fazer duas interfaces incompatíveis colaborarem | Traduz para uma interface **diferente** |
+| **Facade** | Simplificar um subsistema inteiro | Define uma interface **nova** |
+| **Decorator** | Adicionar comportamento em runtime | Mantém a interface e a **aprimora** |
+| **Proxy** | Controlar o acesso a um objeto | Mantém a **mesma** interface |
+
+A frase que resume: *Adapter dá uma interface diferente ao objeto; Proxy dá a mesma; Decorator dá uma interface enriquecida.*
+
+## 5. Implementação
+
+Go 1.26, sem dependência externa. Vamos das duas afirmações do DIP até o código que roda. O domínio fica puro; o SDK vira um adapter.
+
+### 5.1 A regra e a porta
+
+O pacote de domínio não importa `net/http`, `database/sql` nem o SDK. Define o `Order`, os erros sentinela e a **porta** `PaymentGateway` — a interface que ele mesmo consome.
+
+```go title="internal/domain/order.go" showLineNumbers
+package domain
+
+import (
+	"context"
+	"errors"
+	"fmt"
+)
+
+type Money int64
+
+func (m Money) String() string {
+	return fmt.Sprintf("R$ %.2f", float64(m)/100)
+}
+
+type OrderID string
+
+type Order struct {
+	ID     OrderID
+	Amount Money
+}
+
+// Erros sentinela: o domínio fala a sua língua, não a do gateway.
+var (
+	ErrValorInvalido     = errors.New("valor do pedido inválido")
+	ErrPagamentoRecusado = errors.New("pagamento recusado pelo provedor")
+)
+
+// PaymentGateway é a porta. O módulo de alto nível define o contrato
+// do qual precisa — não o adapter que o implementa.
+type PaymentGateway interface {
+	Pay(ctx context.Context, order Order) error
+}
+
+type OrderProcessor struct {
+	gateway PaymentGateway
+}
+
+// A dependência entra pelo construtor, como abstração. Sem global.
+func NewOrderProcessor(gateway PaymentGateway) *OrderProcessor {
+	return &OrderProcessor{gateway: gateway}
+}
+
+func (p *OrderProcessor) Process(ctx context.Context, order Order) error {
+	if order.Amount <= 0 {
+		return ErrValorInvalido
+	}
+
+	fmt.Printf("[regra de negócio] processando pedido %s — %s\n", order.ID, order.Amount)
+	if err := p.gateway.Pay(ctx, order); err != nil {
+		return fmt.Errorf("pagar pedido %s: %w", order.ID, err)
+	}
+	return nil
+}
+```
+
+Repare no que **não** aparece: nenhum `stripe`, nenhum `http`, nenhum `sql`. O `OrderProcessor` conhece uma interface e nada mais. E o `%w` preserva o erro sentinela para `errors.Is` lá na borda.
+
+### 5.2 O adapter do SDK
+
+O SDK externo tem uma interface incompatível: recebe centavos e uma moeda, e devolve `bool`. O adapter traduz `Pay(Order)` para essa chamada.
+
+```go title="internal/stripe/adapter.go" showLineNumbers
+package stripe
+
+import (
+	"context"
+	"fmt"
+
+	"example.com/shop/internal/domain"
+)
+
+// ExternalStripeSDK simula a lib de terceiros: não podemos alterá-la.
+type ExternalStripeSDK struct{}
+
+func (s *ExternalStripeSDK) ChargeCreditCard(amountInCents int64, currency string) bool {
+	fmt.Printf("[SDK Stripe] cobrando %d centavos em %s\n", amountInCents, currency)
+	return true
+}
+
+// StripeAdapter implementa a porta do domínio e delega ao SDK.
+type StripeAdapter struct {
+	sdk *ExternalStripeSDK
+}
+
+// O new do SDK mora aqui — e aqui ele é permitido: o adapter é a fronteira.
+func NewStripeAdapter() *StripeAdapter {
+	return &StripeAdapter{sdk: &ExternalStripeSDK{}}
+}
+
+// Pay traduz a chamada da porta para o método específico do SDK.
+func (a *StripeAdapter) Pay(_ context.Context, order domain.Order) error {
+	ok := a.sdk.ChargeCreditCard(int64(order.Amount), "BRL")
+	if !ok {
+		return domain.ErrPagamentoRecusado
+	}
+	return nil
+}
+```
+
+O `StripeAdapter` importa `domain` — a seta aponta para dentro. O domínio nunca soube que a Stripe existe.
+
+### 5.3 A montagem (composition root)
+
+Toda a fiação acontece num lugar só. O `main` é o único que conhece o concreto.
+
+```go title="cmd/shop/main.go" showLineNumbers
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"example.com/shop/internal/domain"
+	"example.com/shop/internal/stripe"
+)
+
+func main() {
+	// Composição: escolhemos o adapter e injetamos no serviço.
+	gateway := stripe.NewStripeAdapter()
+	processor := domain.NewOrderProcessor(gateway)
+
+	order := domain.Order{ID: "ORD-9982", Amount: 25000} // R$ 250,00
+	if err := processor.Process(context.Background(), order); err != nil {
+		fmt.Println("erro:", err)
+		return
+	}
+	fmt.Println("ok: pedido concluído")
+}
+```
+
+### 5.4 O teste que roda sem Stripe
+
+Aqui está a prova do DIP. Como o serviço depende de uma interface, o teste injeta um **fake** e roda em milissegundos — sem rede, sem sandbox, sem credencial.
+
+```go title="internal/domain/order_test.go" showLineNumbers
+package domain_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"example.com/shop/internal/domain"
+)
+
+// fakeGateway implementa a mesma porta, em memória.
+type fakeGateway struct {
+	called bool
+	err    error
+}
+
+func (f *fakeGateway) Pay(_ context.Context, _ domain.Order) error {
+	f.called = true
+	return f.err
+}
+
+func TestProcessRecusaValorInvalido(t *testing.T) {
+	gw := &fakeGateway{}
+	p := domain.NewOrderProcessor(gw)
+
+	err := p.Process(context.Background(), domain.Order{ID: "x", Amount: 0})
+
+	if !errors.Is(err, domain.ErrValorInvalido) {
+		t.Fatalf("esperava ErrValorInvalido, veio %v", err)
+	}
+	if gw.called {
+		t.Fatal("gateway não deveria ser chamado com valor inválido")
+	}
+}
+
+func TestProcessPropagaErroDoGateway(t *testing.T) {
+	gw := &fakeGateway{err: domain.ErrPagamentoRecusado}
+	p := domain.NewOrderProcessor(gw)
+
+	err := p.Process(context.Background(), domain.Order{ID: "x", Amount: 100})
+
+	if !errors.Is(err, domain.ErrPagamentoRecusado) {
+		t.Fatalf("esperava ErrPagamentoRecusado, veio %v", err)
+	}
+}
+```
+
+Nenhuma linha toca na Stripe. É esse o retorno de separar regra de detalhe: o teste falha pelo motivo certo.
+
+### 5.5 Trocar o gateway sem tocar na regra
+
+Novo provedor? Um adapter novo. O `OrderProcessor` não muda uma vírgula — o que Martin chama de **inversão da posse**: o serviço é dono do contrato, e cada provedor se adapta a ele.
+
+```go title="internal/mercadopago/adapter.go" showLineNumbers
+package mercadopago
+
+import (
+	"context"
+
+	"example.com/shop/internal/domain"
+)
+
+type Adapter struct{}
+
+func New() *Adapter { return &Adapter{} }
+
+func (a *Adapter) Pay(_ context.Context, order domain.Order) error {
+	// Aqui entraria a chamada à API do Mercado Pago.
+	return nil
+}
+```
+
+A troca é uma linha no `main`:
+
+```go title="cmd/shop/main.go (diff)"
+-	gateway := stripe.NewStripeAdapter()
++	gateway := mercadopago.New()
+```
+
+Nada em `internal/domain/` mudou. Esse é o teste de fogo: **trocar o detalhe não vaza para a regra**.
+
+### 5.6 Rodando
+
+```bash title="Terminal"
+$ go run ./cmd/shop
+[regra de negócio] processando pedido ORD-9982 — R$ 250,00
+[SDK Stripe] cobrando 25000 centavos em BRL
+ok: pedido concluído
+
+$ go test ./internal/domain/
+ok  	example.com/shop/internal/domain
+```
+
+## 6. Falhas e trade-offs
+
+O DIP resolve acoplamento, mas cobra um preço. Ignorar o preço é o erro clássico de quem aprendeu a técnica sem o fundamento.
+
+**Nem toda abstração é necessária.** Se você tem certeza de que nunca vai trocar de gateway, e o wrapper é estável, o `StripeAdapter` concreto já basta. O DIP não é uma lei escrita em pedra — é um trade-off. Interface para tudo é over-abstraction: você paga indireção para trocar algo que não muda.
+
+**DIP prematuro.** Um CRUD sem regra nenhuma não precisa de porta e adapter. Aplique quando existir uma regra que muda por um motivo e um detalhe que muda por outro.
+
+**Interface no lugar errado.** Definir `PaymentGateway` no pacote da Stripe (junto de quem implementa) inverte a seta: agora o domínio importa o adapter. A porta mora no lado que **consome** — o domínio.
+
+**Injeção ≠ inversão.** Receber `*stripe.Client` pelo construtor é injeção de dependência, não inversão. Continua sendo concreto.
+
+**Modelo do detalhe vazando.** Deixar `stripe.ChargeParams` ou a linha do banco atravessar o domínio reintroduz o acoplamento que você queria eliminar. Converta na fronteira do adapter.
+
+**Container de DI em Go.** Container de injeção costuma resolver um problema que o construtor já resolve. Injeção manual no `main` é explícita e rastreável.
+
+**Regra prática.** Programe para abstrações que **você** define, mas só crie a abstração quando houver um detalhe volátil para isolar.
+
+## Referências
+
+- **DIP — definição** — Robert C. Martin, *The Dependency Inversion Principle* (C++ Report, 1996); em *Agile Software Development: Principles, Patterns, and Practices* (PPP, 2002), cap. 11.
+- **Política × detalhe, concreto volátil, fluxo × dependência de código-fonte** — Robert C. Martin, *Clean Architecture* (2017), cap. 5, 11 e 22.
+- **Inversão da posse da interface** — Robert C. Martin, PPP (2002), cap. 11 (DIP).
+- **Padrão Adapter** — Erich Gamma, Richard Helm, Ralph Johnson, John Vlissides, *Design Patterns: Elements of Reusable Object-Oriented Software* (GoF, 1994), p. 139.
+- **Adapter para software de terceiros** — Robert C. Martin, PPP, cap. "Abstract Server, Adapter, and Bridge".
+- **Ports & Adapters** — Alistair Cockburn, [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/) (2005).
+- **Vídeo base** — [Renato Augusto — SOLID: Inversão de Dependências + Padrão ADAPTER](https://www.youtube.com/watch?v=s8g32ePcPps).
+
+<Summary>
+
+- o DIP diz que alto nível e baixo nível dependem de **abstrações**, e que abstrações não dependem de detalhes
+- alto nível é **política** (a regra); baixo nível é **detalhe** (SDK, banco, HTTP)
+- o DIP mira o concreto **volátil** — depender de `string` ou da stdlib não é problema
+- o **fluxo de controle** e a **dependência de código-fonte** apontam para lados opostos
+- a interface pertence a quem **consome** (o domínio), não a quem implementa
+- o **Adapter** envelopa um SDK externo, implementa a porta e traduz a chamada
+- com uma interface, o teste injeta um **fake** e roda sem rede
+- trocar de gateway vira um adapter novo + uma linha no `main` (OCP)
+- injetar uma classe concreta é injeção, **não** inversão
+- o DIP é um **trade-off**: abstração estável e nunca trocada dispensa interface
+
+</Summary>
+
+<NextSteps href="/arquitetura-hexagonal-go" title="Arquitetura hexagonal em Go">
+
+O DIP é a regra de direção; o Adapter é uma das pontas. O próximo passo é ver o quadro inteiro: portas de entrada e saída, adapters de persistência, e como a comunidade Go estrutura um projeto em cima dessa regra.
+
+</NextSteps>
+
+<SkillsGained skills={["DIP", "SOLID", "Padrão Adapter", "Injeção de dependência", "Testabilidade", "Go idiomático"]} />

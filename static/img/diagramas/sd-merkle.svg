@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 300" role="img" aria-label="Diagrama: Merkle tree — compara a raiz e desce só nos buckets divergentes">
+  <title>Merkle tree</title>
+  <desc>Comparam-se os hashes da raiz; se diferem, desce-se na árvore só até os buckets que divergem.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .store{fill:none;stroke:#d29922;stroke-width:2}
+    .proc{fill:none;stroke:#8957e5;stroke-width:2}
+    .flow{fill:none;stroke:#0969da;stroke-width:1.6}
+    .ring{fill:none;stroke:#d0d7de;stroke-width:2}
+    .keydot{fill:#57606a}
+    .lbl{fill:#57606a}
+    .mono{fill:#57606a}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .store{stroke:#e3b341}
+      .proc{stroke:#a371f7}
+      .flow{stroke:#58a6ff}
+      .ring{stroke:#30363d}
+      .keydot{fill:#8b949e}
+      .lbl{fill:#8b949e}
+      .mono{fill:#8b949e}
+    }
+  </style>
+  <text x="18" y="22" font-size="11" text-anchor="start" class="lbl">Merkle tree: sincroniza só o que difere</text>
+  <rect x="300" y="40" width="160" height="46" rx="8" class="proc"/>
+  <text x="380" y="67" font-size="12" text-anchor="middle">raiz</text>
+  <rect x="140" y="140" width="150" height="46" rx="8" class="box"/>
+  <text x="215" y="167" font-size="12" text-anchor="middle">bucket 1-3</text>
+  <rect x="470" y="140" width="150" height="46" rx="8" class="box"/>
+  <text x="545" y="167" font-size="12" text-anchor="middle">bucket 4-6</text>
+  <rect x="60" y="230" width="130" height="42" rx="8" class="store"/>
+  <text x="125" y="255" font-size="12" text-anchor="middle">h(k1)</text>
+  <rect x="210" y="230" width="130" height="42" rx="8" class="store"/>
+  <text x="275" y="255" font-size="12" text-anchor="middle">h(k3)</text>
+  <rect x="390" y="230" width="130" height="42" rx="8" class="store"/>
+  <text x="455" y="255" font-size="12" text-anchor="middle">h(k4)</text>
+  <rect x="540" y="230" width="130" height="42" rx="8" class="store"/>
+  <text x="605" y="255" font-size="12" text-anchor="middle">h(k6)</text>
+  <path d="M 380 86 L 250 140" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 380 86 L 510 140" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 200 186 L 130 230" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 220 186 L 260 230" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 510 186 L 450 230" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 540 186 L 590 230" class="flow" marker-end="url(#arrow)"/>
+</svg>

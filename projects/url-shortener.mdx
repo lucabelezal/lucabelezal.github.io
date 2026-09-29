@@ -1,0 +1,327 @@
+---
+title: Design a URL Shortener
+sidebar_label: URL Shortener
+sidebar_position: 1
+displayed_sidebar: projectsSidebar
+description: Problema clássico de system design reescrito em pt-BR — escopo, estimativa de capacidade, dimensionamento do banco, custo AWS, API, modelo de dados, função de hash e cache.
+---
+
+> **Baseado em:** [ByteByteGo — Design A URL Shortener](https://bytebytego.com/courses/system-design-interview/design-a-url-shortener).
+> Texto reescrito em pt-BR na minha leitura; os diagramas são próprios. O crédito do roteiro é do material original.
+
+Encurtador de URL é a pergunta de aquecimento clássica de system design. Parece trivial — guarda um par de URLs e redireciona — e é justamente por isso que serve de teste: o candidato que só vê "duas colunas numa tabela" perde a chance de mostrar estimativa, particionamento e cache.
+
+Este capítulo percorre o caminho completo: fechar o escopo, estimar capacidade, dimensionar o banco, desenhar a API, escolher a função de hash e montar o redirecionamento.
+
+## O problema
+
+Dada uma URL longa, devolver uma URL curta que redireciona para a original. Exemplo: `https://www.systeminterview.com/q=chatsystem&c=loggedin&v=v3&l=long` vira `https://tinyurl.com/y7keocwj`; clicar no alias leva à URL longa.
+
+## Passo 1 — Entender o problema e fechar o escopo
+
+Perguntas de system design nascem **abertas de propósito**. Antes de desenhar qualquer coisa, trocar premissas com quem pergunta é o que separa um sistema real de um chute.
+
+| Pergunta | Resposta que fecha o escopo |
+|---|---|
+| Como funciona? | Cria-se um alias curto; clicar nele redireciona para a URL original. |
+| Qual o volume? | 100 milhões de URLs novas por dia. |
+| Quão curta é a URL? | O mais curto possível. |
+| Quais caracteres são permitidos? | `0-9`, `a-z`, `A-Z` (62 caracteres). |
+| Dá para apagar ou editar? | Não. Simplifica: só cria e lê. |
+
+**Casos de uso:**
+- **Encurtar:** dada uma URL longa, devolver uma curta.
+- **Redirecionar:** dada uma URL curta, mandar o cliente para a longa.
+- Alta disponibilidade, escalabilidade e tolerância a falhas.
+
+## Passo 2 — Estimativa de capacidade
+
+**Estimativa de ordem de grandeza** ("back-of-the-envelope"): descobrir se o sistema é de milhares ou de bilhões de registros *antes* de escolher a tecnologia. Não precisa acertar o número — precisa acertar a **ordem** e saber qual decisão ela força. O método geral está em [Estimativa back-of-the-envelope](/fundamentals/estimativa).
+
+**Premissas (declare-as antes de calcular):**
+- 100 milhões de URLs novas por dia
+- proporção leitura:escrita = 10:1
+- vida útil = 10 anos
+- URL média = 100 bytes
+
+### Conta 1 — Escritas por segundo
+
+Converter "por dia" para "por segundo" divide pelo número de segundos do dia:
+
+```
+1 dia = 24 h × 3.600 s = 86.400 s
+100.000.000 ÷ 86.400 ≈ 1.157   →   ~1.160 escritas/s
+```
+
+### Conta 2 — Leituras por segundo
+
+Cada escrita gera cerca de 10 leituras:
+
+```
+1.160 × 10 = 11.600 leituras/s
+```
+
+Isso é a **média**. Tráfego real tem pico de 2 a 3 vezes a média — dimensiona-se pelo pico, não pela média.
+
+### Conta 3 — Volume acumulado em 10 anos
+
+```
+100.000.000/dia × 365 dias = 36.500.000.000/ano   (36,5 bi/ano)
+36,5 bi × 10 anos          = 365.000.000.000       (365 bilhões de registros)
+```
+
+### Conta 4 — Armazenamento
+
+```
+365.000.000.000 registros × 100 bytes = 36.500.000.000.000 bytes = 36,5 TB
+```
+
+**Atenção:** 36,5 TB é o **piso** — conta só o `longURL`. O sistema real carrega mais:
+
+- `id` (8 bytes) + `shortURL` (7 bytes) + overhead de linha → ~+20%
+- índice em `shortURL` (B-tree) → +30% a 50%
+- replicação para alta disponibilidade (2–3 cópias) → ×2 a ×3
+
+Ordem de grandeza realista: **~70 a 110 TB**.
+
+### Resumo das contas
+
+| Conta | Fórmula | Resultado |
+|---|---|---|
+| Escritas/s | 100M ÷ 86.400 | ~1.160/s |
+| Leituras/s | 1.160 × 10 | ~11.600/s |
+| Registros em 10 anos | 100M × 365 × 10 | 365 bilhões |
+| Armazenamento (piso) | 365 bi × 100 B | 36,5 TB |
+| Armazenamento (realista) | piso × 2 a 3 | ~70 a 110 TB |
+
+### O que cada número decide
+
+- **11.600 leituras/s** → cache na frente do banco é obrigatório, não opcional.
+- **365 bilhões de linhas** → sharding; não cabe confortavelmente em um nó só.
+- **70 a 110 TB** → decisão de storage e de custo.
+- **pico acima da média** → folga (headroom) e autoscaling.
+
+### Dimensionamento do banco
+
+A estimativa vira schema e partição:
+
+- **Chave primária:** `id BIGINT` (64 bits). `INT` estoura em 2,1 bilhões — 365 bilhões exigem 64 bits.
+- **Índices:**
+  - PK em `id`.
+  - **Único em `shortURL`** — o redirect consulta por `shortURL`; é o índice mais crítico.
+  - Para deduplicar `longURL`, indexar o **hash da URL** (a URL crua é grande demais para indexar bem).
+- **Sharding:** particionar por hash do `id` distribui uniformemente. Exemplo: 4 shards → ~91 bilhões de linhas cada. A técnica por trás é o [consistent hashing](/fundamentals/consistent-hashing).
+- **QPS no banco:** das 11.600 leituras/s, com acerto de cache de 80–90%, só **~1.160 a 2.320 QPS** chegam ao banco. É esse cálculo que paga o cache.
+- **Gargalo real:** não é só o tamanho — é manter latência baixa sob 11.600 requisições/s.
+
+### Custo aproximado na AWS
+
+Ordem de grandeza, **ilustrativa** — preços mudam; confirme no AWS Pricing Calculator antes de decidir.
+
+| Item | Base de cálculo | Ordem de grandeza |
+|---|---|---|
+| Storage | 36,5 TB em EBS gp3 (~US$0,08/GB-mês) | ~US$2,9 mil/mês (1 cópia) |
+| Storage com replicação | 3 cópias | ~US$8,8 mil/mês |
+| Banco gerenciado | DynamoDB on-demand: storage + RCU/WCU | varia com o tráfego de 11.600 leituras/s |
+| Cache | ElastiCache (Redis) | absorve a maior parte das leituras |
+| Compute | instâncias atrás do balanceador | escala com o pico, não com a média |
+| Egress | tráfego de saída por redirect | cresce com os cliques |
+
+O ponto didático não é o valor exato, e sim a estrutura: **storage, compute, cache e saída escalam de forma diferente**, e a replicação multiplica o custo de storage. Para os conceitos por trás dessas escolhas, veja [Segurança e custo](/aws/seguranca-e-custo) no guia AWS.
+
+## Passo 3 — Design de alto nível
+
+### Endpoints da API
+
+Dois endpoints REST resolvem o caso de uso:
+
+**Encurtar** — `POST /api/v1/data/shorten`
+- parâmetro: `{ "longUrl": "..." }`
+- retorno: a URL curta
+
+**Redirecionar** — `GET /api/v1/{shortUrl}`
+- retorno: a URL longa, via redirecionamento HTTP
+
+### Redirecionamento: 301 ou 302
+
+Ao receber a URL curta, o servidor responde com um redirecionamento para a longa.
+
+![Diagrama: fluxo de redirecionamento 301 — cliente, servidor de URL curta e site original](/img/diagramas/us-redirect-301.svg)
+
+A escolha entre 301 e 302 muda o comportamento do navegador:
+
+- **301 (permanente):** o navegador guarda em cache. As próximas visitas à mesma URL **não passam pelo encurtador** — vão direto ao destino. Reduz a carga no servidor, mas cega a analítica.
+- **302 (temporário):** o navegador volta ao encurtador a cada clique. Mais carga, porém **permite contar cliques e origem**.
+
+**Regra prática:** priorize carga do servidor → 301. Priorize analítica → 302.
+
+### Do curto ao longo
+
+A forma mais direta de pensar o redirect é uma **tabela hash** `shortURL → longURL`: dada a chave curta, devolve a longa. Serve para começar; memória é cara e limitada, então em produção isso vira banco (Passo 4).
+
+### Encurtando: a função de hash
+
+Para `tinyurl.com/{hashValue}`, precisamos de uma função que mapeie a URL longa a um valor curto, com duas garantias:
+
+- cada URL longa produz **um** valor;
+- cada valor **volta** para a URL longa.
+
+![Diagrama: a URL longa passa pela função de hash e vira uma URL curta](/img/diagramas/us-hash-funcao.svg)
+
+## Passo 4 — Deep dive
+
+### Modelo de dados
+
+Em vez da tabela hash, guardar o mapeamento num **banco relacional**. A tabela mínima tem três colunas:
+
+| Coluna | Papel |
+|---|---|
+| `id` | chave primária |
+| `shortURL` | a URL curta |
+| `longURL` | a URL original |
+
+| id | shortURL | longURL |
+|---|---|---|
+| 2009215674938 | `zn9edcu` | `https://en.wikipedia.org/wiki/Systems_design` |
+
+### Tamanho do hash
+
+O alfabeto é `[0-9, a-z, A-Z]` = **62 caracteres**. Queremos o menor `n` tal que `62^n` cubra os 365 bilhões de URLs:
+
+| n | 62^n | cobre 365 bi? |
+|---|---|---|
+| 5 | 916.132.832 | não |
+| 6 | 56.800.235.584 | não |
+| **7** | **3.521.614.606.208 (~3,5 tri)** | **sim** |
+
+Logo, **7 caracteres**.
+
+### Gerador de ID único
+
+A abordagem base 62 **não começa com a URL** — começa com um **número**. Se dois pedidos receberem o mesmo número, duas URLs curtas colidem. Então esse número precisa ser **único globalmente**.
+
+Requisitos de um bom gerador: único, rápido (sem virar gargalo), disponível (sem ponto único de falha) e, de preferência, **crescente** — IDs ordenáveis ajudam o índice e a paginação.
+
+As opções, do mais simples ao mais robusto:
+
+| Opção | Como funciona | Prós | Contras |
+|---|---|---|---|
+| **Auto-increment do banco** | `AUTO_INCREMENT` / `SERIAL` | trivial, zero código | não escala com várias instâncias; revela ordem e volume |
+| **UUID** | 128 bits aleatórios | único sem coordenação | 128 bits viram ~22 caracteres em base 62 (URL longa); não é ordenável |
+| **Faixas (segment)** | cada instância pega uma faixa (ex.: 1–1000) e incrementa localmente | rápido, quase sem ida ao banco | precisa de um serviço que distribua faixas |
+| **Snowflake** | 64 bits = timestamp + id da máquina + sequência | ordenável, sem coordenação central | depende de relógio sincronizado |
+
+**Decisão do projeto.** Para o MVP, o **auto-increment do banco** basta e não exige código. Quando houver várias instâncias escrevendo, migrar para **faixas** ou **Snowflake**. Em Go, o Snowflake tem lib pronta (`bwmarrin/snowflake`, `sony/sonyflake`) — ou implementa-se o gerador de faixas em poucas linhas. **Não** usar UUID aqui: 128 bits não cabem nos 7 caracteres que a conta pede.
+
+O gerador de ID distribuído é um problema à parte, com capítulo próprio no material de origem. Vira um capítulo de [fundamentos](/fundamentals) quando o projeto crescer.
+
+### Duas abordagens de hash
+
+**Hash + resolução de colisão.** Aplicar uma função conhecida (CRC32, MD5, SHA-1) e cortar para 7 caracteres. O corte pode colidir, então verifica-se no banco e, se colidir, acrescenta-se um prefixo à URL longa e re-hasheia.
+
+![Fluxograma: hash com resolução de colisão, reaplicando com prefixo até não colidir](/img/diagramas/us-hash-colisao.svg)
+
+O problema é o custo: consultar o banco a cada tentativa. Um **Bloom filter** — estrutura probabilística e econômica em espaço — ajuda a filtrar colisões antes de ir ao banco.
+
+**Base 62.** Em vez de cortar um hash, converte-se um **ID numérico único** para a base 62.
+
+Um número é uma sequência de dígitos com pesos. Na **base 10** usamos 10 símbolos (`0`–`9`); na **base 62** usamos 62: `0`–`9`, `a`–`z` e `A`–`Z`. Mais símbolos por posição significam **mais informação em menos caracteres** — exatamente o que uma URL curta quer.
+
+O mapeamento dos símbolos:
+
+| Valor | 0–9 | 10–35 | 36–61 |
+|---|---|---|---|
+| Símbolo | `0`–`9` | `a`–`z` | `A`–`Z` |
+
+A conversão repete dois passos até o número zerar: pegar o **resto** (`% 62`) e dividir por 62 com **divisão inteira** (`/ 62`).
+
+> **Cuidado com a notação.** Em matemática, `11157 ÷ 62` dá `179,95…`. Em código, `11157 / 62` entre inteiros dá **179** — o resto é descartado — e `11157 % 62` dá o **resto, 59**. É a divisão inteira que interessa aqui; o símbolo `÷` engana.
+
+![Diagrama: em cada passo, o resto (% 62) vira símbolo e a divisão inteira (/ 62) vira o próximo número](/img/diagramas/us-base62-divisao.svg)
+
+Passo a passo com o número `11157`:
+
+1. `11157 % 62 = 59` → símbolo `X` · `11157 / 62 = 179`
+2. `179 % 62 = 55` → símbolo `T` · `179 / 62 = 2`
+3. `2 % 62 = 2` → símbolo `2` · `2 / 62 = 0` (para)
+
+Lendo os restos de baixo para cima: `2` `T` `X` → `2TX`. A URL curta vira `tinyurl.com/2TX`.
+
+Conferindo (em base 62, cada posição vale 62× a anterior):
+
+```
+2 × 62² + 55 × 62 + 59 = 7.688 + 3.410 + 59 = 11.157 ✓
+```
+
+Em Go, o algoritmo é o mesmo — só invertendo os restos no fim:
+
+```go title="base62.go"
+const alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+func toBase62(n int64) string {
+    if n == 0 {
+        return "0"
+    }
+    var b []byte
+    for n > 0 {
+        b = append(b, alphabet[n%62]) // resto → símbolo
+        n /= 62                        // divisão inteira: descarta o resto
+    }
+    // os restos saem invertidos; devolve na ordem correta
+    for i, j := 0, len(b)-1; i < j; i, j = i+1, j-1 {
+        b[i], b[j] = b[j], b[i]
+    }
+    return string(b)
+}
+```
+
+O detalhe que costuma travar: **o resto vira símbolo na hora**, mas a ordem final é invertida. Por isso o loop `for i, j := ...` no fim.
+
+### Comparação
+
+| Hash + colisão | Base 62 |
+|---|---|
+| Comprimento fixo (7). | Comprimento cresce com o ID. |
+| Não precisa de gerador de ID único. | Depende de um gerador de ID único. |
+| Colisão possível, precisa resolver. | Sem colisão — o ID é único. |
+| Não dá para prever a próxima URL. | ID sequencial revela a próxima URL (risco de segurança). |
+
+A escolha do exemplo é **base 62**: evita colisão e troca o problema "resolver colisão" pelo problema "gerar ID único" — que é mais simples de resolver (veja [Gerador de ID único](#gerador-de-id-único)). O risco de ID previsível se mitiga com um gerador não sequencial (Snowflake) ou com um offset aleatório no ID.
+
+### Fluxo de encurtamento
+
+![Fluxograma: encurtamento — checar se a URL existe, gerar ID, converter para base 62 e salvar](/img/diagramas/us-shortening-fluxo.svg)
+
+1. Entra a URL longa.
+2. Ela já existe no banco? Se sim, devolve a URL curta correspondente.
+3. Se não, gera um ID único (chave primária) — veja [Gerador de ID único](#gerador-de-id-único).
+4. Converte o ID para URL curta com base 62.
+5. Salva `id`, `shortURL` e `longURL`.
+
+### Fluxo de redirecionamento
+
+Como há muito mais leituras que escritas, o par `shortURL → longURL` fica em **cache**.
+
+![Diagrama: arquitetura do redirect com balanceador, servidores web, cache e banco](/img/diagramas/us-redirect-arquitetura.svg)
+
+1. O usuário clica na URL curta.
+2. O balanceador encaminha a requisição a um servidor web.
+3. Se a `shortURL` está no cache, devolve a `longURL` na hora.
+4. Se não está, busca no banco. Não estando no banco, é uma URL inválida.
+5. A `longURL` volta ao usuário.
+
+## Passo 5 — Fechamento
+
+Com tempo extra, vale levantar:
+
+- **Rate limiter:** usuários maliciosos podem inundar o serviço de pedidos; limitar por IP protege.
+- **Escala dos servidores web:** a camada web é sem estado — cresce adicionando ou removendo servidores.
+- **Escala do banco:** replicação e sharding.
+- **Analítica:** quantos cliques, quando e de onde — exige 302 em vez de 301.
+- **Disponibilidade, consistência e confiabilidade:** a base de qualquer sistema grande.
+
+## Referências
+
+- [ByteByteGo — Design A URL Shortener](https://bytebytego.com/courses/system-design-interview/design-a-url-shortener)
+- [RESTful API Tutorial](https://www.restapitutorial.com/index.html)
+- [Bloom filter](https://en.wikipedia.org/wiki/Bloom_filter)

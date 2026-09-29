@@ -1,0 +1,102 @@
+---
+title: Consistent hashing
+sidebar_label: Consistent hashing
+sidebar_position: 4
+displayed_sidebar: fundamentalsSidebar
+description: Por que hash % N quebra ao adicionar ou remover servidores e como o anel com virtual nodes redistribui só uma fração das chaves.
+---
+
+> **Baseado em:** [ByteByteGo — Design Consistent Hashing](https://bytebytego.com/courses/system-design-interview/design-consistent-hashing).
+> Texto reescrito em pt-BR na minha leitura; os diagramas são próprios.
+
+Para escalar horizontalmente, é preciso distribuir requisições e dados entre servidores de forma **uniforme** — e, quando um servidor entra ou sai, mover o **mínimo** possível. Consistent hashing resolve exatamente isso.
+
+## O problema do rehashing
+
+O jeito ingênuo de balancear é `serverIndex = hash(key) % N`, onde `N` é o tamanho do pool. Com 4 servidores e 8 chaves:
+
+| key | hash | hash % 4 |
+|---|---|---|
+| key0 | 18358617 | 1 |
+| key1 | 26143584 | 0 |
+| key2 | 18131146 | 2 |
+| key3 | 35863496 | 0 |
+| key4 | 34085809 | 1 |
+| key5 | 27581703 | 3 |
+| key6 | 38164978 | 2 |
+| key7 | 22530351 | 3 |
+
+Funciona enquanto `N` é fixo. Mas se **um servidor cai** (ou entra), `N` muda. Com `N=3`:
+
+| key | hash | hash % 3 |
+|---|---|---|
+| key0 | 18358617 | 0 |
+| key1 | 26143584 | 0 |
+| key2 | 18131146 | 1 |
+| key3 | 35863496 | 2 |
+| key4 | 34085809 | 1 |
+| key5 | 27581703 | 0 |
+| key6 | 38164978 | 1 |
+| key7 | 22530351 | 0 |
+
+O hash da chave não muda, mas o **resultado do módulo muda** — quase todas as chaves vão para servidores diferentes. O resultado é uma tempestade de **cache misses**.
+
+## Consistent hashing
+
+Consistent hashing é um tipo de hash em que, ao redimensionar a tabela, apenas `k/n` chaves precisam ser remapeadas (com `k` chaves e `n` slots). A ideia: mapear servidores e chaves no **mesmo anel**, sem módulo.
+
+### Espaço de hash e anel
+
+Com SHA-1, o espaço de hash vai de `0` a `2^160 - 1`. Juntando as pontas, esse intervalo vira um **anel**.
+
+### Servidores e chaves no anel
+
+Usando a mesma função de hash, mapeia-se cada servidor (pelo IP ou nome) no anel. Depois, mapeia-se cada chave no mesmo anel.
+
+### Lookup
+
+Para descobrir o servidor de uma chave, anda-se no anel **no sentido horário** até o primeiro servidor.
+
+![Diagrama: anel de hash com servidores e chaves; a chave vai para o primeiro servidor no sentido horário](/img/diagramas/sd-ring-lookup.svg)
+
+### Adicionar ou remover servidor
+
+Com o anel, adicionar um servidor redistribui só uma **fração** das chaves. No exemplo, ao entrar `s4`, apenas `key0` migra (para o primeiro servidor à frente); `k1`, `k2` e `k3` ficam onde estão.
+
+![Diagrama: adicionar s4 migra apenas as chaves entre s3 e s4](/img/diagramas/sd-ring-add-remove.svg)
+
+## Dois problemas da abordagem básica
+
+1. **Partições desiguais.** Com servidores adicionados/removidos, o espaço entre servidores (a partição de cada um) fica desigual. Se `s1` sai, a partição de `s2` pode dobrar.
+2. **Distribuição não uniforme.** Se os servidores caem em posições próximas, a maior parte das chaves vai para um servidor — e outros ficam ociosos.
+
+## Virtual nodes
+
+A solução é o **virtual node** (ou réplica): cada servidor físico vira **vários** pontos no anel. Em vez de `s0`, temos `s0_0`, `s0_1`, `s0_2`.
+
+![Diagrama: virtual nodes distribuem cada servidor em vários pontos do anel](/img/diagramas/sd-virtual-nodes.svg)
+
+O lookup é o mesmo: anda no sentido horário até o primeiro **nó virtual** — que aponta para o servidor físico dono dele. Quanto mais virtual nodes, mais uniforme a distribuição (o desvio padrão cai), ao custo de mais espaço para guardar os metadados dos nós. É um trade-off ajustável.
+
+## Chaves afetadas
+
+Ao adicionar ou remover um servidor, só uma faixa precisa ser redistribuída:
+
+- **Adiciona `s4`:** as chaves entre `s3` e `s4` vão para `s4`.
+- **Remove `s1`:** as chaves entre `s0` e `s1` vão para `s2`.
+
+## Por que importa
+
+- Redistribui o **mínimo** de chaves ao adicionar/remover servidores.
+- Facilita a escala horizontal — dados ficam mais uniformes.
+- Mitiga o **hotspot key** (chaves muito acessadas caindo no mesmo shard).
+
+É usado em sistemas reais: partição do Dynamo (Amazon), Cassandra, Discord, CDN da Akamai e o load balancer Maglev (Google).
+
+Para ver consistent hashing aplicado ao particionamento de dados, veja [Design a Key-value Store](/fundamentals/key-value-store).
+
+## Referências
+
+- [ByteByteGo — Design Consistent Hashing](https://bytebytego.com/courses/system-design-interview/design-consistent-hashing)
+- [Consistent hashing (Wikipedia)](https://en.wikipedia.org/wiki/Consistent_hashing)
+- [Consistent Hashing (Tom White)](https://tom-e-white.com/2007/11/consistent-hashing.html)
