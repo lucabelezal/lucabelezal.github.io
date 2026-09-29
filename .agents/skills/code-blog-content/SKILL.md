@@ -45,7 +45,7 @@ tags: [engenharia-de-software]
 ```
 
 - Autores centralizados em `blog/authors.yml`, tags em `blog/tags.yml`
-- Idioma canônico: **pt-BR** em `blog/`; traduções só sob demanda para `i18n/<locale>/docusaurus-plugin-content-blog/` mantendo `slug/authors/tags` (ver `AGENTS.md:35`)
+- Idioma canônico: **pt-BR** em `blog/`; traduções só sob demanda para `i18n/<locale>/docusaurus-plugin-content-blog/` mantendo `slug/authors/tags` (ver `AGENTS.md`)
 - Sempre `{/* truncate */}` após lead em `.mdx`
 
 ## Template MDX completo
@@ -158,7 +158,7 @@ para este blog. Ver `references/`.
 
 ## Código
 
-- Fonte JetBrains Mono (tema `src/css/custom.css:2`), highlight Prism `github` light / `oneDark` dark (`docusaurus.config.ts:91`)
+- Fonte JetBrains Mono (tema `src/css/custom.css`), highlight Prism `github` light / `oneDark` dark (`docusaurus.config.ts` → `themeConfig.prism`)
 - Sempre informar linguagem, versão quando relevante e como rodar
 - Blocos com `title="..."` quando fizer sentido (` ```ts title="exemplo.ts" ``` `)
 - Highlight de linha quando chamar atenção (`// highlight-next-line`)
@@ -166,7 +166,7 @@ para este blog. Ver `references/`.
 
 ## Componentes de blog
 
-Todos em `src/components/blog/` e estilizados via `.blogSection` em `src/css/custom.css:79`:
+Todos em `src/components/blog/` e estilizados via `.blogSection` em `src/css/custom.css`:
 
 | Componente | Classe | Borda | Uso |
 |---|---|---|---|
