@@ -310,11 +310,13 @@ code {
   }
 
   /* Docs — rail de navegação esquerdo já é fixo (nativo);
-     grid interno: artigo (expande) | aside com Progress + TOC */
+     grid interno: artigo (expande) | aside com Progress + TOC.
+     Sem column-gap: o respiro lateral vem do padding do artigo, para as
+     margens ficarem simétricas (sidebar ↔ conteúdo ↔ TOC). */
   html.docs-wrapper .container > .row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 300px);
-    column-gap: 3rem;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 240px);
+    column-gap: 0;
     align-items: start;
   }
 
@@ -335,19 +337,29 @@ code {
     overflow-y: auto;
   }
 
-  /* Largura de leitura confortável para a prosa (docs) */
-  html.docs-wrapper .theme-doc-markdown {
-    max-width: 820px;
+  /* Artigo: gutter simétrico à esquerda (afasta da sidebar) e à direita
+     (afasta do TOC) — as duas margens ficam iguais. */
+  html.docs-wrapper .container .row > [class*='docItemCol'] {
+    padding-inline: 2rem;
+  }
+
+  /* Aside (Progress + TOC): o respiro até o artigo já vem do padding do
+     artigo; mantém só a margem externa à direita. */
+  html.docs-wrapper .container .row > [class*='docItemAside'] {
+    padding-inline: 0 1rem;
+  }
+
+  /* Coluna de conteúdo dos docs (Go by Example): prosa e card de código
+     com a MESMA largura (alinhados) e cap maior — expande em telas
+     grandes. Escopo restrito ao artigo do shell de docs, para não afetar
+     as áreas editoriais (que usam PageShell/860px). */
+  html.docs-wrapper .container .row > [class*='docItemCol'] .theme-doc-markdown {
+    max-width: 960px;
   }
 }
 
 @media (min-width: 997px) and (max-width: 1400px) {
   html.blog-wrapper .container > .row {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 260px);
-    column-gap: 2rem;
-  }
-
-  html.docs-wrapper .container > .row {
     grid-template-columns: minmax(0, 1fr) minmax(0, 260px);
     column-gap: 2rem;
   }
