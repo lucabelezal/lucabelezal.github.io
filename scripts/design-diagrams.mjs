@@ -93,20 +93,20 @@ scenes['design-dip-acoplado.svg'] = [
 // ------------------------------------------------ 2. tentativa ingênua
 scenes['design-dip-tentativa.svg'] = [
   head(
-    '0 0 820 250',
+    '0 0 860 280',
     'Diagrama: injeção pelo construtor de uma classe concreta — o new mudou de lugar, mas o acoplamento permanece',
     'Tentativa ingênua',
     'Injetar StripeClient pelo construtor move o new para o chamador, mas o serviço continua dependendo de uma classe concreta.',
   ),
-  label(18, 24, 'new mudou de lugar; o acoplamento continua', {weight: 'bold'}),
-  rect(30, 90, 180, 64, 'Controller', 'box', {sub: 'chamador'}),
-  rect(300, 90, 250, 64, 'OrderProcessorService', 'proc', {sub: 'depende de concreto'}),
-  rect(640, 90, 160, 64, 'StripeClient', 'detail', {sub: 'concreto'}),
-  arrow(210, 122, 300, 122, 'flow'),
-  arrow(550, 122, 640, 122, 'bad'),
-  label(475, 114, 'StripeClient', {anchor: 'middle', size: 10}),
-  label(255, 82, 'injeta', {anchor: 'middle', size: 10}),
-  label(30, 205, 'Ainda depende de uma classe concreta e volátil.', {size: 10}),
+  label(20, 26, 'new mudou de lugar; o acoplamento continua', {weight: 'bold'}),
+  rect(30, 100, 200, 64, 'Controller', 'box', {sub: 'chamador'}),
+  rect(310, 100, 260, 64, 'OrderProcessorService', 'proc', {sub: 'depende de concreto'}),
+  rect(650, 100, 180, 64, 'StripeClient', 'detail', {sub: 'concreto'}),
+  arrow(230, 132, 310, 132, 'flow'),
+  arrow(570, 132, 650, 132, 'bad'),
+  label(270, 122, 'injeta', {anchor: 'middle', size: 11}),
+  label(610, 122, 'depende', {anchor: 'middle', size: 11}),
+  label(20, 250, 'Ainda depende de uma classe concreta e volátil.', {size: 11}),
 ].join('\n');
 
 // ------------------------------------------------ 3. invertido (DIP + Adapter)

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 250" role="img" aria-label="Diagrama: injeção pelo construtor de uma classe concreta — o new mudou de lugar, mas o acoplamento permanece">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 280" role="img" aria-label="Diagrama: injeção pelo construtor de uma classe concreta — o new mudou de lugar, mas o acoplamento permanece">
   <title>Tentativa ingênua</title>
   <desc>Injetar StripeClient pelo construtor move o new para o chamador, mas o serviço continua dependendo de uma classe concreta.</desc>
   <defs>
@@ -32,19 +32,19 @@
       .mono{fill:#8b949e}
     }
   </style>
-  <text x="18" y="24" font-size="12" text-anchor="start" class="lbl" font-weight="bold">new mudou de lugar; o acoplamento continua</text>
-  <rect x="30" y="90" width="180" height="64" rx="8" class="box"/>
-  <text x="120" y="120" font-size="13" text-anchor="middle">Controller</text>
-  <text x="120" y="137" font-size="11" text-anchor="middle" class="mono">chamador</text>
-  <rect x="300" y="90" width="250" height="64" rx="8" class="proc"/>
-  <text x="425" y="120" font-size="13" text-anchor="middle">OrderProcessorService</text>
-  <text x="425" y="137" font-size="11" text-anchor="middle" class="mono">depende de concreto</text>
-  <rect x="640" y="90" width="160" height="64" rx="8" class="detail"/>
-  <text x="720" y="120" font-size="13" text-anchor="middle">StripeClient</text>
-  <text x="720" y="137" font-size="11" text-anchor="middle" class="mono">concreto</text>
-  <path d="M 210 122 L 300 122" class="flow" marker-end="url(#arrow)"/>
-  <path d="M 550 122 L 640 122" class="bad" marker-end="url(#arrow)"/>
-  <text x="475" y="114" font-size="10" text-anchor="middle" class="lbl">StripeClient</text>
-  <text x="255" y="82" font-size="10" text-anchor="middle" class="lbl">injeta</text>
-  <text x="30" y="205" font-size="10" text-anchor="start" class="lbl">Ainda depende de uma classe concreta e volátil.</text>
+  <text x="20" y="26" font-size="12" text-anchor="start" class="lbl" font-weight="bold">new mudou de lugar; o acoplamento continua</text>
+  <rect x="30" y="100" width="200" height="64" rx="8" class="box"/>
+  <text x="130" y="130" font-size="13" text-anchor="middle">Controller</text>
+  <text x="130" y="147" font-size="11" text-anchor="middle" class="mono">chamador</text>
+  <rect x="310" y="100" width="260" height="64" rx="8" class="proc"/>
+  <text x="440" y="130" font-size="13" text-anchor="middle">OrderProcessorService</text>
+  <text x="440" y="147" font-size="11" text-anchor="middle" class="mono">depende de concreto</text>
+  <rect x="650" y="100" width="180" height="64" rx="8" class="detail"/>
+  <text x="740" y="130" font-size="13" text-anchor="middle">StripeClient</text>
+  <text x="740" y="147" font-size="11" text-anchor="middle" class="mono">concreto</text>
+  <path d="M 230 132 L 310 132" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 570 132 L 650 132" class="bad" marker-end="url(#arrow)"/>
+  <text x="270" y="122" font-size="11" text-anchor="middle" class="lbl">injeta</text>
+  <text x="610" y="122" font-size="11" text-anchor="middle" class="lbl">depende</text>
+  <text x="20" y="250" font-size="11" text-anchor="start" class="lbl">Ainda depende de uma classe concreta e volátil.</text>
 </svg>
