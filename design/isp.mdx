@@ -1,0 +1,464 @@
+---
+title: SOLID em Go — Segregação de Interfaces (ISP)
+sidebar_label: ISP
+sidebar_position: 1
+displayed_sidebar: designSidebar
+description: O princípio que impede a interface gorda — por que métodos mortos quebram SRP, OCP e LSP, e como separar contratos coesos por capacidade. Com código Go executável.
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+> **Epígrafe.** "Clients should not be forced to depend on methods that they do not use."
+> — Robert C. Martin, *Clean Architecture*, cap. 11 (The Interface Segregation Principle).
+>
+> *Tradução livre: clientes não devem ser forçados a depender de métodos que não usam.*
+
+> **Baseado em:** [STOP Sabotaging Your Code with WRONG ABSTRACTIONS! — Interface Segregation Principle](https://www.youtube.com/watch?v=jHbI9ej5O1Y) (Renato Augusto), e nos capítulos sobre ISP e coerência de componentes de *Clean Architecture*. Texto reescrito em pt-BR na minha leitura; os diagramas são próprios.
+
+Toda abstração que você escreve é uma promessa. Quando a promessa é vaga — "isto é um meio de pagamento, ele sabe pagar, gerar QR Code e emitir boleto" —, todo mundo que depende dela passa a carregar o que não pediu: quem só queria pagar com cartão agora precisa *saber* gerar boleto.
+
+O **Princípio de Segregação de Interfaces (ISP)** existe para manter a promessa específica. Ele não é sobre sintaxe de interface: é sobre **coesão de contrato**. Junto com o LSP, é um dos dois princípios SOLID que atacam a abstração — o pilar que, uma vez errado e espalhado, é o mais caro de corrigir.
+
+<WhatYouWillLearn>
+
+- o que é uma **interface gorda** e por que ela nasce da pressa
+- o que são **métodos mortos** e como eles quebram SRP, OCP e LSP de uma vez
+- por que **ISP e LSP** são os dois princípios ligados à abstração
+- a diferença entre **capacidade** (o que o objeto sabe fazer) e **identidade** (o que o objeto é)
+- por que depender de uma **classe concreta** com um `enum` de tipo não é abstração
+- como segregar interfaces em Go — e por que a satisfação **implícita** muda a conversa
+- o **CRP**: a versão de componente do mesmo princípio
+- quando **não** segregar (o trade-off que o vídeo cobra no fim)
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go básico: structs, métodos, interfaces e pacotes
+- [Interfaces em Go](/go-interfaces) — a satisfação implícita é a base de tudo aqui
+- [Inversão de Dependências (DIP) + Adapter](/design/dip-adapter) — o ISP é irmão do DIP e reaproveita a ideia de interface no consumidor
+
+</Prerequisites>
+
+## 1. Contexto
+
+Abstrair é **representar o mundo real** com o mínimo necessário para resolver o problema. É o pilar mais importante da orientação a objetos — e o mais fácil de errar.
+
+Errar abstração não quebra o sistema no dia seguinte. O sintoma aparece devagar:
+
+- cada novo caso de uso **engorda** um contrato existente;
+- classes passam a implementar métodos que não fazem sentido para elas;
+- um `if` de tipo se espalha pela regra de negócio.
+
+Quando isso já virou bola de neve, corrigir é cirurgia — porque a abstração errada está **importada em todo lugar**. Os outros princípios perdoam: SRP, OCP e DIP são ajustáveis com um pouco de trabalho. Abstração errada, não.
+
+O cenário que vamos seguir: uma empresa que recebe pagamentos. Começa simples — cartão e PayPal — e cresce até Pix e boleto. É nesse crescimento, sempre na pressa, que a interface gorda aparece.
+
+```text title="Evolução do código"
+1. limpo        PaymentMethod com só Pay()
+2. pressa       negócio pede Pix → GenerateQRCode() entra na interface
+3. dominó       cartão e PayPal viram métodos mortos que lançam erro
+4. mais pressa  negócio pede boleto → GenerateDocument() entra também
+5. split        capacidades separadas: PaymentMethod + QRCodeGenerable + DocumentGenerable
+6. teste        o fake encolhe de três métodos para um
+```
+
+![Diagrama: todos os meios de pagamento presos a uma interface gorda que só o Pix usa por inteiro](/img/diagramas/design-isp-inchuada.svg)
+
+## 2. O problema
+
+Comece pelo desenho que funciona. Uma interface com **um** método, coesa:
+
+```go title="internal/payment/payment.go (limpo)"
+package payment
+
+import (
+	"context"
+	"fmt"
+)
+
+type Money int64
+
+func (m Money) String() string {
+	return fmt.Sprintf("R$ %.2f", float64(m)/100)
+}
+
+type Order struct {
+	ID     string
+	Amount Money
+}
+
+type PaymentMethod interface {
+	Pay(ctx context.Context, order Order) error
+}
+
+type CreditCard struct{}
+
+func (CreditCard) Pay(_ context.Context, order Order) error {
+	fmt.Printf("[cartão] pagando %s\n", order.ID)
+	return nil
+}
+
+type PayPal struct{}
+
+func (PayPal) Pay(_ context.Context, order Order) error {
+	fmt.Printf("[PayPal] pagando %s\n", order.ID)
+	return nil
+}
+```
+
+Cada classe faz uma coisa. Coeso. É aqui que o negócio pergunta: **e Pix?**
+
+Na pressa de atender, o caminho mais curto é jogar o método novo dentro da interface existente. Pix precisa gerar um QR Code antes de pagar — então o contrato ganha `GenerateQRCode`. Só que, com isso, **todo** meio de pagamento passa a ser obrigado a saber gerar QR Code:
+
+```go title="internal/payment/payment.go (gordo)"
+package payment
+
+import (
+	"context"
+	"errors"
+	"fmt"
+)
+
+// Erro sentinela para métodos que a classe não deveria conhecer.
+var ErrNaoSuportado = errors.New("operação não suportada pelo meio de pagamento")
+
+// Interface gorda: acumula capacidades de atores diferentes.
+type PaymentMethod interface {
+	Pay(ctx context.Context, order Order) error
+	GenerateQRCode(ctx context.Context, order Order) (string, error)
+	GenerateDocument(ctx context.Context, order Order) ([]byte, error)
+}
+
+// Cartão só sabe pagar — mas é forçado a implementar o contrato inteiro.
+func (CreditCard) GenerateQRCode(context.Context, Order) (string, error) {
+	return "", ErrNaoSuportado
+}
+
+func (CreditCard) GenerateDocument(context.Context, Order) ([]byte, error) {
+	return nil, ErrNaoSuportado
+}
+
+// PayPal: mesma história.
+func (PayPal) GenerateQRCode(context.Context, Order) (string, error) {
+	return "", ErrNaoSuportado
+}
+
+func (PayPal) GenerateDocument(context.Context, Order) ([]byte, error) {
+	return nil, ErrNaoSuportado
+}
+```
+
+Repare no que aconteceu. O cartão **não** implementa esses métodos por vontade: implementa para satisfazer o compilador. O corpo é `return ErrNaoSuportado` — **código morto**, que só existe porque a interface mentiu sobre o que é um meio de pagamento.
+
+E o pior vem depois: boleto. Pagar um boleto exige **gerar o documento** primeiro. Mais um método na interface, mais código morto no cartão e no PayPal. A interface vira um balcão de tudo.
+
+Três problemas, todos de uma vez:
+
+1. **Falta de coesão (SRP).** `CreditCard` passou a cuidar de geração de QR Code e de boleto — coisas que não têm nada a ver com ela.
+2. **Aberto para modificação (OCP).** Cada capacidade nova obriga a **editar** as classes existentes. A extensão virou modificação.
+3. **Quebra de substituição (LSP).** Quem recebe um `PaymentMethod` e chama `GenerateQRCode` quebra em runtime quando o objeto é um cartão. A promessa era "todo `PaymentMethod` gera QR Code"; ela é falsa.
+
+**Regra prática.** Um método cujo corpo é "não suportado" é o sinal mais claro de que a classe não pertence àquela interface.
+
+## 3. Fundamentos
+
+### A definição
+
+Martin publicou o princípio em 1996, no artigo *The Interface Segregation Principle* (C++ Report), e o revisou em *Agile Software Development: Principles, Patterns, and Practices* (PPP, 2002) e em *Clean Architecture* (2017).
+
+> Clients should not be forced to depend on methods that they do not use.
+> — *Clean Architecture*, cap. 11
+
+Tradução livre: *clientes não devem ser forçados a depender de métodos que não usam.*
+
+A frase tem uma leitura estreita e uma leitura ampla. Na estreita, é sobre sintaxe: não force uma classe a implementar métodos vazios. Na ampla — a que importa —, é sobre **dependência de código-fonte**: se o cliente depende de um contrato, ele fica acoplado a *tudo* o que o contrato promete, mesmo que só use um pedaço.
+
+### Por que isto é sobre abstração (e por que ISP = LSP)
+
+O vídeo coloca ISP e LSP lado a lado por um motivo: os dois atacam a **abstração**. Uma interface gorda:
+
+- **mente** sobre a identidade ("todo meio de pagamento gera boleto") — e a mentira quebra o **LSP**, porque a substituição passa a surpreender;
+- **carrega** capacidades que o cliente não pediu — e o peso quebra o **ISP**.
+
+Os outros princípios se consertam com refatoração local. A abstração errada vira dependência compartilhada: corrigi-la é mudar a assinatura de um contrato usado em todo lugar. Por isso a regra do vídeo: **fique bom em abstração antes de ficar bom em padrões de projeto**.
+
+### CRP: o mesmo princípio no nível de componente
+
+O ISP tem um correspondente em escala de pacote: o **Common Reuse Principle (CRP)**.
+
+> Don't force users of a component to depend on things they don't need.
+> — *Clean Architecture*, cap. 13 (Component Cohesion)
+
+Tradução livre: *não force os usuários de um componente a depender de coisas de que não precisam.*
+
+Se um pacote traz classes que o cliente não usa, uma mudança em qualquer dessas classes irrelevantes força o cliente a recompilar e reimplantar. ISP é o CRP aplicado a interfaces; CRP é o ISP aplicado a pacotes.
+
+### O que isso vira em Go
+
+Go muda o tom da conversa, e ignorar isso leva a copiar conselho de Java/C# sem sentido aqui:
+
+- **A satisfação é implícita.** Não existe `implements`. Um tipo satisfaz uma interface se tiver os métodos — e nada mais. Não há "forçado a implementar" no sentido do C#.
+- **Não há header/recompilação em cascata** como em C++. `creditcard.go` não arrasta o mundo quando muda.
+
+Então, em Go, o custo do ISP aparece em outros lugares:
+
+1. **Custo do fake em teste.** Uma interface gorda obriga o dobro a implementar métodos inúteis só para satisfazer o tipo. Interface pequena = fake de uma linha.
+2. **Acoplamento do consumidor.** Quem recebe `PaymentMethod` promete que precisa de tudo nele. Se precisa só de `GenerateDocument`, pedir `PaymentMethod` é acoplar de graça.
+
+E a comunidade já internalizou a solução: **interfaces minúsculas**, normalmente de um método, satisfeitas por vários tipos. É o que a stdlib faz em `io.Reader`, `io.Writer`, `http.Handler`, `fmt.Stringer`.
+
+> The bigger the interface, the weaker the abstraction.
+> — Rob Pike, Go Proverbs (2015)
+
+Tradução livre: *quanto maior a interface, mais fraca a abstração*. E o provérbio irmão: **accept interfaces, return structs** — receba a abstração de que precisa, devolva o concreto que tem.
+
+## 4. Implementação
+
+Go 1.26, sem dependência externa. A correção do ISP em Go é quase sempre a mesma: **quebrar a interface por capacidade**, uma capacidade por contrato.
+
+### 4.1 Separando as capacidades
+
+Deixe `PaymentMethod` com o que é **identidade** — todo meio de pagamento paga. O que é **capacidade extra** vira contrato próprio.
+
+```go title="internal/payment/payment.go (segregado)" showLineNumbers
+package payment
+
+import (
+	"context"
+	"errors"
+	"fmt"
+)
+
+var ErrNaoSuportado = errors.New("operação não suportada pelo meio de pagamento")
+
+// Identidade: todo meio de pagamento sabe pagar. Só isso.
+type PaymentMethod interface {
+	Pay(ctx context.Context, order Order) error
+}
+
+// Capacidade: quem sabe gerar um QR Code.
+type QRCodeGenerable interface {
+	GenerateQRCode(ctx context.Context, order Order) (string, error)
+}
+
+// Capacidade: quem sabe gerar um documento (ex.: boleto).
+type DocumentGenerable interface {
+	GenerateDocument(ctx context.Context, order Order) ([]byte, error)
+}
+
+// Cartão: implementa só PaymentMethod. Sem métodos mortos.
+type CreditCard struct{}
+
+func (CreditCard) Pay(_ context.Context, order Order) error {
+	fmt.Printf("[cartão] pagando %s\n", order.ID)
+	return nil
+}
+
+// Pix: meio de pagamento E gerador de QR Code. Dois papéis, duas interfaces.
+type Pix struct{}
+
+func (Pix) Pay(_ context.Context, order Order) error {
+	fmt.Printf("[Pix] pagando %s\n", order.ID)
+	return nil
+}
+
+func (Pix) GenerateQRCode(_ context.Context, _ Order) (string, error) {
+	return "00020126580014BR.GOV.BCB.PIX...", nil
+}
+
+// Boleto: meio de pagamento E gerador de documento.
+type Boleto struct{}
+
+func (Boleto) Pay(_ context.Context, order Order) error {
+	fmt.Printf("[boleto] registrando %s\n", order.ID)
+	return nil
+}
+
+func (Boleto) GenerateDocument(_ context.Context, _ Order) ([]byte, error) {
+	return []byte("%PDF-1.4 ... dados do boleto"), nil
+}
+```
+
+O cartão **não** tem `GenerateQRCode`. Não porque lança erro: porque aquele método não faz parte da sua realidade. O compilador não o obriga a nada.
+
+### 4.2 Quem depende do quê
+
+Aqui está o ganho do ISP. Cada cliente declara **a capacidade que usa**, não a identidade do objeto:
+
+```go title="internal/payment/service.go" showLineNumbers
+package payment
+
+// Checkout só precisa pagar: depende de PaymentMethod.
+func Checkout(ctx context.Context, m PaymentMethod, order Order) error {
+	return m.Pay(ctx, order)
+}
+
+// A tela do Pix precisa de um QR Code: depende de QRCodeGenerable.
+func RenderQRCodeScreen(ctx context.Context, g QRCodeGenerable, order Order) (string, error) {
+	return g.GenerateQRCode(ctx, order)
+}
+
+// O serviço que anexa o boleto no e-mail depende de DocumentGenerable,
+// não de PaymentMethod. Ele nem sabe que existe pagamento.
+func AttachDocument(ctx context.Context, doc DocumentGenerable, order Order) ([]byte, error) {
+	return doc.GenerateDocument(ctx, order)
+}
+```
+
+`Pix` pode ser passado às três funções. `CreditCard`, só a `Checkout` — e o compilador recusa as outras duas na hora da compilação, não em runtime:
+
+```go
+Checkout(ctx, CreditCard{}, order)        // ok
+RenderQRCodeScreen(ctx, CreditCard{}, o)  // não compila: falta GenerateQRCode
+```
+
+Uma verificação explícita de contrato documenta a intenção e trava a regressão:
+
+```go title="internal/payment/assert.go"
+package payment
+
+var (
+	_ PaymentMethod     = (*CreditCard)(nil)
+	_ PaymentMethod     = (*Pix)(nil)
+	_ QRCodeGenerable   = (*Pix)(nil)
+	_ PaymentMethod     = (*Boleto)(nil)
+	_ DocumentGenerable = (*Boleto)(nil)
+)
+```
+
+Repare: **nenhuma linha diz que `CreditCard` é `QRCodeGenerable`** — porque ele não é.
+
+![Diagrama: três contratos coesos; cada cliente depende só da capacidade que usa](/img/diagramas/design-isp-segregada.svg)
+
+### 4.3 O teste que encolhe
+
+O retorno mais direto do ISP aparece no teste. Para testar `AttachDocument`, o fake implementa **um** método — não os três da interface gorda:
+
+```go title="internal/payment/service_test.go" showLineNumbers
+package payment_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+
+	"example.com/shop/internal/payment"
+)
+
+// Um método. É tudo que o contrato pede.
+type fakeDoc struct {
+	data []byte
+	err  error
+}
+
+func (f fakeDoc) GenerateDocument(context.Context, payment.Order) ([]byte, error) {
+	return f.data, f.err
+}
+
+func TestAttachDocumentPropagaErro(t *testing.T) {
+	errBoom := errors.New("boom")
+	_, err := payment.AttachDocument(context.Background(), fakeDoc{err: errBoom}, payment.Order{ID: "x"})
+
+	if !errors.Is(err, errBoom) {
+		t.Fatalf("esperava errBoom, veio %v", err)
+	}
+}
+```
+
+Com a interface gorda, esse mesmo fake precisaria de `Pay` e `GenerateQRCode` vazios — dois métodos mortos **no seu teste**. O ISP limpa o código de produção e o de teste.
+
+### 4.4 A stdlib já ensina isso
+
+Você não precisa inventar o padrão: a biblioteca padrão é o exemplo canônico de ISP.
+
+```go title="stdlib"
+type Reader interface { Read(p []byte) (n int, err error) }
+type Writer interface { Write(p []byte) (n int, err error) }
+
+// As interfaces compostas existem, mas quem só precisa de um lado usa o lado.
+type ReadWriter interface {
+	Reader
+	Writer
+}
+```
+
+`io.Copy` recebe um `Reader` e um `Writer` — nunca um `ReadWriteCloser`. `http.Handler` é só `ServeHTTP(w, r)`. Composição por embedding: quando você **realmente** precisa das duas capacidades, junta as interfaces; quando não, usa a menor.
+
+## 5. Falhas e trade-offs
+
+O ISP corrige coesão, mas é fácil exagerar. Ignorar os limites é o erro clássico de quem decorou a técnica sem o fundamento.
+
+**Over-fragmentation.** Dividir interfaces já específicas em contratos minúsculos sem necessidade infla o sistema em dezenas de tipos de uma linha, e a navegação piora. O objetivo é o **equilíbrio**: contratos coesos, não contratos mínimos por decreto.
+
+**Split prematuro.** Um contrato com dois métodos usados juntos por todos os clientes pode estar certo. Segregue quando houver **dois clientes com necessidades diferentes** — não antes.
+
+**Interface no produtor.** Definir o contrato junto de quem o implementa inverte a seta e obriga o consumidor a importar o detalhe. Em Go, a interface mora **onde é consumida** (é o mesmo ponto do capítulo de DIP).
+
+**Interface gorda "na classe concreta".** A armadilha que o vídeo destaca: uma única classe `Cobranca` com um `enum` de tipo e um `switch` dentro.
+
+```go title="internal/payment/anti_pattern.go"
+package payment
+
+type Kind int
+
+const (
+	KindCartao Kind = iota
+	KindPix
+	KindBoleto
+)
+
+type Cobranca struct{ Kind Kind }
+
+func (c Cobranca) GenerateQRCode(_ context.Context, _ Order) (string, error) {
+	switch c.Kind {
+	case KindPix:
+		return "00020126...", nil
+	default:
+		return "", ErrNaoSuportado
+	}
+}
+```
+
+Isto **não** é abstração: é uma classe que finge ser várias, com `if`/`switch` de tipo espalhados pela regra. Sem interface separada, você fere de uma vez o SRP (a classe faz tudo), o OCP (cada caso novo edita o `switch`), o LSP (os ramos mentem) e o DIP (o cliente é obrigado a receber a classe concreta). Trocar `enum` por `if` de tipo não resolve — a raiz é a abstração errada.
+
+**Segregar por acidente de tipo, não de capacidade.** O corte é por **o que o cliente usa**, não por "quantos métodos para deixar bonito". `Payer` e `Refunder` são capacidades; `Cartao` e `Pix` são tipos.
+
+**Regra prática.** Pergunte sempre: *quem depende deste contrato precisa de tudo o que ele promete?* Se a resposta é "não", segrega.
+
+## Referências
+
+- **ISP — definição** — Robert C. Martin, *The Interface Segregation Principle* (C++ Report, 1996); em *Agile Software Development: Principles, Patterns, and Practices* (PPP, 2002), e em *Clean Architecture* (2017), cap. 11.
+- **Métodos mortos, classes que implementam comportamentos impertinentes** — Robert C. Martin, *Clean Architecture*, cap. 11.
+- **CRP — Common Reuse Principle** — Robert C. Martin, *Clean Architecture*, cap. 13 (Component Cohesion).
+- **Abstração como pilar, ISP e LSP juntos** — [Renato Augusto — Interface Segregation Principle](https://www.youtube.com/watch?v=jHbI9ej5O1Y).
+- **Go Proverbs** — Rob Pike, [go-proverbs](https://go-proverbs.github.io/) (2015).
+- **ISP como SRP de contratos** — Marco Túlio Valente, *Engenharia de Software Moderna*.
+- **Equilíbrio e over-fragmentation** — Alexander Shvets, [Refactoring.Guru](https://refactoring.guru/design-patterns).
+
+<Summary>
+
+- o ISP diz que ninguém deve ser forçado a depender de métodos que não usa
+- **interface gorda** junta capacidades de atores diferentes em um contrato só
+- **métodos mortos** ("não suportado") são o sintoma; quebram SRP, OCP e LSP de uma vez
+- ISP e LSP atacam a **abstração** — errar abstração é o mais caro de corrigir
+- separe por **capacidade** (`QRCodeGenerable`, `DocumentGenerable`), não por tipo
+- o cliente depende da capacidade que usa, não do objeto inteiro
+- em Go a satisfação é **implícita**: o custo do ISP é o fake grande e o acoplamento supérfluo
+- **CRP** é o ISP no nível de pacote
+- `enum` + `switch` numa classe concreta não é abstração — é a origem do problema
+- segregação é **trade-off**: contratos coesos, não contratos mínimos por decreto
+
+</Summary>
+
+<NextSteps href="/go-interfaces" title="Interfaces em Go">
+
+O ISP é sobre **projetar** interfaces. O passo anterior é dominar o mecanismo: em Go a satisfação é implícita e o conjunto de métodos define o tipo. Esse capítulo cobre a base que este aqui assume.
+
+</NextSteps>
+
+<SkillsGained skills={["ISP", "SOLID", "Segregação de interfaces", "Coesão de contrato", "Composição", "Go idiomático"]} />

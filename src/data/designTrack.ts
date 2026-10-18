@@ -10,6 +10,13 @@ export type DesignChapter = {
 
 export const DESIGN_CHAPTERS: DesignChapter[] = [
   {
+    id: 'isp',
+    title: 'Segregação de Interfaces (ISP)',
+    description:
+      'Contratos coesos por capacidade: por que métodos mortos quebram SRP, OCP e LSP, e como separar interface gorda usando a satisfação implícita de Go.',
+    href: '/design/isp',
+  },
+  {
     id: 'dip-adapter',
     title: 'Inversão de Dependências (DIP) + Adapter',
     description:
@@ -22,6 +29,5 @@ export const DESIGN_ROADMAP = [
   'SRP — Responsabilidade única',
   'OCP — Aberto/fechado',
   'LSP — Substituição de Liskov',
-  'ISP — Segregação de interfaces',
   'Padrões GoF — Strategy, Decorator, Facade',
 ];

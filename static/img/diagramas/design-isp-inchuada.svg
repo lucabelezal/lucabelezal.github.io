@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 320" role="img" aria-label="Diagrama: a interface gorda PaymentMethod obriga todos os meios de pagamento a implementar geração de QR Code e de documento, criando métodos mortos">
+  <title>Interface gorda</title>
+  <desc>PaymentMethod acumula Pay, GenerateQRCode e GenerateDocument. Todo meio de pagamento herda o contrato inteiro, mesmo quem só sabe pagar.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .port{fill:none;stroke:#238636;stroke-width:2;stroke-dasharray:6 4}
+    .detail{fill:none;stroke:#d29922;stroke-width:2}
+    .proc{fill:none;stroke:#8957e5;stroke-width:2}
+    .flow{fill:none;stroke:#0969da;stroke-width:1.6}
+    .bad{fill:none;stroke:#cf222e;stroke-width:2}
+    .badlbl{fill:#cf222e}
+    .lbl{fill:#57606a}
+    .mono{fill:#57606a}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .port{stroke:#3fb950}
+      .detail{stroke:#e3b341}
+      .proc{stroke:#a371f7}
+      .flow{stroke:#58a6ff}
+      .bad{stroke:#f85149}
+      .badlbl{fill:#f85149}
+      .lbl{fill:#8b949e}
+      .mono{fill:#8b949e}
+    }
+  </style>
+  <text x="20" y="26" font-size="12" text-anchor="start" class="lbl" font-weight="bold">Interface gorda — todos presos a um contrato que ninguém usa por inteiro</text>
+  <rect x="270" y="56" width="340" height="70" rx="8" class="port"/>
+  <text x="440" y="89" font-size="13" text-anchor="middle">PaymentMethod</text>
+  <text x="440" y="106" font-size="11" text-anchor="middle" class="mono">Pay + GenerateQRCode + GenerateDocument</text>
+  <rect x="40" y="214" width="220" height="66" rx="8" class="detail"/>
+  <text x="150" y="245" font-size="13" text-anchor="middle">CreditCard</text>
+  <text x="150" y="262" font-size="11" text-anchor="middle" class="mono">só paga</text>
+  <rect x="330" y="214" width="220" height="66" rx="8" class="detail"/>
+  <text x="440" y="245" font-size="13" text-anchor="middle">Pix</text>
+  <text x="440" y="262" font-size="11" text-anchor="middle" class="mono">paga + QR Code</text>
+  <rect x="620" y="214" width="220" height="66" rx="8" class="detail"/>
+  <text x="730" y="245" font-size="13" text-anchor="middle">Boleto</text>
+  <text x="730" y="262" font-size="11" text-anchor="middle" class="mono">paga + documento</text>
+  <path d="M 150 214 L 330 126" class="bad" marker-end="url(#arrow)"/>
+  <path d="M 440 214 L 440 126" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 730 214 L 560 126" class="flow" marker-end="url(#arrow)"/>
+  <text x="20" y="308" font-size="11" text-anchor="start" class="badlbl">Quem só paga é obrigado a carregar geração de QR Code e de documento — código morto.</text>
+</svg>
