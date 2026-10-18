@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 340" role="img" aria-label="Diagrama: OrderProcessor atua como fachada, compondo InventoryChecker, OrderCalculator e PaymentProcessor e orquestrando a ordem dos passos">
+  <title>Facade orquestra o fluxo</title>
+  <desc>A fachada OrderProcessor não executa a lógica de estoque, cálculo ou pagamento: ela compõe os três subsistemas e define a ordem. Seu único motivo para mudar é o fluxo do checkout.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .port{fill:none;stroke:#238636;stroke-width:2;stroke-dasharray:6 4}
+    .detail{fill:none;stroke:#d29922;stroke-width:2}
+    .proc{fill:none;stroke:#8957e5;stroke-width:2}
+    .flow{fill:none;stroke:#0969da;stroke-width:1.6}
+    .bad{fill:none;stroke:#cf222e;stroke-width:2}
+    .badlbl{fill:#cf222e}
+    .oklbl{fill:#238636}
+    .lbl{fill:#57606a}
+    .mono{fill:#57606a}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .port{stroke:#3fb950}
+      .detail{stroke:#e3b341}
+      .proc{stroke:#a371f7}
+      .flow{stroke:#58a6ff}
+      .bad{stroke:#f85149}
+      .badlbl{fill:#f85149}
+      .oklbl{fill:#3fb950}
+      .lbl{fill:#8b949e}
+      .mono{fill:#8b949e}
+    }
+  </style>
+  <text x="20" y="26" font-size="12" text-anchor="start" class="lbl" font-weight="bold">A fachada orquestra; quem executa a lógica são os subsistemas</text>
+  <rect x="60" y="130" width="260" height="90" rx="8" class="proc"/>
+  <text x="190" y="173" font-size="13" text-anchor="middle">OrderProcessor</text>
+  <text x="190" y="190" font-size="11" text-anchor="middle" class="mono">fachada: orquestra o fluxo</text>
+  <rect x="560" y="40" width="280" height="54" rx="8" class="detail"/>
+  <text x="700" y="65" font-size="13" text-anchor="middle">InventoryChecker</text>
+  <text x="700" y="82" font-size="11" text-anchor="middle" class="mono">estoque</text>
+  <rect x="560" y="130" width="280" height="54" rx="8" class="detail"/>
+  <text x="700" y="155" font-size="13" text-anchor="middle">OrderCalculator</text>
+  <text x="700" y="172" font-size="11" text-anchor="middle" class="mono">tributos/desconto</text>
+  <rect x="560" y="220" width="280" height="54" rx="8" class="detail"/>
+  <text x="700" y="245" font-size="13" text-anchor="middle">PaymentProcessor</text>
+  <text x="700" y="262" font-size="11" text-anchor="middle" class="mono">pagamento</text>
+  <path d="M 320 155 L 560 67" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 320 175 L 560 157" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 320 195 L 560 247" class="flow" marker-end="url(#arrow)"/>
+  <text x="440" y="138" font-size="11" text-anchor="middle" class="lbl">delega</text>
+  <text x="20" y="320" font-size="11" text-anchor="start" class="oklbl">Único motivo para mudar: o fluxo do checkout.</text>
+</svg>

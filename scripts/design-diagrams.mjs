@@ -251,6 +251,112 @@ scenes['design-lsp-vs-isp.svg'] = [
   label(640, 262, 'contrato gordo que também mente', {anchor: 'middle', size: 11}),
 ].join('\n');
 
+// ------------------------------------------------ 9. OCP: antes
+scenes['design-ocp-antes.svg'] = [
+  head(
+    '0 0 880 300',
+    'Diagrama: a classe Order contém um método por tipo de desconto, então um tipo novo obriga a editar a classe',
+    'OCP violado',
+    'Order tem ApplyFixedDiscount e ApplyPercentageDiscount. Um novo desconto exige editar Order: aberta para modificação.',
+  ),
+  label(20, 26, 'Cada tipo de desconto novo obriga a editar Order', {weight: 'bold'}),
+  rect(50, 110, 340, 80, 'Order', 'proc', {sub: 'ApplyFixedDiscount + ApplyPercentageDiscount'}),
+  rect(620, 40, 230, 48, 'FixedDiscount', 'detail', {sub: 'já existe'}),
+  rect(620, 125, 230, 48, 'PercentageDiscount', 'detail', {sub: 'já existe'}),
+  rect(620, 210, 230, 48, 'LoyaltyDiscount', 'detail', {sub: 'novo'}),
+  arrow(390, 140, 620, 64, 'flow'),
+  arrow(390, 155, 620, 149, 'flow'),
+  arrow(390, 180, 620, 234, 'bad'),
+  label(20, 292, 'Cada tipo novo edita Order — aberta para modificação.', {size: 11, cls: 'badlbl'}),
+].join('\n');
+
+// ------------------------------------------------ 10. OCP: depois
+scenes['design-ocp-depois.svg'] = [
+  head(
+    '0 0 920 360',
+    'Diagrama: Order delega para a interface Discount; FixedDiscount, PercentageDiscount, NoDiscount e o novo CouponDiscount implementam o contrato sem editar Order',
+    'OCP com Strategy',
+    'Order guarda uma estratégia Discount e delega. Novas estratégias implementam o mesmo contrato ou decoram outra estratégia, sem alterar Order.',
+  ),
+  label(20, 26, 'Order delega; novas estratégias entram sem editar a classe', {weight: 'bold'}),
+  rect(30, 140, 220, 80, 'Order', 'proc', {sub: 'FinalAmount()'}),
+  rect(330, 150, 220, 60, 'Discount', 'port', {sub: 'Apply(Money) Money'}),
+  rect(620, 40, 250, 54, 'FixedDiscount', 'detail', {sub: 'valor fixo'}),
+  rect(620, 112, 250, 54, 'PercentageDiscount', 'detail', {sub: 'percentual'}),
+  rect(620, 184, 250, 54, 'NoDiscount', 'detail', {sub: 'sem desconto'}),
+  rect(620, 256, 250, 54, 'CouponDiscount', 'detail', {sub: 'novo'}),
+  arrow(250, 180, 330, 180, 'flow'),
+  label(290, 172, 'delega', {anchor: 'middle', size: 11}),
+  label(290, 210, 'troca em runtime', {anchor: 'middle', size: 10}),
+  arrow(620, 67, 550, 150, 'flow'),
+  arrow(620, 139, 550, 168, 'flow'),
+  arrow(620, 211, 550, 186, 'flow'),
+  arrow(620, 283, 550, 204, 'flow'),
+  label(585, 130, 'implementa', {anchor: 'middle', size: 11}),
+  label(20, 345, 'Novo desconto = nova struct; Order não muda.', {size: 11, cls: 'oklbl'}),
+].join('\n');
+
+// ------------------------------------------------ 11. SRP: antes
+scenes['design-srp-antes.svg'] = [
+  head(
+    '0 0 900 320',
+    'Diagrama: CFO, COO e CTO mudam a mesma classe Employee, que compartilha regularHours entre pagamento e relatório',
+    'SRP violado',
+    'Employee serve a três atores. CalculatePay e ReportHours compartilham regularHours, então uma mudança do COO quebra a folha do CFO.',
+  ),
+  label(20, 26, 'Três atores, uma classe: mudanças se atropelam', {weight: 'bold'}),
+  rect(40, 60, 180, 54, 'CFO', 'box', {sub: 'pagamento'}),
+  rect(40, 140, 180, 54, 'COO', 'box', {sub: 'relatório'}),
+  rect(40, 220, 180, 54, 'CTO', 'box', {sub: 'persistência'}),
+  rect(520, 90, 330, 150, 'Employee', 'proc', {sub: 'CalculatePay · ReportHours · Save'}),
+  label(685, 215, 'regularHours() compartilhado', {anchor: 'middle', size: 11, cls: 'badlbl'}),
+  arrow(220, 87, 520, 120, 'flow'),
+  arrow(220, 167, 520, 160, 'flow'),
+  arrow(220, 247, 520, 200, 'flow'),
+  label(20, 300, 'Mudança do COO em regularHours quebra a folha do CFO.', {size: 11, cls: 'badlbl'}),
+].join('\n');
+
+// ------------------------------------------------ 12. SRP: depois
+scenes['design-srp-depois.svg'] = [
+  head(
+    '0 0 900 320',
+    'Diagrama: cada ator tem o seu módulo — PayCalculator para o CFO, HourReporter para o COO e EmployeeRepository para o CTO — sem compartilhar regra volátil',
+    'SRP respeitado',
+    'CFO usa PayCalculator, COO usa HourReporter, CTO usa EmployeeRepository. Mudar a regra de um ator não afeta o outro.',
+  ),
+  label(20, 26, 'Cada ator com o seu módulo', {weight: 'bold'}),
+  rect(40, 60, 180, 54, 'CFO', 'box', {sub: 'pagamento'}),
+  rect(40, 140, 180, 54, 'COO', 'box', {sub: 'relatório'}),
+  rect(40, 220, 180, 54, 'CTO', 'box', {sub: 'persistência'}),
+  rect(520, 60, 330, 54, 'PayCalculator', 'proc', {sub: 'cálculo'}),
+  rect(520, 140, 330, 54, 'HourReporter', 'proc', {sub: 'relatório'}),
+  rect(520, 220, 330, 54, 'EmployeeRepository', 'port', {sub: 'persistência'}),
+  arrow(220, 87, 520, 87, 'flow'),
+  arrow(220, 167, 520, 167, 'flow'),
+  arrow(220, 247, 520, 247, 'flow'),
+  label(20, 300, 'Mudar a regra de um ator não toca no outro.', {size: 11, cls: 'oklbl'}),
+].join('\n');
+
+// ------------------------------------------------ 13. SRP: Facade
+scenes['design-srp-facade.svg'] = [
+  head(
+    '0 0 900 340',
+    'Diagrama: OrderProcessor atua como fachada, compondo InventoryChecker, OrderCalculator e PaymentProcessor e orquestrando a ordem dos passos',
+    'Facade orquestra o fluxo',
+    'A fachada OrderProcessor não executa a lógica de estoque, cálculo ou pagamento: ela compõe os três subsistemas e define a ordem. Seu único motivo para mudar é o fluxo do checkout.',
+  ),
+  label(20, 26, 'A fachada orquestra; quem executa a lógica são os subsistemas', {weight: 'bold'}),
+  rect(60, 130, 260, 90, 'OrderProcessor', 'proc', {sub: 'fachada: orquestra o fluxo'}),
+  rect(560, 40, 280, 54, 'InventoryChecker', 'detail', {sub: 'estoque'}),
+  rect(560, 130, 280, 54, 'OrderCalculator', 'detail', {sub: 'tributos/desconto'}),
+  rect(560, 220, 280, 54, 'PaymentProcessor', 'detail', {sub: 'pagamento'}),
+  arrow(320, 155, 560, 67, 'flow'),
+  arrow(320, 175, 560, 157, 'flow'),
+  arrow(320, 195, 560, 247, 'flow'),
+  label(440, 138, 'delega', {anchor: 'middle', size: 11}),
+  label(20, 320, 'Único motivo para mudar: o fluxo do checkout.', {size: 11, cls: 'oklbl'}),
+].join('\n');
+
 for (const [file, body] of Object.entries(scenes)) {
   writeFileSync(join(outDir, file), body + '\n</svg>\n');
 }

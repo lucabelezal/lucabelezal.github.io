@@ -34,12 +34,16 @@ const side = (
       <li>Princípio, depois padrão</li>
       <li>Código Go executável</li>
     </ul>
-    <p className="railTitle">Roadmap</p>
-    <ul className="railNav">
-      {DESIGN_ROADMAP.map((item) => (
-        <li key={item}>{item}</li>
-      ))}
-    </ul>
+    {DESIGN_ROADMAP.length > 0 && (
+      <>
+        <p className="railTitle">Roadmap</p>
+        <ul className="railNav">
+          {DESIGN_ROADMAP.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </>
+    )}
     <p className="railNote">
       Cada princípio sai do papel com o padrão de projeto que o torna
       aplicável.

@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 320" role="img" aria-label="Diagrama: cada ator tem o seu módulo — PayCalculator para o CFO, HourReporter para o COO e EmployeeRepository para o CTO — sem compartilhar regra volátil">
+  <title>SRP respeitado</title>
+  <desc>CFO usa PayCalculator, COO usa HourReporter, CTO usa EmployeeRepository. Mudar a regra de um ator não afeta o outro.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .port{fill:none;stroke:#238636;stroke-width:2;stroke-dasharray:6 4}
+    .detail{fill:none;stroke:#d29922;stroke-width:2}
+    .proc{fill:none;stroke:#8957e5;stroke-width:2}
+    .flow{fill:none;stroke:#0969da;stroke-width:1.6}
+    .bad{fill:none;stroke:#cf222e;stroke-width:2}
+    .badlbl{fill:#cf222e}
+    .oklbl{fill:#238636}
+    .lbl{fill:#57606a}
+    .mono{fill:#57606a}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .port{stroke:#3fb950}
+      .detail{stroke:#e3b341}
+      .proc{stroke:#a371f7}
+      .flow{stroke:#58a6ff}
+      .bad{stroke:#f85149}
+      .badlbl{fill:#f85149}
+      .oklbl{fill:#3fb950}
+      .lbl{fill:#8b949e}
+      .mono{fill:#8b949e}
+    }
+  </style>
+  <text x="20" y="26" font-size="12" text-anchor="start" class="lbl" font-weight="bold">Cada ator com o seu módulo</text>
+  <rect x="40" y="60" width="180" height="54" rx="8" class="box"/>
+  <text x="130" y="85" font-size="13" text-anchor="middle">CFO</text>
+  <text x="130" y="102" font-size="11" text-anchor="middle" class="mono">pagamento</text>
+  <rect x="40" y="140" width="180" height="54" rx="8" class="box"/>
+  <text x="130" y="165" font-size="13" text-anchor="middle">COO</text>
+  <text x="130" y="182" font-size="11" text-anchor="middle" class="mono">relatório</text>
+  <rect x="40" y="220" width="180" height="54" rx="8" class="box"/>
+  <text x="130" y="245" font-size="13" text-anchor="middle">CTO</text>
+  <text x="130" y="262" font-size="11" text-anchor="middle" class="mono">persistência</text>
+  <rect x="520" y="60" width="330" height="54" rx="8" class="proc"/>
+  <text x="685" y="85" font-size="13" text-anchor="middle">PayCalculator</text>
+  <text x="685" y="102" font-size="11" text-anchor="middle" class="mono">cálculo</text>
+  <rect x="520" y="140" width="330" height="54" rx="8" class="proc"/>
+  <text x="685" y="165" font-size="13" text-anchor="middle">HourReporter</text>
+  <text x="685" y="182" font-size="11" text-anchor="middle" class="mono">relatório</text>
+  <rect x="520" y="220" width="330" height="54" rx="8" class="port"/>
+  <text x="685" y="245" font-size="13" text-anchor="middle">EmployeeRepository</text>
+  <text x="685" y="262" font-size="11" text-anchor="middle" class="mono">persistência</text>
+  <path d="M 220 87 L 520 87" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 220 167 L 520 167" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 220 247 L 520 247" class="flow" marker-end="url(#arrow)"/>
+  <text x="20" y="300" font-size="11" text-anchor="start" class="oklbl">Mudar a regra de um ator não toca no outro.</text>
+</svg>

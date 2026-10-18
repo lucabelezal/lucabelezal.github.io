@@ -1,0 +1,499 @@
+---
+title: SOLID em Go — Responsabilidade Única (SRP)
+sidebar_label: SRP
+sidebar_position: 1
+displayed_sidebar: designSidebar
+description: Uma razão para mudar — e a razão é uma pessoa. Por que SRP não é "um método por classe", os dois sintomas da violação e como separar por ator com Facade em Go.
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+> **Epígrafe.** "A module should have one, and only one, reason to change."
+> — Robert C. Martin, *Clean Architecture*, cap. 7 (SRP).
+>
+> *Tradução livre: um módulo deve ter uma, e somente uma, razão para mudar.*
+
+> **Baseado em:** [SOLID: O Que Ninguém Te Explicou Sobre Responsabilidade Única](https://www.youtube.com/watch?v=EWHTE1dQM4U) (Renato Augusto), em *Clean Architecture* (cap. 7), *Clean Code*, e no padrão **Facade** do GoF. Texto reescrito em pt-BR na minha leitura; os diagramas são próprios.
+
+"Uma classe deve fazer uma coisa só" é a definição mais repetida — e a mais errada — do SOLID. Lida ao pé da letra, ela produz dezenas de arquivos microscópicos e um sistema granularizado que ninguém consegue navegar. É por isso que o SRP é, ao mesmo tempo, o princípio mais famoso e o mais mal compreendido.
+
+A definição rigorosa é outra: **uma razão para mudar**. E "razão" aqui não é técnica. É **gente** — um ator, um stakeholder, alguém que pede mudanças por um motivo próprio.
+
+<WhatYouWillLearn>
+
+- por que **"fazer uma coisa só"** vale para funções, não para o SRP
+- o que é de fato uma **razão para mudar** — e por que é uma pessoa
+- os dois sintomas clássicos: **duplicação acidental** e **conflito de merge**
+- o caso `Employee` (CFO/COO/CTO) e o `regularHours` compartilhado
+- o caso `OrderProcessorService` (estoque, tributos, pagamento)
+- como extrair classes coesas e usar **Facade** para não dissolver o fluxo
+- a armadilha do sufixo **`Service`** e do **modelo anêmico**
+- quando **não** separar (over-splitting)
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go básico: structs, métodos, interfaces e pacotes
+- [Interfaces em Go](/go-interfaces) — os contratos entram na parte de composição
+- [Aberto/Fechado (OCP)](/design/ocp) — o SRP costuma ser o passo anterior para estender sem modificar
+
+</Prerequisites>
+
+## 1. Contexto
+
+Todo mundo já viu uma classe que "faz tudo": verifica estoque, calcula imposto, cobra o cartão e ainda salva no banco. Ela nasce inocente — um método hoje, outro amanhã — e vira o arquivo que todo mundo mexe e ninguém entende.
+
+O SRP não ataca o **tamanho** da classe. Ataca a **direção da mudança**. A pergunta certa não é "quantas coisas ela faz?", mas:
+
+**Quem pede para mudar cada parte dela?**
+
+Se a resposta envolve **pessoas diferentes** — o financeiro, o operacional, o time de infraestrutura —, há mais de uma razão para mudar. E, mais cedo ou mais tarde, essas pessoas vão puxar a classe para lados diferentes.
+
+```text title="A pergunta do SRP"
+não é:  "quantos métodos essa classe tem?"
+é:      "quantos atores pedem mudança nessa classe?"
+```
+
+### O mito do "uma coisa só"
+
+A regra de fazer **uma coisa só** existe — mas ela pertence ao nível de **funções de baixo nível**, como ensina *Clean Code*. Uma função deve fazer uma coisa e fazê-la bem.
+
+O SRP é um princípio de **design de classes e módulos**. Confundir os dois níveis é o que produz a granularização que o próprio Uncle Bob critica.
+
+## 2. O problema
+
+### 2.1 O caso `Employee`: duplicação acidental
+
+O exemplo canônico de Martin. Um funcionário tem três métodos, cada um pedido por uma área:
+
+```go title="internal/payroll/employee.go (o problema)"
+package payroll
+
+import "fmt"
+
+type Money int64
+
+type Employee struct {
+	ID     string
+	Name   string
+	Salary Money
+}
+
+// CFO pede: calcular o pagamento.
+func (e *Employee) CalculatePay() Money {
+	return Money(float64(e.Salary) * e.regularHours())
+}
+
+// COO pede: relatório de horas.
+func (e *Employee) ReportHours() string {
+	return fmt.Sprintf("%.0fh", e.regularHours())
+}
+
+// CTO pede: persistir no banco.
+func (e *Employee) Save() error {
+	return nil
+}
+
+// Usado pelos dois primeiros métodos.
+func (e *Employee) regularHours() float64 {
+	return 40
+}
+```
+
+Agora o **COO** pede uma mudança: o relatório deve descontar o almoço. Alguém altera `regularHours` para `37.5`. O relatório fica certo. E a **folha de pagamento do CFO** passa a pagar menos — sem ninguém tocar em `CalculatePay`.
+
+Esse é o dano clássico: **a mudança de um ator quebra o outro, silenciosamente**. O código compila, os testes do relatório passam, e o erro só aparece no holerite.
+
+### 2.2 O caso `OrderProcessorService`: três atores, um arquivo
+
+O exemplo do vídeo é mais próximo do dia a dia. Um serviço que processa pedidos faz, sozinho, três coisas de donos diferentes:
+
+```go title="internal/order/processor.go (o problema)"
+package order
+
+import (
+	"context"
+	"fmt"
+)
+
+type Money int64
+
+type Order struct {
+	ID     string
+	Amount Money
+}
+
+type OrderProcessorService struct{}
+
+func (s *OrderProcessorService) Process(ctx context.Context, o Order) error {
+	// 1. Estoque — quem manda é o time de operações.
+	if err := s.checkInventory(ctx, o); err != nil {
+		return err
+	}
+
+	// 2. Total (tributos, descontos) — quem manda é o financeiro.
+	total, err := s.calculateTotal(ctx, o)
+	if err != nil {
+		return err
+	}
+
+	// 3. Pagamento — quem manda é o financeiro/gateway.
+	if err := s.processPayment(ctx, o, total); err != nil {
+		return err
+	}
+
+	fmt.Printf("[pedido] %s processado\n", o.ID)
+	return nil
+}
+
+func (s *OrderProcessorService) checkInventory(context.Context, Order) error  { return nil }
+func (s *OrderProcessorService) calculateTotal(context.Context, Order) (Money, error) {
+	return 0, nil
+}
+func (s *OrderProcessorService) processPayment(context.Context, Order, Money) error { return nil }
+```
+
+Três atores, três motivos para mudar:
+
+- **Operações** muda a regra de estoque → `OrderProcessorService` muda.
+- **Financeiro** muda tributo ou desconto → `OrderProcessorService` muda.
+- **Financeiro/gateway** muda o pagamento → `OrderProcessorService` muda.
+
+E dois sintomas aparecem:
+
+**Duplicação acidental.** Se o relatório também precisa checar estoque, a lógica é copiada — porque está presa dentro do processador. Quando a regra muda, ninguém sabe quantas cópias existem.
+
+**Conflito de merge.** Operações e financeiro editam o **mesmo arquivo** em paralelo. O merge é arriscado e pode quebrar produção.
+
+O problema não é o processador orquestrar o fluxo. É ele **saber a lógica** de cada passo.
+
+## 3. Fundamentos
+
+### A definição e o "ator"
+
+Martin publicou o SRP em 2002, em *Agile Software Development: Principles, Patterns, and Practices*, e o revisou em *Clean Architecture* (2017):
+
+> A module should have one, and only one, reason to change.
+> — *Clean Architecture*, cap. 7
+
+Tradução livre: *um módulo deve ter uma, e somente uma, razão para mudar.*
+
+E a frase que resolve a ambiguidade:
+
+> The SRP is about people.
+> — *Clean Architecture*, cap. 7
+
+Tradução livre: *o SRP é sobre pessoas.*
+
+Um **módulo** (classe, struct, pacote, arquivo) deve servir a **um ator**. Se serve a dois, mudanças pedidas por um podem quebrar o que o outro depende.
+
+### Coesão e mudança convergente
+
+Coesão, aqui, tem sentido preciso: as partes do módulo **mudam juntas, pelo mesmo motivo**. Se duas funções mudam por atores diferentes, elas não são coesas — mesmo que compartilhem dados.
+
+É por isso que o SRP conversa com o **OCP**: separar por ator é o que permite estender o comportamento de um sem editar o do outro.
+
+### Os dois sintomas
+
+Martin lista dois sintomas de violação:
+
+- **Duplicação acidental** — código usado por atores diferentes fica preso e é copiado; a mudança de um ator afeta cópias que ninguém mapeia.
+- **Fusões nocivas** — equipes diferentes editam o mesmo arquivo e colidem no merge.
+
+![Diagrama: três atores mudando a mesma classe Employee](/img/diagramas/design-srp-antes.svg)
+
+### SRP em três escalas
+
+O princípio não vive só na "classe":
+
+- **Função** — uma função deve ter uma razão para mudar (um motivo de negócio).
+- **Tipo/struct** — um tipo deve servir a um ator.
+- **Pacote** — um pacote deve mudar por um motivo. Nessa escala, o SRP aparece como **CCP** (*Common Closure Principle*): o que muda junto fica junto.
+
+Em Go, "módulo" costuma ser o **tipo** ou o **pacote**. Não há classe.
+
+### Nuance Go: separar sem herança
+
+Go não tem herança, então a separação por ator é direta:
+
+- os **dados** ficam numa struct simples (`Employee`, `Order`);
+- cada **ator** ganha seu próprio tipo de serviço (`PayCalculator`, `InventoryChecker`);
+- o que era um auxiliar compartilhado vira **duas cópias** — uma por ator.
+
+A duplicação assusta, mas é intencional: duas cópias que evoluem independentemente custam menos que um acoplamento que quebra a folha.
+
+![Diagrama: cada ator com o seu módulo, sem colisão](/img/diagramas/design-srp-depois.svg)
+
+### SRP não é ISP
+
+- **SRP** olha para **quem pede a mudança** (atores).
+- **ISP** olha para **quanto o cliente depende do contrato** (tamanho).
+
+Um contrato pequeno pode servir a dois atores; um contrato grande pode servir a um só. Os dois se complementam, mas não são o mesmo princípio.
+
+## 4. Implementação
+
+Go 1.26, sem dependência externa. Vamos extrair os três passos para classes coesas e depois recolocá-los numa fachada.
+
+### 4.1 Extraindo as classes coesas
+
+```go title="internal/order/inventory.go" showLineNumbers
+package order
+
+import (
+	"context"
+	"fmt"
+)
+
+// Ator: operações. Única razão para mudar: regra de estoque.
+type InventoryChecker struct{}
+
+func (InventoryChecker) Check(ctx context.Context, o Order) error {
+	fmt.Printf("[estoque] verificando pedido %s\n", o.ID)
+	return nil
+}
+```
+
+```go title="internal/order/calculator.go" showLineNumbers
+package order
+
+import (
+	"context"
+	"fmt"
+)
+
+// Ator: financeiro. Única razão para mudar: tributos e descontos.
+type OrderCalculator struct{}
+
+func (OrderCalculator) Total(ctx context.Context, o Order) (Money, error) {
+	fmt.Printf("[finanças] calculando total do pedido %s\n", o.ID)
+	return o.Amount, nil
+}
+```
+
+```go title="internal/order/payment.go" showLineNumbers
+package order
+
+import (
+	"context"
+	"fmt"
+)
+
+// Ator: financeiro/gateway. Única razão para mudar: cobrança.
+type PaymentProcessor struct{}
+
+func (PaymentProcessor) Charge(ctx context.Context, o Order, amount Money) error {
+	fmt.Printf("[pagamento] cobrando %s do pedido %s\n", amount, o.ID)
+	return nil
+}
+```
+
+Cada classe tem um ator e um motivo. E agora podem ser reusadas: o relatório usa `InventoryChecker` sem copiar código.
+
+### 4.2 O problema da extração ingênua
+
+Se o cliente chama as três classes na mão, o fluxo **desaparece** do sistema:
+
+```go title="internal/order/client.go (fluxo no cliente)"
+func ProcessOrder(ctx context.Context, o Order) error {
+	inventory := InventoryChecker{}
+	calculator := OrderCalculator{}
+	payment := PaymentProcessor{}
+
+	if err := inventory.Check(ctx, o); err != nil {
+		return err
+	}
+	total, err := calculator.Total(ctx, o)
+	if err != nil {
+		return err
+	}
+	return payment.Charge(ctx, o, total)
+}
+```
+
+Cada ponto do sistema que processa pedido repete a sequência. Quem bate o olho não vê "processar pedido": vê três chamadas soltas. O fluxo ficou implícito — e a ordem dos passos, duplicada.
+
+### 4.3 Facade: o fluxo de volta num lugar só
+
+Aqui entra o **Facade**. O `OrderProcessor` não executa a lógica; ele **compõe** as classes e **orquestra** a ordem:
+
+> Provide a unified interface to a set of interfaces in a subsystem. Facade defines a higher-level interface that makes the subsystem easier to use.
+> — Gamma et al., *Design Patterns* (GoF), p. 185
+
+Tradução livre: *forneça uma interface unificada para um conjunto de interfaces de um subsistema. O Facade define uma interface de nível mais alto que torna o subsistema mais fácil de usar.*
+
+```go title="internal/order/processor.go (Facade)" showLineNumbers
+package order
+
+import (
+	"context"
+	"fmt"
+)
+
+// Fachada: orquestra o fluxo. Não sabe a lógica de estoque, total ou pagamento.
+type OrderProcessor struct {
+	inventory  InventoryChecker
+	calculator OrderCalculator
+	payment    PaymentProcessor
+}
+
+func NewOrderProcessor(
+	inventory InventoryChecker,
+	calculator OrderCalculator,
+	payment PaymentProcessor,
+) *OrderProcessor {
+	return &OrderProcessor{
+		inventory:  inventory,
+		calculator: calculator,
+		payment:    payment,
+	}
+}
+
+// Único motivo para mudar: o FLUXO do checkout mudar.
+func (p *OrderProcessor) Process(ctx context.Context, o Order) error {
+	if err := p.inventory.Check(ctx, o); err != nil {
+		return fmt.Errorf("checar estoque: %w", err)
+	}
+
+	total, err := p.calculator.Total(ctx, o)
+	if err != nil {
+		return fmt.Errorf("calcular total: %w", err)
+	}
+
+	if err := p.payment.Charge(ctx, o, total); err != nil {
+		return fmt.Errorf("processar pagamento: %w", err)
+	}
+
+	return nil
+}
+```
+
+Repare: a fachada **não tem** a regra de estoque, nem o cálculo, nem a cobrança. Ela só sabe a **ordem** dos passos. Se amanhã o fluxo ganhar um e-mail de confirmação, muda-se `Process` — e só ele.
+
+![Diagrama: OrderProcessorService como fachada que orquestra três subsistemas](/img/diagramas/design-srp-facade.svg)
+
+### 4.4 Montagem e injeção
+
+```go title="cmd/shop/main.go" showLineNumbers
+package main
+
+import (
+	"context"
+	"fmt"
+
+	"example.com/shop/internal/order"
+)
+
+func main() {
+	processor := order.NewOrderProcessor(
+		order.InventoryChecker{},
+		order.OrderCalculator{},
+		order.PaymentProcessor{},
+	)
+
+	if err := processor.Process(context.Background(), order.Order{ID: "ORD-1", Amount: 25000}); err != nil {
+		fmt.Println("erro:", err)
+	}
+}
+```
+
+O `main` (o *composition root*) é o único que conhece as três classes concretas. A fachada depende das abstrações que recebe. O código cliente voltou a ser estável: ele chama `Process`, e o fluxo está explícito.
+
+### 4.5 O sufixo `Service` e o modelo anêmico
+
+O vídeo faz uma provocação que vale registrar. O sufixo `Service` costuma ser usado para tirar a regra de negócio de dentro das **entidades** e jogá-la em classes procedurais.
+
+O resultado é o **modelo de domínio anêmico**: a entidade vira um saco de dados (getters/setters), e a regra que deveria ser a parte mais protegida do sistema vive espalhada em serviços.
+
+> Anemic Domain Model: the objects are nothing but data holders, and the domain logic is in separate service objects.
+> — Martin Fowler, *AnemicDomainModel* (2003)
+
+Tradução livre: *no modelo anêmico, os objetos são apenas depósitos de dados, e a lógica de domínio fica em objetos de serviço separados.*
+
+A lição não é "nunca use `Service`". É: **a fachada não deve virar o novo depósito de regra**. Ela orquestra; a regra fica nas classes coesas (ou na própria entidade, quando é regra dela).
+
+### 4.6 O teste que protege o ator
+
+Cada classe tem a sua suíte, e a mudança de um ator não exige mexer no teste do outro:
+
+```go title="internal/order/processor_test.go" showLineNumbers
+package order_test
+
+import (
+	"context"
+	"testing"
+
+	"example.com/shop/internal/order"
+)
+
+func TestProcessOrquestraOPedido(t *testing.T) {
+	p := order.NewOrderProcessor(
+		order.InventoryChecker{},
+		order.OrderCalculator{},
+		order.PaymentProcessor{},
+	)
+
+	if err := p.Process(context.Background(), order.Order{ID: "ORD-1", Amount: 25000}); err != nil {
+		t.Fatalf("esperava sucesso, veio %v", err)
+	}
+}
+```
+
+Quando o financeiro muda a regra do cálculo, o teste de estoque **não muda** — porque o comportamento de operações não foi tocado. É essa independência que o SRP compra.
+
+## 5. Falhas e trade-offs
+
+**SRP não é "uma função por arquivo".** Separar demais é o erro oposto: o sistema vira um labirinto de tipos de uma linha. O critério é **ator**, não contagem.
+
+**A fachada não pode virar um deus.** Se `OrderProcessor` começa a ganhar `if`s e regras de estoque, ela voltou a concentrar responsabilidades. Ela orquestra; não calcula.
+
+**Nem todo código compartilhado é violação.** Uma biblioteca estável (`strings`, `time`) serve a todos e não muda por ator. O problema é o compartilhamento **volátil**, que muda por pressão de um stakeholder.
+
+**Duplicação às vezes é a resposta certa.** Duas cópias de 10 linhas que evoluem separadas são melhores que uma abstração que acopla CFO e COO. O SRP troca DRY por independência de mudança quando o preço vale.
+
+**"Razão para mudar" exige contexto.** Você só sabe quem são os atores conversando com o negócio. SRP não é uma regra sintática que o compilador verifica — é uma decisão de fronteira.
+
+**SRP não é ISP.** SRP olha para **quem pede a mudança**; ISP, para **quanto o cliente depende do contrato**.
+
+**Regra prática.** Antes de juntar duas responsabilidades na mesma struct, pergunte: *se o ator A pedir uma mudança, o ator B corre risco?* Se sim, separe. Se o fluxo entre elas importa, esconda-o atrás de uma **fachada**.
+
+## Referências
+
+- **SRP — definição, atores, sintomas** — Robert C. Martin, *Clean Architecture* (2017), cap. 7.
+- **SRP original** — Robert C. Martin, *Agile Software Development: Principles, Patterns, and Practices* (PPP, 2002).
+- **"Uma coisa só" para funções** — Robert C. Martin, *Clean Code*.
+- **Facade** — Erich Gamma, Richard Helm, Ralph Johnson, John Vlissides, *Design Patterns* (GoF, 1994), p. 185.
+- **Facade como fachada de subsistema** — Alexander Shvets, [Refactoring.Guru](https://refactoring.guru/design-patterns/facade).
+- **Separação de responsabilidades (SoC)** — Paulo Silveira, *Introdução à Arquitetura e Design de Software*, cap. 4.
+- **Coesão e SRP** — Marco Túlio Valente, *Engenharia de Software Moderna*, cap. 5.
+- **Anemic Domain Model** — Martin Fowler, [AnemicDomainModel](https://martinfowler.com/bliki/AnemicDomainModel.html) (2003).
+- **Vídeo base** — [Renato Augusto — Single Responsibility Principle](https://www.youtube.com/watch?v=EWHTE1dQM4U).
+
+<Summary>
+
+- SRP: um módulo deve ter **uma razão para mudar** — e a razão é um **ator**
+- "fazer uma coisa só" vale para **funções** (*Clean Code*); o SRP é design de **classes/módulos**
+- os sintomas: **duplicação acidental** e **conflito de merge**
+- `Employee` com CFO/COO/CTO: mudar o relatório quebra a folha (via `regularHours` compartilhado)
+- `OrderProcessorService` com estoque, tributos e pagamento: três atores no mesmo arquivo
+- a extração cria `InventoryChecker`, `OrderCalculator`, `PaymentProcessor` — coesas e reusáveis
+- extrair sem **fachada** dissolve o fluxo no cliente; a fachada devolve o fluxo a um lugar só
+- a fachada **orquestra**, não calcula; seu único motivo é o **fluxo** mudar
+- cuidado com o sufixo **`Service`** e o **modelo anêmico**
+- separar demais também é erro: o critério é ator, não quantidade de tipos
+- **SRP ≠ ISP**: um olha para o ator, o outro para o tamanho do contrato
+
+</Summary>
+
+<NextSteps href="/design/ocp" title="Aberto/Fechado (OCP)">
+
+Com as responsabilidades separadas por ator, fica possível **estender** o comportamento de um sem editar o do outro — que é exatamente o que o **OCP** promete. O SRP é o passo anterior.
+
+</NextSteps>
+
+<SkillsGained skills={["SRP", "SOLID", "Padrão Facade", "Coesão", "Separação por ator", "Go idiomático"]} />

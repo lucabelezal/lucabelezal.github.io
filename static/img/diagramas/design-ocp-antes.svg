@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 300" role="img" aria-label="Diagrama: a classe Order contém um método por tipo de desconto, então um tipo novo obriga a editar a classe">
+  <title>OCP violado</title>
+  <desc>Order tem ApplyFixedDiscount e ApplyPercentageDiscount. Um novo desconto exige editar Order: aberta para modificação.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .port{fill:none;stroke:#238636;stroke-width:2;stroke-dasharray:6 4}
+    .detail{fill:none;stroke:#d29922;stroke-width:2}
+    .proc{fill:none;stroke:#8957e5;stroke-width:2}
+    .flow{fill:none;stroke:#0969da;stroke-width:1.6}
+    .bad{fill:none;stroke:#cf222e;stroke-width:2}
+    .badlbl{fill:#cf222e}
+    .oklbl{fill:#238636}
+    .lbl{fill:#57606a}
+    .mono{fill:#57606a}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .port{stroke:#3fb950}
+      .detail{stroke:#e3b341}
+      .proc{stroke:#a371f7}
+      .flow{stroke:#58a6ff}
+      .bad{stroke:#f85149}
+      .badlbl{fill:#f85149}
+      .oklbl{fill:#3fb950}
+      .lbl{fill:#8b949e}
+      .mono{fill:#8b949e}
+    }
+  </style>
+  <text x="20" y="26" font-size="12" text-anchor="start" class="lbl" font-weight="bold">Cada tipo de desconto novo obriga a editar Order</text>
+  <rect x="50" y="110" width="340" height="80" rx="8" class="proc"/>
+  <text x="220" y="148" font-size="13" text-anchor="middle">Order</text>
+  <text x="220" y="165" font-size="11" text-anchor="middle" class="mono">ApplyFixedDiscount + ApplyPercentageDiscount</text>
+  <rect x="620" y="40" width="230" height="48" rx="8" class="detail"/>
+  <text x="735" y="62" font-size="13" text-anchor="middle">FixedDiscount</text>
+  <text x="735" y="79" font-size="11" text-anchor="middle" class="mono">já existe</text>
+  <rect x="620" y="125" width="230" height="48" rx="8" class="detail"/>
+  <text x="735" y="147" font-size="13" text-anchor="middle">PercentageDiscount</text>
+  <text x="735" y="164" font-size="11" text-anchor="middle" class="mono">já existe</text>
+  <rect x="620" y="210" width="230" height="48" rx="8" class="detail"/>
+  <text x="735" y="232" font-size="13" text-anchor="middle">LoyaltyDiscount</text>
+  <text x="735" y="249" font-size="11" text-anchor="middle" class="mono">novo</text>
+  <path d="M 390 140 L 620 64" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 390 155 L 620 149" class="flow" marker-end="url(#arrow)"/>
+  <path d="M 390 180 L 620 234" class="bad" marker-end="url(#arrow)"/>
+  <text x="20" y="292" font-size="11" text-anchor="start" class="badlbl">Cada tipo novo edita Order — aberta para modificação.</text>
+</svg>

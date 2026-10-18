@@ -10,6 +10,20 @@ export type DesignChapter = {
 
 export const DESIGN_CHAPTERS: DesignChapter[] = [
   {
+    id: 'srp',
+    title: 'Responsabilidade Única (SRP)',
+    description:
+      'Uma razão para mudar — e a razão é uma pessoa. Por que SRP não é "um método por classe", o caso do Employee que quebra a folha ao mudar o relatório, e como separar por ator em Go.',
+    href: '/design/srp',
+  },
+  {
+    id: 'ocp',
+    title: 'Aberto/Fechado (OCP)',
+    description:
+      'Aberto para extensão, fechado para modificação: por que if/switch de tipo é o cheiro, como o Strategy resolve e onde o OCP se confunde com DIP e LSP. Com código Go.',
+    href: '/design/ocp',
+  },
+  {
     id: 'lsp',
     title: 'Substituição de Liskov (LSP)',
     description:
@@ -25,15 +39,11 @@ export const DESIGN_CHAPTERS: DesignChapter[] = [
   },
   {
     id: 'dip-adapter',
-    title: 'Inversão de Dependências (DIP) + Adapter',
+    title: 'Inversão de Dependências (DIP)',
     description:
       'A base das arquiteturas em camadas: por que depender de concreto dói, como a interface inverte a seta e como o padrão Adapter conecta um SDK de terceiros sem poluir a regra.',
     href: '/design/dip-adapter',
   },
 ];
 
-export const DESIGN_ROADMAP = [
-  'SRP — Responsabilidade única',
-  'OCP — Aberto/fechado',
-  'Padrões GoF — Strategy, Decorator, Facade',
-];
+export const DESIGN_ROADMAP: string[] = [];

@@ -1,0 +1,464 @@
+---
+title: SOLID em Go — Aberto/Fechado (OCP)
+sidebar_label: OCP
+sidebar_position: 2
+displayed_sidebar: designSidebar
+description: Aberto para extensão, fechado para modificação — por que if/else de tipo é o cheiro, como o Strategy resolve e onde o OCP se confunde com DIP e LSP. Com código Go executável.
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+> **Epígrafe.** "A software artifact should be open for extension but closed for modification."
+> — Bertrand Meyer, *Object-Oriented Software Construction* (1988), citado em *Clean Architecture*, cap. 8.
+>
+> *Tradução livre: um artefato de software deve estar aberto para extensão, mas fechado para modificação.*
+
+> **Baseado em:** [SOLID: Open Closed Principle + Strategy Pattern](https://www.youtube.com/watch?v=T6pF7BfAPIo) (Renato Augusto), em *Clean Architecture* e no padrão **Strategy** do GoF. Texto reescrito em pt-BR na minha leitura; os diagramas são próprios.
+
+O nome do princípio parece um paradoxo: como algo pode estar **aberto** e **fechado** ao mesmo tempo? A confusão quase sempre está em achar que "aberto para extensão" significa adicionar mais um `if`, mais um `switch`, mais um método no mesmo arquivo.
+
+Não é. **Extensão é código novo** — uma struct nova, uma estratégia nova — sem tocar no código que já foi testado e está em produção. É essa a promessa do **Princípio Aberto/Fechado (OCP)**: você ganha comportamento novo sem editar o que já funciona.
+
+<WhatYouWillLearn>
+
+- o que significa **aberto para extensão** e **fechado para modificação** (e o que não significa)
+- por que `if`/`switch` de **tipo** é o cheiro clássico do OCP
+- como o padrão **Strategy** fecha a classe e abre a extensão
+- como isso fica em Go: interface implícita, **função como estratégia** e composição
+- por que o OCP **não elimina o `if`** — ele muda o `if` de lugar
+- **Decorator** como o outro mecanismo de OCP (comportamento, não algoritmo)
+- a diferença entre **OCP, DIP, ISP e LSP** — e por que o OCP costuma ser consequência dos três
+- quando **não** aplicar (abstração prematura)
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go básico: structs, métodos e interfaces
+- [Interfaces em Go](/go-interfaces) — a satisfação implícita é a base de tudo aqui
+- [Segregação de Interfaces (ISP)](/design/isp) — o OCP quase sempre aparece junto com contratos pequenos
+
+</Prerequisites>
+
+## 1. Contexto
+
+Um sistema de pedidos precisa aplicar descontos. Hoje existem dois: **fixo** e **percentual**. Amanhã a diretoria pede desconto de **fidelidade**, depois **cupom**, depois **Black Friday**.
+
+O caminho natural, sempre na pressa, é adicionar um método novo na classe que já existe:
+
+```text title="A cada requisito novo"
+desconto fixo        → método novo em Order
+desconto percentual  → método novo em Order
+desconto fidelidade  → editar Order de novo
+desconto cupom       → editar Order de novo
+```
+
+Funciona. Até o dia em que a classe `Order` — que já estava testada, revisada e em produção — precisa ser **aberta** para receber mais um tipo. Aí você tem o pior dos mundos: um arquivo que todo mundo mexe e poucos entendem.
+
+O OCP existe para cortar isso. "Fechado para modificação" quer dizer: **adicionar** um desconto não deve exigir **editar** `Order`.
+
+![Diagrama: cada tipo de desconto novo obriga a editar a classe Order](/img/diagramas/design-ocp-antes.svg)
+
+## 2. O problema
+
+Comece pelo código que todo mundo escreve:
+
+```go title="internal/order/order.go (o problema)"
+package order
+
+import (
+	"errors"
+	"fmt"
+)
+
+type Money int64
+
+func (m Money) String() string {
+	return fmt.Sprintf("R$ %.2f", float64(m)/100)
+}
+
+var (
+	ErrDescontoInvalido  = errors.New("desconto inválido")
+	ErrPercentualInvalido = errors.New("percentual deve estar entre 1 e 100")
+)
+
+type Order struct {
+	ID     string
+	Amount Money
+}
+
+func (o *Order) ApplyFixedDiscount(value Money) error {
+	if value >= o.Amount {
+		return ErrDescontoInvalido
+	}
+	o.Amount -= value
+	return nil
+}
+
+func (o *Order) ApplyPercentageDiscount(percent int) error {
+	if percent < 1 || percent > 100 {
+		return ErrPercentualInvalido
+	}
+	o.Amount -= Money(int64(o.Amount) * int64(percent) / 100)
+	return nil
+}
+```
+
+Três problemas, e só o primeiro é óbvio.
+
+**1. SRP.** Desconto não é pedido. A regra de cálculo mora dentro da entidade que deveria só representar o pedido. Se a regra do desconto muda, `Order` muda.
+
+**2. OCP.** Sempre que surge um tipo novo, `Order` é editada. O cheiro está na palavra **tipo**: um método por variante é a versão em métodos do `switch`. Se amanhã entrarem "fidelidade" e "cupom", entram dois métodos e duas edições na mesma classe.
+
+**3. Falta de representação.** Um desconto não existe no sistema. Existe um cálculo que altera `Amount`. Não há histórico, não há relatório de "quanto foi dado de desconto no ano", não há vínculo persistido entre pedido e desconto. Esse terceiro problema é o mais negligenciado — e o mais caro quando o negócio pergunta "quanto de desconto a gente deu?".
+
+## 3. Fundamentos
+
+### A definição
+
+O princípio foi formulado por Bertrand Meyer em 1988 e reaproveitado por Robert C. Martin em *Clean Architecture*, cap. 8:
+
+> A software artifact should be open for extension but closed for modification.
+> — Meyer (1988), via *Clean Architecture*, cap. 8
+
+Tradução livre: *um artefato de software deve estar aberto para extensão, mas fechado para modificação.*
+
+Martin acrescenta a consequência arquitetural: o OCP é uma das forças que organizam o sistema em componentes, com as dependências apontando para proteger as **políticas de alto nível** das mudanças nos **detalhes**. Não é sobre classes isoladas — é sobre onde a mudança bate.
+
+### O cheiro: tipo
+
+O sinal mais confiável de violação é **decisão por tipo**. `if` de tipo, `switch` de tipo, ou "um método por variante". Todos dizem a mesma coisa: a classe precisa ser editada quando um tipo novo aparece.
+
+> Chegou na tua classe, bateu o olho e tem verificação de tipo? Muito provavelmente o Tipo C vai te obrigar a alterar essa classe.
+> — Renato Augusto, no vídeo
+
+Tradução livre da ideia: *se a classe decide pelo tipo, ela está aberta para modificação*.
+
+### Strategy: o mecanismo que fecha a classe
+
+O padrão **Strategy** é o candidato natural para resolver OCP. A definição do GoF:
+
+> Define a family of algorithms, encapsulate each one, and make them interchangeable. Strategy lets the algorithm vary independently from clients that use it.
+> — Gamma et al., *Design Patterns* (GoF), p. 315
+
+Tradução livre: *define uma família de algoritmos, encapsula cada um e os torna intercambiáveis. O Strategy deixa o algoritmo variar independentemente dos clientes que o usam.*
+
+A estrutura tem três peças:
+
+- **Contexto** — o objeto que delega (`Order`, `Cache`).
+- **Strategy** — a interface comum (`Discount`).
+- **Estratégias concretas** — as implementações (`FixedDiscount`, `PercentageDiscount`).
+
+O contexto **mantém uma referência** para a estratégia e delega a ela. Trocar o comportamento é trocar o objeto. O exemplo canônico é um cache em memória com algoritmos de despejo (LRU, FIFO, LFU): o `Cache` não conhece nenhum deles, só a interface; trocar o algoritmo é `setEvictionAlgo`, em runtime.
+
+### O OCP não elimina o `if` — ele muda o `if` de lugar
+
+Um mal-entendido comum: "com Strategy não existe mais condicional". Existe — só que ele sai do **núcleo** e vai para a **borda** (o *composition root*, o `main`, a factory). Em vez de `Order` perguntar "qual é o tipo do desconto?" a cada chamada, o `main` decide **uma vez** qual estratégia injetar. O núcleo fica fechado; a escolha fica no lugar onde a configuração já vive.
+
+### Onde isso vira Go
+
+Go muda a forma, não o fundo:
+
+- **Interface implícita.** Não há `implements`. Uma struct satisfaz `Discount` se tiver `Apply`. A interface pertence a quem **consome** (o `Order`), não a quem implementa.
+- **Função é cidadã de primeira classe.** Para algoritmos simples, a "estratégia" pode ser um tipo de função: `type Discount func(Money) Money`. Menos boilerplate que uma struct com um método.
+- **Composição, não herança.** Go não tem herança. Reutilizar comportamento é compor (embedding) — o que já empurra o design para o lado certo.
+
+### O mapa rápido: princípio → padrão
+
+Heurística, não regra. Serve para situar o OCP:
+
+| Princípio | Padrões que costumam resolver |
+|---|---|
+| **OCP** | **Strategy**, **Decorator** |
+| DIP | Adapter, Abstract Factory |
+| ISP | Role interfaces, Facade |
+| LSP | Null Object, Strategy |
+| SRP | Command, Facade |
+
+Os padrões não "implementam" o princípio sozinhos: eles dão a **forma** que torna o princípio possível. O OCP é o efeito de combinar contrato pequeno (ISP), direção certa (DIP), implementação honesta (LSP) e um mecanismo de extensão (Strategy/Decorator).
+
+### OCP não é DIP (nem LSP, nem ISP)
+
+Este é o ponto que mais confunde:
+
+- **DIP** é sobre a **direção** da dependência: depender de abstrações, não de concretos.
+- **ISP** é sobre o **tamanho** do contrato.
+- **LSP** é sobre a **honestidade** da implementação.
+- **OCP** é sobre **adicionar comportamento sem editar** o existente.
+
+Dá para ter **DIP e violar OCP**: o `Order` depende da interface `Discount`, mas faz `switch d := discount.(type)` lá dentro para decidir o desconto. A dependência está invertida; a modificação continua necessária. O OCP quebrou mesmo com o DIP intacto.
+
+Por isso o OCP é, na prática, um **resultado**: você o conquista quando os outros três estão no lugar e existe um mecanismo de extensão.
+
+### Decorator: o outro mecanismo
+
+Strategy varia o **algoritmo**; Decorator empilha **comportamento**. O Decorator implementa a mesma interface do componente e envolve outro objeto:
+
+> Attach additional responsibilities to an object dynamically. Decorators provide a flexible alternative to subclassing for extending functionality.
+> — Gamma et al., *Design Patterns* (GoF), p. 175
+
+Tradução livre: *adicione responsabilidades a um objeto dinamicamente. Decorators oferecem uma alternativa flexível à herança para estender funcionalidade.*
+
+Para o OCP, o valor é o mesmo: você adiciona log, cache ou métrica **sem editar** o `Order` nem as estratégias. O `Order` não sabe que está sendo decorado.
+
+## 4. Implementação
+
+Go 1.26, sem dependência externa. A correção é extrair o que varia para trás de um contrato e deixar o `Order` delegar.
+
+### 4.1 O contrato e as estratégias
+
+```go title="internal/order/discount.go" showLineNumbers
+package order
+
+import "errors"
+
+// Contrato: Apply devolve o valor final, nunca negativo e nunca maior que o original.
+type Discount interface {
+	Apply(amount Money) Money
+}
+
+var ErrPercentualInvalido = errors.New("percentual deve estar entre 1 e 100")
+
+// Desconto fixo: valor em centavos.
+type FixedDiscount struct{ value Money }
+
+func NewFixedDiscount(value Money) FixedDiscount {
+	return FixedDiscount{value: value}
+}
+
+func (d FixedDiscount) Apply(amount Money) Money {
+	if d.value >= amount {
+		return 0 // respeita o contrato: nunca negativo
+	}
+	return amount - d.value
+}
+
+// Desconto percentual: validação no construtor, como no vídeo.
+type PercentageDiscount struct{ percent int }
+
+func NewPercentageDiscount(percent int) (PercentageDiscount, error) {
+	if percent < 1 || percent > 100 {
+		return PercentageDiscount{}, ErrPercentualInvalido
+	}
+	return PercentageDiscount{percent: percent}, nil
+}
+
+func (d PercentageDiscount) Apply(amount Money) Money {
+	return amount - Money(int64(amount)*int64(d.percent)/100)
+}
+
+// Null Object: ausência de desconto também é uma estratégia.
+type NoDiscount struct{}
+
+func (NoDiscount) Apply(amount Money) Money { return amount }
+```
+
+Repare no `NewFixedDiscount`/`NewPercentageDiscount`: a validação sai da regra e vai para o construtor. Quem instancia uma estratégia inválida descobre na hora — não no meio do pedido.
+
+### 4.2 O contexto delega
+
+`Order` não tem mais cálculo, nem `if`, nem conhecimento de tipo. Só guarda uma estratégia e delega:
+
+```go title="internal/order/order.go" showLineNumbers
+package order
+
+type Order struct {
+	ID       string
+	Amount   Money
+	discount Discount
+}
+
+// A estratégia entra pelo construtor. Ausente = NoDiscount (nunca nil).
+func NewOrder(id string, amount Money, discount Discount) *Order {
+	if discount == nil {
+		discount = NoDiscount{}
+	}
+	return &Order{ID: id, Amount: amount, discount: discount}
+}
+
+// Troca a estratégia em runtime — o equivalente ao setEvictionAlgo do cache.
+func (o *Order) SetDiscount(d Discount) {
+	if d == nil {
+		d = NoDiscount{}
+	}
+	o.discount = d
+}
+
+func (o *Order) FinalAmount() Money {
+	return o.discount.Apply(o.Amount)
+}
+```
+
+### 4.3 Um desconto novo, sem tocar em `Order`
+
+O teste do OCP: chega um desconto de cupom. A resposta é **uma struct nova** — `Order` não muda uma linha:
+
+```go title="internal/order/coupon.go" showLineNumbers
+package order
+
+// Cupom: percentual com um mínimo de compra. Nova estratégia, mesmo contrato.
+type CouponDiscount struct {
+	percent  int
+	minimum  Money
+}
+
+func NewCoupon(percent int, minimum Money) CouponDiscount {
+	return CouponDiscount{percent: percent, minimum: minimum}
+}
+
+func (d CouponDiscount) Apply(amount Money) Money {
+	if amount < d.minimum {
+		return amount // cupom não se aplica
+	}
+	return amount - Money(int64(amount)*int64(d.percent)/100)
+}
+```
+
+E no `main`, a escolha — o `if` que saiu do núcleo:
+
+```go title="cmd/shop/main.go" showLineNumbers
+package main
+
+import (
+	"fmt"
+
+	"example.com/shop/internal/order"
+)
+
+func main() {
+	// Composition root: aqui (e só aqui) se escolhe a estratégia.
+	o := order.NewOrder("ORD-1", 20000, order.NewFixedDiscount(1500))
+	fmt.Println(o.FinalAmount()) // R$ 185,00
+
+	pct, err := order.NewPercentageDiscount(10)
+	if err != nil {
+		panic(err)
+	}
+	o.SetDiscount(pct) // troca em runtime
+	fmt.Println(o.FinalAmount()) // R$ 180,00
+
+	o.SetDiscount(order.NewCoupon(25, 10000)) // novo tipo, Order intocada
+	fmt.Println(o.FinalAmount()) // R$ 150,00
+}
+```
+
+![Diagrama: Order delega para a interface Discount; novas estratégias entram sem editar Order](/img/diagramas/design-ocp-depois.svg)
+
+### 4.4 A variante Go: função como estratégia
+
+Para algoritmos simples, nem struct é necessária. Um tipo de função com o método `Apply` satisfaz o contrato:
+
+```go title="internal/order/func_discount.go"
+package order
+
+// DiscountFunc adapta uma função ao contrato Discount.
+type DiscountFunc func(Money) Money
+
+func (f DiscountFunc) Apply(amount Money) Money { return f(amount) }
+```
+
+Uso:
+
+```go
+o.SetDiscount(order.DiscountFunc(func(m order.Money) order.Money {
+	return m / 2 // 50% de desconto
+}))
+```
+
+Quando usar cada forma: **struct** quando a estratégia tem estado/parâmetros (`percent`, `minimum`) ou precisa ser persistida; **função** quando é um cálculo puro e efêmero. O OCP é o mesmo — a extensão continua sendo código novo.
+
+### 4.5 Decorator: comportamento sem editar o contexto
+
+O `Order` só conhece `Discount`. Então um decorador de log é só mais uma implementação do mesmo contrato:
+
+```go title="internal/order/logging.go" showLineNumbers
+package order
+
+import "fmt"
+
+// LoggingDiscount envolve outra estratégia e registra o resultado.
+type LoggingDiscount struct{ inner Discount }
+
+func WithLogging(d Discount) Discount { return LoggingDiscount{inner: d} }
+
+func (l LoggingDiscount) Apply(amount Money) Money {
+	result := l.inner.Apply(amount)
+	fmt.Printf("[desconto] %s -> %s\n", amount, result)
+	return result
+}
+```
+
+```go
+o.SetDiscount(order.WithLogging(order.NewFixedDiscount(1500)))
+```
+
+Nenhuma linha de `Order` ou de `FixedDiscount` mudou. Strategy troca o **algoritmo**; Decorator empilha **comportamento**. Os dois estendem sem modificar.
+
+### 4.6 O desconto como entidade (o terceiro problema)
+
+Extrair a estratégia resolve SRP e OCP, mas não resolve a **rastreabilidade**. Para responder "quanto de desconto foi dado neste ano?", o desconto precisa existir como dado:
+
+```text title="Modelo de persistência (ideia)"
+orders            id, amount, final_amount, created_at
+order_discounts   order_id, kind, percent, fixed_value, applied_amount
+```
+
+O vínculo pedido↔desconto fica no banco, e o `applied_amount` guarda o valor efetivamente concedido. Agora dá para relatório, auditoria e para saber qual estratégia foi usada — sem que isso vaze para dentro da entidade. O padrão extrai o comportamento; o modelo de dados preserva a história.
+
+### 4.7 OCP e LSP juntos
+
+A estratégia também tem contrato: `Apply` **nunca devolve negativo** e **nunca devolve mais que o valor original**. Uma estratégia que minta quebra o `Order` — e o OCP não protege contra isso, porque o problema é de **substituição**, não de extensão.
+
+É por isso que `FixedDiscount.Apply` faz `if d.value >= amount { return 0 }` em vez de devolver negativo. E é por isso que a suíte de contrato do capítulo de LSP se aplica aqui: a mesma bateria de testes roda contra todas as estratégias.
+
+## 5. Falhas e trade-offs
+
+**OCP não proíbe refatorar.** Ele diz que *adicionar uma feature* não deve exigir editar o código estável. Refatoração continua permitida — e necessária.
+
+**Abstração prematura.** Criar uma interface para cada coisa é o outro extremo. Feche apenas os **eixos de mudança que você prevê**. Dois descontos estáveis, que nunca vão mudar, talvez não justifiquem Strategy nenhum.
+
+**O `if` só mudou de lugar.** Se você troca um `switch` dentro do `Order` por um `switch` no `main`, o núcleo ficou fechado — mas a borda acumulou decisões. Isso é aceitável (a borda é o lugar da configuração), desde que ela não vire o novo monstro.
+
+**Strategy para tudo é ruído.** Se a variação é um único booleano, um parâmetro pode ser mais claro que uma família de classes. Padrão é ferramenta, não decoração.
+
+**Não confunda os quatro.** DIP dá a direção, ISP dá o tamanho, LSP dá a confiança, OCP dá a **extensibilidade**. OCP sem os outros é fachada: interface bonita com `switch` por dentro.
+
+**Regra prática.** Quando um requisito novo te obrigar a **editar** uma classe que já está estável para adicionar um **tipo**, pare: provavelmente há um Strategy (ou um Decorator) escondido ali.
+
+## Referências
+
+- **OCP — origem** — Bertrand Meyer, *Object-Oriented Software Construction* (1988).
+- **OCP no SOLID, directional control, information hiding** — Robert C. Martin, *Clean Architecture* (2017), cap. 8.
+- **Strategy** — Erich Gamma, Richard Helm, Ralph Johnson, John Vlissides, *Design Patterns* (GoF, 1994), p. 315.
+- **Decorator** — Gamma et al., *Design Patterns* (GoF), p. 175.
+- **Strategy e Decorator em Go** — [Refactoring.Guru](https://refactoring.guru/design-patterns/go).
+- **OCP e pontos de extensão** — Marco Túlio Valente, *Engenharia de Software Moderna*.
+- **Vídeo base** — [Renato Augusto — Open Closed Principle + Strategy](https://www.youtube.com/watch?v=T6pF7BfAPIo).
+
+<Summary>
+
+- OCP: **aberto para extensão** (código novo) e **fechado para modificação** (não editar o que já funciona)
+- o cheiro é **decisão por tipo**: `if`/`switch` de tipo ou "um método por variante"
+- **Strategy** fecha a classe: o contexto guarda a estratégia e delega; trocar comportamento é trocar o objeto
+- o `if` **não desaparece** — ele muda para o *composition root*
+- em Go, a estratégia pode ser **struct** (com estado) ou **função** (`type Discount func(Money) Money`)
+- **Decorator** é o outro mecanismo: empilha comportamento pela mesma interface
+- **OCP não é DIP, nem ISP, nem LSP** — é o **efeito** de combinar os três + um mecanismo de extensão
+- dá para ter **DIP e violar OCP** (interface + `switch` por dentro)
+- extrair a estratégia resolve SRP/OCP; **persistir o desconto** resolve rastreabilidade
+- a estratégia também tem contrato: se mente, quebra o contexto (elo com o LSP)
+- OCP é trade-off: feche só os eixos de mudança que você **prevê**
+
+</Summary>
+
+<NextSteps href="/design/lsp" title="Substituição de Liskov (LSP)">
+
+O OCP só funciona se as extensões forem **honestas**: uma estratégia que quebra o contrato derruba o contexto. É exatamente o que o **LSP** garante — e o próximo capítulo mostra como detectar isso com *contract tests*.
+
+</NextSteps>
+
+<SkillsGained skills={["OCP", "SOLID", "Padrão Strategy", "Padrão Decorator", "Composição", "Go idiomático"]} />
