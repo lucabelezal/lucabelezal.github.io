@@ -41,6 +41,8 @@ const config: Config = {
     // Corrige canonical/hreflang de /aws e /projects nas locales en/es
     // (áreas pt-BR only, servidas com fallback pt-BR).
     './plugins/pt-br-canonical',
+    // Injeta JSON-LD (TechArticle + BreadcrumbList) e og:type nas áreas de docs.
+    './plugins/seo-structured-data',
     // Segunda instância de docs: guia de consulta AWS em /aws.
     // Não conta em all-posts.json (é referência, como o Go by Example).
     [
