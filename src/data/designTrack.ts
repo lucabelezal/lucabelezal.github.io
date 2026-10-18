@@ -10,6 +10,13 @@ export type DesignChapter = {
 
 export const DESIGN_CHAPTERS: DesignChapter[] = [
   {
+    id: 'lsp',
+    title: 'Substituição de Liskov (LSP)',
+    description:
+      'O princípio mais crítico do SOLID: pré-condições, pós-condições e invariantes. Por que a assinatura não basta quando o comportamento mente e como corrigir a abstração em Go.',
+    href: '/design/lsp',
+  },
+  {
     id: 'isp',
     title: 'Segregação de Interfaces (ISP)',
     description:
@@ -28,6 +35,5 @@ export const DESIGN_CHAPTERS: DesignChapter[] = [
 export const DESIGN_ROADMAP = [
   'SRP — Responsabilidade única',
   'OCP — Aberto/fechado',
-  'LSP — Substituição de Liskov',
   'Padrões GoF — Strategy, Decorator, Facade',
 ];

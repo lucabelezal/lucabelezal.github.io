@@ -15,6 +15,7 @@
     .flow{fill:none;stroke:#0969da;stroke-width:1.6}
     .bad{fill:none;stroke:#cf222e;stroke-width:2}
     .badlbl{fill:#cf222e}
+    .oklbl{fill:#238636}
     .lbl{fill:#57606a}
     .mono{fill:#57606a}
     @media (prefers-color-scheme: dark){
@@ -26,6 +27,7 @@
       .flow{stroke:#58a6ff}
       .bad{stroke:#f85149}
       .badlbl{fill:#f85149}
+      .oklbl{fill:#3fb950}
       .lbl{fill:#8b949e}
       .mono{fill:#8b949e}
     }

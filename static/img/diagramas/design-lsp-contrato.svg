@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 260" role="img" aria-label="Diagrama: as três regras de contrato do LSP — pré-condição não pode ser fortalecida, pós-condição não pode ser enfraquecida, invariantes devem ser mantidas">
+  <title>As três regras do LSP</title>
+  <desc>Um subtipo honra o contrato quando não fortalece pré-condições, não enfraquece pós-condições e mantém as invariantes da base.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .port{fill:none;stroke:#238636;stroke-width:2;stroke-dasharray:6 4}
+    .detail{fill:none;stroke:#d29922;stroke-width:2}
+    .proc{fill:none;stroke:#8957e5;stroke-width:2}
+    .flow{fill:none;stroke:#0969da;stroke-width:1.6}
+    .bad{fill:none;stroke:#cf222e;stroke-width:2}
+    .badlbl{fill:#cf222e}
+    .oklbl{fill:#238636}
+    .lbl{fill:#57606a}
+    .mono{fill:#57606a}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .port{stroke:#3fb950}
+      .detail{stroke:#e3b341}
+      .proc{stroke:#a371f7}
+      .flow{stroke:#58a6ff}
+      .bad{stroke:#f85149}
+      .badlbl{fill:#f85149}
+      .oklbl{fill:#3fb950}
+      .lbl{fill:#8b949e}
+      .mono{fill:#8b949e}
+    }
+  </style>
+  <text x="20" y="26" font-size="12" text-anchor="start" class="lbl" font-weight="bold">As três regras de contrato do LSP</text>
+  <rect x="20" y="60" width="270" height="170" rx="8" class="box"/>
+  <text x="155" y="96" font-size="13" text-anchor="middle" class="lbl">Pré-condição</text>
+  <text x="155" y="126" font-size="11" text-anchor="middle" class="lbl">subtipo não exige mais</text>
+  <text x="155" y="156" font-size="11" text-anchor="middle" class="oklbl">✓ aceitar igual ou mais amplo</text>
+  <text x="155" y="182" font-size="11" text-anchor="middle" class="badlbl">✗ exigir entrada mais restrita</text>
+  <rect x="315" y="60" width="270" height="170" rx="8" class="box"/>
+  <text x="450" y="96" font-size="13" text-anchor="middle" class="lbl">Pós-condição</text>
+  <text x="450" y="126" font-size="11" text-anchor="middle" class="lbl">subtipo não entrega menos</text>
+  <text x="450" y="156" font-size="11" text-anchor="middle" class="oklbl">✓ devolver igual ou mais</text>
+  <text x="450" y="182" font-size="11" text-anchor="middle" class="badlbl">✗ devolver garantia menor</text>
+  <rect x="610" y="60" width="270" height="170" rx="8" class="box"/>
+  <text x="745" y="96" font-size="13" text-anchor="middle" class="lbl">Invariante</text>
+  <text x="745" y="126" font-size="11" text-anchor="middle" class="lbl">regra global da base</text>
+  <text x="745" y="156" font-size="11" text-anchor="middle" class="oklbl">✓ sempre preservada</text>
+  <text x="745" y="182" font-size="11" text-anchor="middle" class="badlbl">✗ quebrada pelo subtipo</text>
+</svg>

@@ -1,7 +1,7 @@
 ---
 title: SOLID em Go — Segregação de Interfaces (ISP)
 sidebar_label: ISP
-sidebar_position: 1
+sidebar_position: 2
 displayed_sidebar: designSidebar
 description: O princípio que impede a interface gorda — por que métodos mortos quebram SRP, OCP e LSP, e como separar contratos coesos por capacidade. Com código Go executável.
 ---
@@ -13,7 +13,7 @@ import NextSteps from '@site/src/components/blog/NextSteps';
 import SkillsGained from '@site/src/components/blog/SkillsGained';
 
 > **Epígrafe.** "Clients should not be forced to depend on methods that they do not use."
-> — Robert C. Martin, *Clean Architecture*, cap. 11 (The Interface Segregation Principle).
+> — Robert C. Martin, *Clean Architecture*, cap. 10 (The Interface Segregation Principle).
 >
 > *Tradução livre: clientes não devem ser forçados a depender de métodos que não usam.*
 
@@ -172,7 +172,7 @@ Três problemas, todos de uma vez:
 Martin publicou o princípio em 1996, no artigo *The Interface Segregation Principle* (C++ Report), e o revisou em *Agile Software Development: Principles, Patterns, and Practices* (PPP, 2002) e em *Clean Architecture* (2017).
 
 > Clients should not be forced to depend on methods that they do not use.
-> — *Clean Architecture*, cap. 11
+> — *Clean Architecture*, cap. 10
 
 Tradução livre: *clientes não devem ser forçados a depender de métodos que não usam.*
 
@@ -432,8 +432,8 @@ Isto **não** é abstração: é uma classe que finge ser várias, com `if`/`swi
 
 ## Referências
 
-- **ISP — definição** — Robert C. Martin, *The Interface Segregation Principle* (C++ Report, 1996); em *Agile Software Development: Principles, Patterns, and Practices* (PPP, 2002), e em *Clean Architecture* (2017), cap. 11.
-- **Métodos mortos, classes que implementam comportamentos impertinentes** — Robert C. Martin, *Clean Architecture*, cap. 11.
+- **ISP — definição** — Robert C. Martin, *The Interface Segregation Principle* (C++ Report, 1996); em *Agile Software Development: Principles, Patterns, and Practices* (PPP, 2002), e em *Clean Architecture* (2017), cap. 10.
+- **Métodos mortos, classes que implementam comportamentos impertinentes** — Robert C. Martin, *Clean Architecture*, cap. 10.
 - **CRP — Common Reuse Principle** — Robert C. Martin, *Clean Architecture*, cap. 13 (Component Cohesion).
 - **Abstração como pilar, ISP e LSP juntos** — [Renato Augusto — Interface Segregation Principle](https://www.youtube.com/watch?v=jHbI9ej5O1Y).
 - **Go Proverbs** — Rob Pike, [go-proverbs](https://go-proverbs.github.io/) (2015).

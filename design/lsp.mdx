@@ -1,0 +1,474 @@
+---
+title: SOLID em Go — Substituição de Liskov (LSP)
+sidebar_label: LSP
+sidebar_position: 1
+displayed_sidebar: designSidebar
+description: O princípio mais crítico do SOLID — pré-condições, pós-condições e invariantes. Por que a assinatura não basta quando o comportamento mente e como consertar a abstração em Go.
+---
+
+import WhatYouWillLearn from '@site/src/components/blog/WhatYouWillLearn';
+import Prerequisites from '@site/src/components/blog/Prerequisites';
+import Summary from '@site/src/components/blog/Summary';
+import NextSteps from '@site/src/components/blog/NextSteps';
+import SkillsGained from '@site/src/components/blog/SkillsGained';
+
+> **Epígrafe.** "If Q(x) is provable about objects x of type T, then Q(y) should be provable for objects y of type S where S is a subtype of T."
+> — Barbara Liskov, *Data Abstraction and Hierarchy* (1987).
+>
+> *Tradução livre: se uma propriedade Q vale para objetos x do tipo T, ela também deve valer para objetos y do tipo S, sendo S um subtipo de T.*
+
+> **Baseado em:** [O Princípio SOLID mais CRÍTICO de TODOS — Liskov Substitution Principle](https://www.youtube.com/watch?v=f6-5ANuTkys) (Renato Augusto) e em *Clean Architecture* (cap. 9). Texto reescrito em pt-BR na minha leitura; os diagramas são próprios.
+
+Toda interface é uma promessa de comportamento. Você troca um objeto por outro que "é do mesmo tipo" e o programa **deve** continuar correto. Quando não continua, o culpado raramente é quem chamou: é a abstração, que prometeu algo que uma das implementações não entrega.
+
+O **Princípio de Substituição de Liskov (LSP)** é o mais crítico do SOLID — e o mais negligenciado. Errar SRP, OCP ou DIP tem conserto. Errar a abstração que o LSP protege vira estrutura: a mentira está importada em todo lugar e o cliente já nasceu contaminado por ela.
+
+<WhatYouWillLearn>
+
+- o que é **substituibilidade** e por que assinatura igual não basta
+- os **três níveis** de violação: **pré-condição**, **pós-condição** e **invariante**
+- por que "retorna uma `string`" pode esconder um retorno que quebra o cliente
+- o **Design by Contract** e a regra dos contratos (não fortalecer, não enfraquecer, manter)
+- o sintoma: cliente obrigado a `switch` de tipo para lidar com quem "é do mesmo tipo"
+- por que um pato que precisa de **bateria** não é um pato
+- como o LSP se manifesta em Go — onde não existe herança nem override
+- como corrigir: **abstração honesta** e segregação de contratos (o elo com o ISP)
+
+</WhatYouWillLearn>
+
+<Prerequisites>
+
+- Go básico: structs, métodos, interfaces e embedding
+- [Interfaces em Go](/go-interfaces) — a satisfação implícita é a base de tudo aqui
+- [Segregação de Interfaces (ISP)](/design/isp) — a correção de muitos casos de LSP passa por segregar contratos
+
+</Prerequisites>
+
+## 1. Contexto
+
+Existe uma pergunta que resolve quase toda hierarquia mal-feita: **"é um?"**.
+
+Um pato de borracha parece um pato e faz barulho de pato. Mas se precisa de **bateria** para funcionar, ele não é um pato — e sim outra coisa que por acaso compartilha a aparência. Quem trata os dois como o mesmo tipo vai ser surpreendido na primeira vez que o programa depender de um pato *estar vivo*.
+
+O LSP é a versão rigorosa desse instinto. Ele diz que:
+
+- um subtipo pode ser usado **no lugar** do tipo base, por qualquer código que conheça só a base;
+- e o programa se comporta **igual**, sem surpresas.
+
+O que quase ninguém ensina é que o LSP se viola em três níveis diferentes — e o tipo do retorno é só o mais visível deles.
+
+```text title="Os três níveis"
+1. pós-condição   o retorno não basta ter o tipo certo; o comportamento tem que bater
+2. pré-condição   o subtipo não pode exigir mais do que a base já exigia
+3. invariante     as regras globais da base não podem ser quebradas
+```
+
+![Diagrama: as três regras de contrato do LSP](/img/diagramas/design-lsp-contrato.svg)
+
+## 2. O problema
+
+Uma empresa precisa gerar relatórios. A abstração parece óbvia: um gerador de relatório produz um relatório e devolve algo que o resto do sistema usa.
+
+```go title="internal/report/report.go (o contrato)"
+package report
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+)
+
+// Generate monta o relatório, salva-o e devolve o caminho LOCAL do arquivo.
+type ReportGenerator interface {
+	Generate(ctx context.Context) (string, error)
+}
+
+type CSVGenerator struct{}
+
+func (CSVGenerator) Generate(_ context.Context) (string, error) {
+	return filepath.Join("/var/reports", "relatorio.csv"), nil
+}
+
+type PDFGenerator struct{}
+
+func (PDFGenerator) Generate(_ context.Context) (string, error) {
+	return filepath.Join("/var/reports", "relatorio.pdf"), nil
+}
+```
+
+O cliente confia no contrato: recebeu uma `string`, então ela é um caminho local no servidor. Ele existe, ele anexa num e-mail:
+
+```go title="internal/report/processor.go (cliente)"
+package report
+
+func AttachToEmail(ctx context.Context, g ReportGenerator) error {
+	path, err := g.Generate(ctx)
+	if err != nil {
+		return err
+	}
+
+	// A assinatura prometeu um caminho. O cliente confia nisso.
+	if _, err := os.Stat(path); err != nil {
+		return fmt.Errorf("arquivo do relatório não encontrado: %w", err)
+	}
+
+	fmt.Printf("[e-mail] anexando %s\n", path)
+	return nil
+}
+```
+
+Agora entra a nuvem. `S3Generator` gera o mesmo relatório, mas salva no S3 e devolve... uma **URL**:
+
+```go title="internal/report/s3.go (a violação)"
+package report
+
+type S3Generator struct{ Bucket string }
+
+func (g S3Generator) Generate(_ context.Context) (string, error) {
+	// Tipo correto (string), comportamento diferente (URL, não caminho local).
+	return fmt.Sprintf("https://%s.s3.amazonaws.com/relatorio.csv", g.Bucket), nil
+}
+```
+
+Passa o compilador. Passa o linter. E **quebra** o cliente: `os.Stat("https://…")` não encontra arquivo nenhum e retorna erro. `AttachToEmail` falha com um objeto que "é do mesmo tipo" dos outros.
+
+Este é o primeiro nível: **pós-condição enfraquecida**. A base prometeu um caminho local; o subtipo entregou menos do que a promessa.
+
+A correção errada é a mais comum — o cliente tenta descobrir com quem está falando:
+
+```go title="internal/report/processor.go (não faça isto)"
+switch g := g.(type) {
+case S3Generator:
+	// baixa do S3, gera URL assinada, anexa de outro jeito...
+	_ = g.Bucket
+default:
+	// trata como caminho local
+}
+```
+
+Aqui o cliente **já perdeu** o polimorfismo. Ele precisa conhecer as implementações, e cada tipo novo edita o `switch`. É LSP violado arrastando o OCP junto.
+
+## 3. Fundamentos
+
+### A definição formal
+
+Barbara Liskov formulou o princípio em 1987, e ele foi incorporado ao SOLID por Robert C. Martin nos anos 2000. A definição original:
+
+> If Q(x) is provable about objects x of type T, then Q(y) should be provable for objects y of type S where S is a subtype of T.
+> — Liskov, *Data Abstraction and Hierarchy* (1987)
+
+Tradução livre: *se uma propriedade Q vale para objetos x do tipo T, ela também deve valer para objetos y do tipo S, sendo S um subtipo de T.*
+
+Em palavras: tudo que é **verdade** sobre o tipo base tem que continuar sendo verdade para o subtipo. Não é sobre assinatura — é sobre **comportamento**. Liskov e Wing formalizaram isso depois como *behavioral subtyping* (1994).
+
+Martin resume a consequência prática em *Clean Architecture*, cap. 9:
+
+> All of the rules of the base class must be obeyed by the derived class.
+> — *Clean Architecture*, cap. 9 (LSP)
+
+Tradução livre: *todas as regras da classe base devem ser obedecidas pela classe derivada.*
+
+### Design by Contract: a regra dos contratos
+
+O LSP deriva do **Design by Contract (DBC)**, formulado por Bertrand Meyer em *Object-Oriented Software Construction*. Um contrato tem três partes:
+
+- **Pré-condição** — o que precisa ser verdade **antes** da chamada (o que o cliente garante).
+- **Pós-condição** — o que o método garante **depois** (o que o objeto promete).
+- **Invariante** — o que é verdade durante toda a vida do objeto.
+
+E daí saem as três regras que um subtipo **não** pode violar:
+
+1. **Pré-condições não podem ser fortalecidas.** O subtipo não pode exigir mais do que a base.
+2. **Pós-condições não podem ser enfraquecidas.** O subtipo não pode entregar menos do que a base.
+3. **Invariantes devem ser mantidas.** As regras globais da base continuam valendo.
+
+O objeto que quebra qualquer uma delas não é um subtipo legítimo — é um impostor que só coincide na assinatura.
+
+### O sintoma: checagem de tipo no cliente
+
+Toda vez que você vê `switch v := x.(type)`, `if e, ok := err.(SomeError); ok` ou um `if` perguntando "qual é o tipo real?", o LSP já foi violado em algum lugar. O cliente está **compensando** uma abstração que mentiu. Em Go isso dói de um jeito específico (ver abaixo): não há `instanceof`, mas há type assertion e type switch — o mesmo cheiro.
+
+### O que isso vira em Go
+
+Go não tem herança nem override. O modelo do vídeo (uma classe que "estende" outra e sobrescreve um método) **não existe** aqui. Isso muda a forma, não o fundo:
+
+- **Não há "subclasse".** Há **tipos que satisfazem uma interface**. O LSP passa a ser: *toda implementação de uma interface honra o contrato documentado dela.*
+- **Embedding não é subtipo.** Embutir uma struct reaproveita código, mas não cria uma relação "é um" que o LSP reconheça. O contrato é a interface, sempre.
+- **O compilador não ajuda.** A satisfação é implícita: qualquer struct com os métodos certos "passa". Quem garante o comportamento é o **teste** e o **design** — nunca o tipo.
+
+Por isso, em Go, "corrigir o LSP" quase sempre significa uma de duas coisas: **segregar o contrato** (dar a cada cliente a abstração que ele realmente pode honrar) ou **mudar o tipo de retorno** para que ele não minta (um *locator*, e não uma `string` ambígua).
+
+## 4. Implementação
+
+Vamos percorrer os três níveis, cada um com o cliente que quebra e a correção. Go 1.26, sem dependência externa.
+
+### 4.1 Pós-condição: o retorno que mente
+
+O problema não é a `string` — é o **significado** dela. Duas correções possíveis:
+
+**(a) Torne o retorno honesto** com um tipo que diga o que é:
+
+```go title="internal/report/locator.go"
+package report
+
+// Locator descreve ONDE o relatório está — local ou remoto.
+type Locator struct {
+	Kind Kind
+	Ref  string // caminho (KindLocal) ou URL (KindRemote)
+}
+
+type Kind int
+
+const (
+	KindLocal Kind = iota
+	KindRemote
+)
+```
+
+**(b) Segregue o contrato** — a solução que o vídeo aponta, e que reusa o ISP. O cliente local e o cliente remoto pedem coisas diferentes:
+
+```go title="internal/report/report.go (segregado)" showLineNumbers
+package report
+
+import "context"
+
+// Quem gera e devolve um caminho local.
+type LocalReportGenerator interface {
+	Generate(ctx context.Context) (LocalLocator, error)
+}
+
+// Quem gera e devolve um locator remoto.
+type CloudReportGenerator interface {
+	Generate(ctx context.Context) (CloudLocator, error)
+}
+
+type LocalLocator struct{ Path string }
+type CloudLocator struct{ URL string }
+```
+
+Agora `AttachToEmail` recebe `LocalReportGenerator` e nunca é surpreendido — o S3 é outro tipo de gerador, com outro cliente. Nenhum `switch`.
+
+### 4.2 Pré-condição: exigir demais
+
+A base aceita qualquer depósito positivo. A poupança decide exigir um mínimo:
+
+```go title="internal/bank/account.go (violação de pré-condição)"
+package bank
+
+import "errors"
+
+type Money int64
+
+var ErrValorInvalido = errors.New("o valor deve ser positivo")
+
+// Contrato de Deposit: aceita QUALQUER valor > 0.
+type Account interface {
+	Deposit(amount Money) error
+	Balance() Money
+}
+
+type BankAccount struct{ balance Money }
+
+func (a *BankAccount) Deposit(amount Money) error {
+	if amount <= 0 {
+		return ErrValorInvalido
+	}
+	a.balance += amount
+	return nil
+}
+
+func (a *BankAccount) Balance() Money { return a.balance }
+
+// SavingsAccount FORTALECE a pré-condição: exige um mínimo de R$ 10,00.
+type SavingsAccount struct{ balance Money }
+
+func (a *SavingsAccount) Deposit(amount Money) error {
+	if amount < 1000 { // R$ 10,00 em centavos
+		return errors.New("depósito mínimo para poupança é R$ 10,00")
+	}
+	a.balance += amount
+	return nil
+}
+
+func (a *SavingsAccount) Balance() Money { return a.balance }
+```
+
+O cliente é simples e confia no contrato:
+
+```go title="internal/bank/service.go"
+package bank
+
+func ApplyDeposit(acc Account, amount Money) error {
+	return acc.Deposit(amount)
+}
+```
+
+`ApplyDeposit(&BankAccount{}, 500)` funciona (R$ 5,00). `ApplyDeposit(&SavingsAccount{}, 500)` estoura. O mesmo `Account`, o mesmo valor, comportamentos incompatíveis — o cliente foi pego de surpresa por um objeto que "é uma conta".
+
+**A correção não é no código, é na abstração.** Vale a pergunta do "é um?": uma poupança com depósito mínimo **é** o mesmo contrato de uma conta comum? Se as regras de entrada divergem, elas não são o mesmo tipo. Ou o mínimo entra no contrato (documentado, aceito por todos), ou a poupança é outra abstração.
+
+### 4.3 Invariante: quebrar a regra global
+
+Agora o terceiro nível. O contrato de saque garante que o saldo **nunca fica negativo**:
+
+```go title="internal/bank/account.go (invariante)"
+package bank
+
+import "errors"
+
+var ErrSaldoInsuficiente = errors.New("saldo insuficiente")
+
+type Withdrawable interface {
+	Withdraw(amount Money) error
+	Balance() Money
+}
+
+type SimpleAccount struct{ balance Money }
+
+// Invariante: após Withdraw, balance >= 0.
+func (a *SimpleAccount) Withdraw(amount Money) error {
+	if amount <= 0 || amount > a.balance {
+		return ErrSaldoInsuficiente
+	}
+	a.balance -= amount
+	return nil
+}
+
+func (a *SimpleAccount) Balance() Money { return a.balance }
+```
+
+A conta corrente adiciona cheque especial — e, com ele, deixa o saldo negativo:
+
+```go title="internal/bank/overdraft.go (violação de invariante)"
+package bank
+
+// CheckingAccount permite saldo negativo (cheque especial).
+type CheckingAccount struct {
+	balance Money
+	limit   Money
+}
+
+func (a *CheckingAccount) Withdraw(amount Money) error {
+	if amount > a.balance+a.limit {
+		return ErrSaldoInsuficiente
+	}
+	a.balance -= amount // pode ficar NEGATIVO — a invariante da base não vale aqui
+	return nil
+}
+
+func (a *CheckingAccount) Balance() Money { return a.balance }
+```
+
+O cliente que confia na invariante quebra:
+
+```go title="internal/bank/audit.go (cliente)"
+package bank
+
+func Audit(acc Withdrawable) error {
+	if acc.Balance() < 0 {
+		// O contrato dizia que isso nunca acontece.
+		return ErrSaldoInsuficiente
+	}
+	return nil
+}
+```
+
+`CheckingAccount` **é** um `Withdrawable` na assinatura, mas não no contrato. De novo: a abstração estava errada. Uma conta que pode ficar negativa **não é** uma conta com saldo não-negativo — é `CreditAccount`, um contrato diferente com seu próprio limite explícito:
+
+```go title="internal/bank/credit.go"
+package bank
+
+// Contrato próprio: o saldo PODE ser negativo, e há um limite declarado.
+type CreditAccount interface {
+	Deposit(amount Money) error
+	Withdraw(amount Money) error
+	Balance() Money // pode ser negativo
+	Limit() Money
+}
+```
+
+Quem precisa de saldo não-negativo recebe `Withdrawable`. Quem lida com crédito recebe `CreditAccount` e sabe que o saldo varia. Ninguém é surpreendido, e nenhum `if` de tipo aparece.
+
+![Diagrama: o cliente forçado a checar o tipo quando a substituição falha](/img/diagramas/design-lsp-viola.svg)
+
+### 4.4 O teste que prova a substituição
+
+Como o compilador não valida contrato em Go, quem valida é o teste. Um teste de substituição roda o mesmo cenário contra **toda** implementação da interface:
+
+```go title="internal/bank/contract_test.go" showLineNumbers
+package bank_test
+
+import (
+	"errors"
+	"testing"
+
+	"example.com/shop/internal/bank"
+)
+
+// A MESMA suíte contra todas as implementações. Se uma quebra uma regra
+// do contrato, o teste falha — e a violação de LSP aparece cedo.
+func testWithdrawKeepsBalanceNonNegative(t *testing.T, acc bank.Withdrawable) {
+	t.Helper()
+	if err := acc.Withdraw(1); !errors.Is(err, bank.ErrSaldoInsuficiente) {
+		t.Fatalf("sacar de saldo zerado deveria dar ErrSaldoInsuficiente, veio %v", err)
+	}
+	if acc.Balance() < 0 {
+		t.Fatal("invariante violada: saldo ficou negativo")
+	}
+}
+
+func TestSimpleAccountContract(t *testing.T) {
+	testWithdrawKeepsBalanceNonNegative(t, &bank.SimpleAccount{})
+}
+```
+
+Esse é o padrão de *contract test*: o mesmo teste (a mesma expectativa de comportamento) para cada implementação. É o que substitui o compilador que o Go não tem.
+
+## 5. Falhas e trade-offs
+
+**LSP não pede hierarquia profunda.** Em Go nem há herança. O princípio aqui é sobre **contrato de interface**, e a correção preferida é a mais rasa: menos contrato, mais honesto.
+
+**Não confunda violação com regra legítima.** Um `Withdraw` que recusa saldo insuficiente é contrato, não violação. A violação é *mudar* o contrato silenciosamente num subtipo.
+
+**Segregar é a cura, não exagere na dose.** Muitos casos de LSP se resolvem com o ISP (contratos menores). Mas splitar demais também cobra — é o mesmo trade-off do capítulo anterior.
+
+**Assinatura verde não é contrato cumprido.** O compilador aceita qualquer `string`. O comportamento — o que a `string` *significa* — só o design e o teste garantem. Este é o ponto mais importante do capítulo.
+
+**Errar aqui é o mais caro.** SRP, OCP e DIP se ajustam. Uma abstração que mentiu e se espalhou força `switch` de tipo no cliente, e cada correção toca dezenas de arquivos. É por isso que o LSP, junto do ISP, é o par mais crítico do SOLID.
+
+**Regra prática.** Antes de criar um tipo que "é um" outro, pergunte: *ele honra tudo o que o contrato promete — pré, pós e invariantes?* Se a resposta é "quase", a abstração está errada.
+
+## Referências
+
+- **Definição formal** — Barbara Liskov, *Data Abstraction and Hierarchy* (OOPSLA '87; SIGPLAN Notices, 1988).
+- **Behavioral subtyping** — Barbara Liskov, Jeannette Wing, *A Behavioral Notion of Subtyping* (1994).
+- **LSP no SOLID, Square/Rectangle, regras da classe base** — Robert C. Martin, *Clean Architecture* (2017), cap. 9.
+- **Design by Contract (pré, pós, invariantes)** — Bertrand Meyer, *Object-Oriented Software Construction*.
+- **DBC na prática** — Andrew Hunt, David Thomas, *The Pragmatic Programmer*.
+- **LSP e compatibilidade semântica** — Marco Túlio Valente, *Engenharia de Software Moderna*.
+- **Vídeo base** — [Renato Augusto — Liskov Substitution Principle](https://www.youtube.com/watch?v=f6-5ANuTkys).
+
+<Summary>
+
+- o LSP diz que um subtipo substitui a base **sem mudar o comportamento** — não só a assinatura
+- viola-se em **três níveis**: pré-condição, pós-condição e invariante
+- **pré não fortalece**, **pós não enfraquece**, **invariante mantida** (Design by Contract)
+- "retorna uma `string`" pode mentir: o tipo é o mesmo, o **significado** não
+- o sintoma é o cliente compensando com `switch` de tipo — LSP violado arrasta o OCP
+- um pato que precisa de bateria não é um pato: **é a abstração que está errada**
+- em Go não há herança: LSP é contrato de **interface** e **embedding não é subtipo**
+- correção: **contrato honesto** (um `Locator`, não uma `string`) e **segregação** (o elo com o ISP)
+- o **contract test** — mesma suíte para toda implementação — é o compilador que o Go não tem
+- errar a abstração aqui é o mais caro de consertar: por isso o LSP é o mais crítico do SOLID
+
+</Summary>
+
+<NextSteps href="/design/isp" title="Segregação de Interfaces (ISP)">
+
+A correção de boa parte das violações de LSP passa por **segregar contratos** — o ISP. Se o LSP é o que o contrato deve *cumprir*, o ISP é sobre o contrato ter o *tamanho certo*. Os dois andam juntos.
+
+</NextSteps>
+
+<SkillsGained skills={["LSP", "SOLID", "Design by Contract", "Polimorfismo", "Contract test", "Go idiomático"]} />

@@ -18,6 +18,7 @@ const STYLE = `
     .flow{fill:none;stroke:#0969da;stroke-width:1.6}
     .bad{fill:none;stroke:#cf222e;stroke-width:2}
     .badlbl{fill:#cf222e}
+    .oklbl{fill:#238636}
     .lbl{fill:#57606a}
     .mono{fill:#57606a}
     @media (prefers-color-scheme: dark){
@@ -29,6 +30,7 @@ const STYLE = `
       .flow{stroke:#58a6ff}
       .bad{stroke:#f85149}
       .badlbl{fill:#f85149}
+      .oklbl{fill:#3fb950}
       .lbl{fill:#8b949e}
       .mono{fill:#8b949e}
     }`;
@@ -176,6 +178,54 @@ scenes['design-isp-segregada.svg'] = [
   arrow(740, 300, 740, 236, 'flow'),
   label(300, 272, 'implementa', {anchor: 'middle', size: 11}),
   label(20, 390, 'CreditCard depende só de PaymentMethod — sem métodos mortos.', {size: 11}),
+].join('\n');
+
+// ------------------------------------------------ 6. LSP: as três regras
+scenes['design-lsp-contrato.svg'] = [
+  head(
+    '0 0 900 260',
+    'Diagrama: as três regras de contrato do LSP — pré-condição não pode ser fortalecida, pós-condição não pode ser enfraquecida, invariantes devem ser mantidas',
+    'As três regras do LSP',
+    'Um subtipo honra o contrato quando não fortalece pré-condições, não enfraquece pós-condições e mantém as invariantes da base.',
+  ),
+  label(20, 26, 'As três regras de contrato do LSP', {weight: 'bold'}),
+  rect(20, 60, 270, 170, '', 'box'),
+  label(155, 96, 'Pré-condição', {anchor: 'middle', size: 13}),
+  label(155, 126, 'subtipo não exige mais', {anchor: 'middle', size: 11}),
+  label(155, 156, '✓ aceitar igual ou mais amplo', {anchor: 'middle', size: 11, cls: 'oklbl'}),
+  label(155, 182, '✗ exigir entrada mais restrita', {anchor: 'middle', size: 11, cls: 'badlbl'}),
+  rect(315, 60, 270, 170, '', 'box'),
+  label(450, 96, 'Pós-condição', {anchor: 'middle', size: 13}),
+  label(450, 126, 'subtipo não entrega menos', {anchor: 'middle', size: 11}),
+  label(450, 156, '✓ devolver igual ou mais', {anchor: 'middle', size: 11, cls: 'oklbl'}),
+  label(450, 182, '✗ devolver garantia menor', {anchor: 'middle', size: 11, cls: 'badlbl'}),
+  rect(610, 60, 270, 170, '', 'box'),
+  label(745, 96, 'Invariante', {anchor: 'middle', size: 13}),
+  label(745, 126, 'regra global da base', {anchor: 'middle', size: 11}),
+  label(745, 156, '✓ sempre preservada', {anchor: 'middle', size: 11, cls: 'oklbl'}),
+  label(745, 182, '✗ quebrada pelo subtipo', {anchor: 'middle', size: 11, cls: 'badlbl'}),
+].join('\n');
+
+// ------------------------------------------------ 7. LSP: substituição falha
+scenes['design-lsp-viola.svg'] = [
+  head(
+    '0 0 880 330',
+    'Diagrama: S3Generator devolve uma URL onde o contrato prometia um caminho local, quebrando o cliente e forçando checagem de tipo',
+    'Substituição falha',
+    'CSV e PDF devolvem caminho local; S3 devolve URL. O cliente que confia no contrato quebra e é forçado a checar o tipo, perdendo o polimorfismo.',
+  ),
+  label(20, 26, 'A assinatura é a mesma; o comportamento não', {weight: 'bold'}),
+  rect(30, 132, 190, 64, 'AttachToEmail', 'proc', {sub: 'cliente'}),
+  rect(290, 132, 230, 64, 'ReportGenerator', 'port', {sub: 'Generate() string'}),
+  rect(600, 52, 240, 50, 'CSVGenerator', 'detail', {sub: '→ caminho local'}),
+  rect(600, 138, 240, 50, 'PDFGenerator', 'detail', {sub: '→ caminho local'}),
+  rect(600, 224, 240, 50, 'S3Generator', 'detail', {sub: '→ URL (nuvem)'}),
+  arrow(220, 164, 290, 164, 'flow'),
+  label(255, 156, 'usa', {anchor: 'middle', size: 11}),
+  arrow(520, 152, 600, 77, 'flow'),
+  arrow(520, 164, 600, 163, 'flow'),
+  arrow(520, 176, 600, 249, 'bad'),
+  label(20, 300, 'URL não é caminho local: o cliente quebra e passa a checar o tipo — polimorfismo perdido.', {size: 11, cls: 'badlbl'}),
 ].join('\n');
 
 for (const [file, body] of Object.entries(scenes)) {
