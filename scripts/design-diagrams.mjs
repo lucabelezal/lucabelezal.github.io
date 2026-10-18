@@ -228,6 +228,29 @@ scenes['design-lsp-viola.svg'] = [
   label(20, 300, 'URL não é caminho local: o cliente quebra e passa a checar o tipo — polimorfismo perdido.', {size: 11, cls: 'badlbl'}),
 ].join('\n');
 
+// ------------------------------------------------ 8. LSP vs ISP
+scenes['design-lsp-vs-isp.svg'] = [
+  head(
+    '0 0 820 360',
+    'Diagrama: LSP e ISP operam em eixos diferentes — tamanho do contrato no eixo horizontal e comportamento cumprido no eixo vertical — formando quatro quadrantes',
+    'LSP e ISP são eixos diferentes',
+    'ISP trata do tamanho do contrato; LSP trata de o comportamento ser cumprido. Um contrato pequeno ainda pode mentir (LSP violado), e um contrato gordo pode ser honesto (só ISP violado).',
+  ),
+  label(20, 26, 'ISP cuida do tamanho do contrato; LSP, da honestidade da implementação', {weight: 'bold'}),
+  arrow(150, 300, 790, 300, 'flow'),
+  arrow(150, 300, 150, 66, 'flow'),
+  label(780, 320, 'contrato maior →', {anchor: 'end', size: 11}),
+  label(160, 62, 'comportamento cumprido ↑', {size: 11}),
+  label(300, 150, 'ISP ok · LSP ok', {anchor: 'middle', size: 12, cls: 'oklbl'}),
+  label(300, 172, 'o ponto ideal', {anchor: 'middle', size: 11}),
+  label(640, 150, 'ISP violado · LSP ok', {anchor: 'middle', size: 12}),
+  label(640, 172, 'contrato gordo, mas honesto', {anchor: 'middle', size: 11}),
+  label(300, 240, 'ISP ok · LSP violado', {anchor: 'middle', size: 12, cls: 'badlbl'}),
+  label(300, 262, 'Generate() string que devolve URL', {anchor: 'middle', size: 11}),
+  label(640, 240, 'os dois violados', {anchor: 'middle', size: 12, cls: 'badlbl'}),
+  label(640, 262, 'contrato gordo que também mente', {anchor: 'middle', size: 11}),
+].join('\n');
+
 for (const [file, body] of Object.entries(scenes)) {
   writeFileSync(join(outDir, file), body + '\n</svg>\n');
 }

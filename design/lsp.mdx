@@ -32,7 +32,8 @@ O **Princípio de Substituição de Liskov (LSP)** é o mais crítico do SOLID �
 - o sintoma: cliente obrigado a `switch` de tipo para lidar com quem "é do mesmo tipo"
 - por que um pato que precisa de **bateria** não é um pato
 - como o LSP se manifesta em Go — onde não existe herança nem override
-- como corrigir: **abstração honesta** e segregação de contratos (o elo com o ISP)
+- por que o **LSP não é o ISP** — e como saber qual dos dois está em jogo
+- como **detectar** a violação antes de produção com um *contract test*
 
 </WhatYouWillLearn>
 
@@ -185,6 +186,28 @@ E daí saem as três regras que um subtipo **não** pode violar:
 3. **Invariantes devem ser mantidas.** As regras globais da base continuam valendo.
 
 O objeto que quebra qualquer uma delas não é um subtipo legítimo — é um impostor que só coincide na assinatura.
+
+### LSP não é ISP
+
+Os dois princípios andam juntos — e por isso são confundidos. Ambos falam de interface, e muitas vezes a cura de um LSP é aplicar ISP. Mas operam em **eixos diferentes**:
+
+| | **ISP** | **LSP** |
+|---|---|---|
+| Pergunta | o contrato tem o **tamanho certo**? | quem implementa **cumpre** a promessa? |
+| Eixo | **coupling** (quantos métodos) | **comportamento** (o que os métodos fazem) |
+| Sintoma | métodos mortos, `ErrNaoSuportado` | cliente com `switch` de tipo, invariante quebrada |
+| Correção | segregar o contrato | consertar a **abstração** |
+
+Em uma frase: **o ISP cuida do tamanho do contrato; o LSP, da honestidade da implementação.**
+
+A prova de que são independentes é que dá para violar um **sem** o outro:
+
+- **ISP ok, LSP violado.** `ReportGenerator` tem **um** método (`Generate() string`). Contrato mínimo e coeso — ISP perfeito. Ainda assim, o `S3Generator` devolve URL onde a promessa era caminho local: tamanho certo, implementação mentirosa.
+- **LSP ok, ISP violado.** Uma interface `Page` com `goTo`/`nextPage`/`homePage`; todos os tipos implementam os três **corretamente** (ninguém mente). Mas o cliente que só chama `goTo` carrega os outros dois de graça.
+
+A confusão nasce no meio do caminho: quando corrigimos o `S3Generator`, nós **segregamos** (`LocalReportGenerator` / `CloudReportGenerator`) — isso é ISP **a serviço do** LSP. Ferramenta não é a propriedade. E o ISP não resolve tudo: uma invariante quebrada dentro de um contrato de **um método só** (`Withdraw` que promete saldo não-negativo) não se conserta segregando — o problema é comportamental, e a cura é outro tipo (`CreditAccount`).
+
+![Diagrama: LSP e ISP em eixos diferentes — tamanho do contrato no eixo horizontal, comportamento cumprido no vertical](/img/diagramas/design-lsp-vs-isp.svg)
 
 ### O sintoma: checagem de tipo no cliente
 
@@ -393,38 +416,163 @@ Quem precisa de saldo não-negativo recebe `Withdrawable`. Quem lida com crédit
 
 ![Diagrama: o cliente forçado a checar o tipo quando a substituição falha](/img/diagramas/design-lsp-viola.svg)
 
-### 4.4 O teste que prova a substituição
+### 4.4 O contract test: onde a violação aparece
 
-Como o compilador não valida contrato em Go, quem valida é o teste. Um teste de substituição roda o mesmo cenário contra **toda** implementação da interface:
+O compilador aceita qualquer implementação com os métodos certos. A prova da substituição, então, é um **contract test**: a **mesma** suíte rodada contra **todas** as implementações, sempre que o código entra na integração.
 
-```go title="internal/bank/contract_test.go" showLineNumbers
-package bank_test
+Caso de estudo — o cálculo de frete de um e-commerce. O contrato de `ShippingCalculator`:
+
+```text title="Contrato de ShippingCalculator"
+pré        aceita qualquer peso > 0
+pós        devolve o frete (>= 0) e erro nil em condições normais
+invariante é determinístico e não altera a encomenda
+```
+
+```go title="internal/shipping/shipping.go" showLineNumbers
+package shipping
 
 import (
 	"errors"
-	"testing"
-
-	"example.com/shop/internal/bank"
+	"fmt"
 )
 
-// A MESMA suíte contra todas as implementações. Se uma quebra uma regra
-// do contrato, o teste falha — e a violação de LSP aparece cedo.
-func testWithdrawKeepsBalanceNonNegative(t *testing.T, acc bank.Withdrawable) {
-	t.Helper()
-	if err := acc.Withdraw(1); !errors.Is(err, bank.ErrSaldoInsuficiente) {
-		t.Fatalf("sacar de saldo zerado deveria dar ErrSaldoInsuficiente, veio %v", err)
-	}
-	if acc.Balance() < 0 {
-		t.Fatal("invariante violada: saldo ficou negativo")
-	}
+type Order struct {
+	ID       string
+	WeightKg float64
 }
 
-func TestSimpleAccountContract(t *testing.T) {
-	testWithdrawKeepsBalanceNonNegative(t, &bank.SimpleAccount{})
+type ShippingCalculator interface {
+	Calculate(order Order) (float64, error)
+}
+
+// Correto: aceita qualquer peso > 0.
+type StandardShipping struct{}
+
+func (StandardShipping) Calculate(order Order) (float64, error) {
+	if order.WeightKg <= 0 {
+		return 0, errors.New("peso inválido")
+	}
+	return order.WeightKg * 5.0, nil
+}
+
+// Viola a pré-condição: exige um mínimo de 2 kg.
+type ExpressShipping struct{}
+
+func (ExpressShipping) Calculate(order Order) (float64, error) {
+	if order.WeightKg < 2.0 {
+		return 0, errors.New("frete expresso exige peso mínimo de 2 kg")
+	}
+	return order.WeightKg * 12.0, nil
+}
+
+// Viola a pós-condição: não devolve o frete, e sim um erro de cotação.
+type InternationalShipping struct{}
+
+func (InternationalShipping) Calculate(order Order) (float64, error) {
+	if order.WeightKg <= 0 {
+		return 0, errors.New("peso inválido")
+	}
+	return 0, fmt.Errorf("cotação alfandegária pendente: consulte o endpoint de taxas")
 }
 ```
 
-Esse é o padrão de *contract test*: o mesmo teste (a mesma expectativa de comportamento) para cada implementação. É o que substitui o compilador que o Go não tem.
+A suíte é escrita **uma vez** e aponta para a interface — nunca para um tipo concreto:
+
+```go title="internal/shipping/contract_test.go" showLineNumbers
+package shipping_test
+
+import (
+	"testing"
+
+	"example.com/shop/internal/shipping"
+)
+
+// A MESMA suíte roda contra toda implementação do contrato.
+func testShippingContract(t *testing.T, calc shipping.ShippingCalculator) {
+	t.Helper()
+
+	t.Run("aceita peso válido (pré-condição)", func(t *testing.T) {
+		cost, err := calc.Calculate(shipping.Order{ID: "ORD-1", WeightKg: 1.0})
+		if err != nil {
+			t.Fatalf("rejeitou um peso válido: %v", err)
+		}
+		if cost <= 0 {
+			t.Fatalf("pós-condição: frete deveria ser > 0, veio %.2f", cost)
+		}
+	})
+
+	t.Run("rejeita peso inválido (pré-condição)", func(t *testing.T) {
+		if _, err := calc.Calculate(shipping.Order{ID: "ORD-2", WeightKg: -0.5}); err == nil {
+			t.Fatal("deveria retornar erro para peso negativo")
+		}
+	})
+
+	t.Run("é determinístico e não altera a encomenda (invariante)", func(t *testing.T) {
+		order := shipping.Order{ID: "ORD-3", WeightKg: 3.0}
+		before := order
+		a, _ := calc.Calculate(order)
+		b, _ := calc.Calculate(order)
+		if a != b {
+			t.Fatalf("não determinístico: %.2f != %.2f", a, b)
+		}
+		if order != before {
+			t.Fatal("invariante violada: a encomenda foi alterada")
+		}
+	})
+}
+
+func TestShippingContract(t *testing.T) {
+	implementations := map[string]shipping.ShippingCalculator{
+		"standard":      shipping.StandardShipping{},
+		"express":       shipping.ExpressShipping{},
+		"international": shipping.InternationalShipping{},
+	}
+
+	for name, calc := range implementations {
+		t.Run(name, func(t *testing.T) {
+			testShippingContract(t, calc)
+		})
+	}
+}
+```
+
+Rodar a suíte contra as três implementações transforma o contrato em asserção. A implementação que mente deixa a **barra vermelha**:
+
+```bash title="go test -run TestShippingContract -v"
+--- PASS: TestShippingContract/standard
+--- FAIL: TestShippingContract/express
+    contract_test.go: aceitou peso válido: frete expresso exige peso mínimo de 2 kg
+--- FAIL: TestShippingContract/international
+    contract_test.go: pós-condição: frete deveria ser > 0, veio 0.00
+```
+
+Cada falha aponta o nível violado. A correção segue o mesmo diagnóstico do resto do capítulo:
+
+- **express** — relaxa a pré-condição: aceita qualquer peso e cobre pacotes leves com uma taxa de manuseio, em vez de recusar a chamada;
+
+```go title="internal/shipping/express.go (corrigido)"
+package shipping
+
+import "errors"
+
+// Substitui a implementação anterior: aceita qualquer peso > 0.
+type ExpressShipping struct{}
+
+func (ExpressShipping) Calculate(order Order) (float64, error) {
+	if order.WeightKg <= 0 {
+		return 0, errors.New("peso inválido")
+	}
+	cost := order.WeightKg * 12.0
+	if order.WeightKg < 2.0 {
+		cost += 15.0 // taxa de manuseio para pacotes leves
+	}
+	return cost, nil
+}
+```
+
+- **international** — segregada (ISP): a cotação alfandegária é **outra capacidade**, então vira outro contrato, com seu próprio cliente. Aqui o ISP entra a serviço do LSP — a distinção da seção de fundamentos, na prática.
+
+Barra verde. É esse o valor do LSP tornado **verificável**: o contrato deixa de ser prosa num comentário e vira asserção no CI. Toda implementação nova entra pela mesma suíte — e a mentira aparece no build, não em produção.
 
 ## 5. Falhas e trade-offs
 
@@ -433,6 +581,8 @@ Esse é o padrão de *contract test*: o mesmo teste (a mesma expectativa de comp
 **Não confunda violação com regra legítima.** Um `Withdraw` que recusa saldo insuficiente é contrato, não violação. A violação é *mudar* o contrato silenciosamente num subtipo.
 
 **Segregar é a cura, não exagere na dose.** Muitos casos de LSP se resolvem com o ISP (contratos menores). Mas splitar demais também cobra — é o mesmo trade-off do capítulo anterior.
+
+**Mas LSP não é ISP.** Segregar é uma **ferramenta** a serviço do LSP, não o princípio. Há violações comportamentais — a invariante quebrada num contrato de um método só — que segregação nenhuma conserta: a cura é mudar o contrato ou criar outro tipo.
 
 **Assinatura verde não é contrato cumprido.** O compilador aceita qualquer `string`. O comportamento — o que a `string` *significa* — só o design e o teste garantem. Este é o ponto mais importante do capítulo.
 
@@ -448,6 +598,8 @@ Esse é o padrão de *contract test*: o mesmo teste (a mesma expectativa de comp
 - **Design by Contract (pré, pós, invariantes)** — Bertrand Meyer, *Object-Oriented Software Construction*.
 - **DBC na prática** — Andrew Hunt, David Thomas, *The Pragmatic Programmer*.
 - **LSP e compatibilidade semântica** — Marco Túlio Valente, *Engenharia de Software Moderna*.
+- **FIRST (testes rápidos, independentes, determinísticos, auto-verificáveis, oportunos)** — Marco Túlio Valente, *Engenharia de Software Moderna*.
+- **Testes autotestáveis como rede de segurança para refatorar** — Martin Fowler, *Refatoração*.
 - **Vídeo base** — [Renato Augusto — Liskov Substitution Principle](https://www.youtube.com/watch?v=f6-5ANuTkys).
 
 <Summary>
@@ -457,10 +609,12 @@ Esse é o padrão de *contract test*: o mesmo teste (a mesma expectativa de comp
 - **pré não fortalece**, **pós não enfraquece**, **invariante mantida** (Design by Contract)
 - "retorna uma `string`" pode mentir: o tipo é o mesmo, o **significado** não
 - o sintoma é o cliente compensando com `switch` de tipo — LSP violado arrasta o OCP
+- **LSP não é ISP**: o ISP cuida do **tamanho** do contrato, o LSP da **honestidade** da implementação
+- dá para violar um sem o outro (`Generate() string` que devolve URL viola só o LSP)
 - um pato que precisa de bateria não é um pato: **é a abstração que está errada**
 - em Go não há herança: LSP é contrato de **interface** e **embedding não é subtipo**
 - correção: **contrato honesto** (um `Locator`, não uma `string`) e **segregação** (o elo com o ISP)
-- o **contract test** — mesma suíte para toda implementação — é o compilador que o Go não tem
+- o **contract test** — mesma suíte para toda implementação — é o compilador que o Go não tem, e deixa a violação na barra vermelha do CI
 - errar a abstração aqui é o mais caro de consertar: por isso o LSP é o mais crítico do SOLID
 
 </Summary>
