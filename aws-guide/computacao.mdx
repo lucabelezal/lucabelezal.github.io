@@ -37,10 +37,20 @@ Use quando a tarefa é curta e orientada a evento. É o ponto de menor responsab
 
 ![Diagrama: espectro de responsabilidade do EC2 ao Lambda](/img/diagramas/aws-espectro-responsabilidade.svg)
 
-**Regra prática:** comece pelo Lambda. Se precisar de processo longo, runtime específico ou porta fixa, vá para contêiner. Se precisar do sistema operacional, vá para EC2.
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| Função estoura o tempo limite | tarefa longa demais para Lambda | mover para contêiner ou EC2 |
+| Cold start atrasa a primeira resposta | função no caminho crítico | provisioned concurrency ou serviço sempre ligado |
+| Contêiner custa mais que o esperado | Fargate para carga constante | EC2 com Savings Plan ou Spot |
+| Precisa instalar agente ou acessar o SO | runtime não suportado | EC2 |
+| Escala não acompanha o pico | réplicas fixas | Auto Scaling ou concorrência no Lambda |
 
 ## Cobrança em uma linha
 
 EC2 e contêineres cobram por tempo de execução da capacidade; Lambda cobra por invocação e milissegundos. Os modelos de desconto (Savings Plans, Reserved, Spot) estão em [Segurança e custo](/aws/seguranca-e-custo).
 
-Próximo: [Dados e objetos](/aws/dados).
+**Regra prática:** comece pelo Lambda. Se precisar de processo longo, runtime específico ou porta fixa, vá para contêiner. Se precisar do sistema operacional, vá para EC2.
+
+Próximo: [EC2 na prática](/aws/ec2) para entender a máquina virtual por dentro.

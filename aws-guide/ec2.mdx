@@ -1,0 +1,106 @@
+---
+title: EC2 na prática
+---
+
+Precisa de um servidor com sistema operacional, acesso SSH e um runtime específico? Esse é o EC2. Ele entrega a máquina virtual crua: você escolhe o tamanho, instala o que quiser e responde por tudo que acontece dentro dela.
+
+É um dos primeiros serviços da AWS e o mais direto deles. Também é onde a fatura costuma surpreender quem está começando.
+
+## O que é uma instância
+
+Uma instância EC2 é uma máquina virtual. Ela nasce de uma **AMI** (Amazon Machine Image), que é o molde: sistema operacional, partições e softwares instalados. Ao lançar, você escolhe:
+
+| Peça | O que define |
+|---|---|
+| **AMI** | o conteúdo inicial do disco (Ubuntu, Amazon Linux, Windows…) |
+| **Tipo** | CPU, memória e rede da máquina |
+| **Par de chaves** | a chave SSH usada para entrar |
+| **Security group** | o firewall: quais portas aceitam tráfego de onde |
+| **User data** | script executado na primeira inicialização |
+| **Volume EBS** | o disco persistente que sobrevive ao desligamento |
+
+O security group é a causa número um de "não consigo conectar". Sem regra de entrada na porta 22 a partir do seu IP, nenhuma chave resolve.
+
+**User data** é o que transforma uma instância em algo reproduzível. Em vez de entrar e instalar tudo à mão, o script instala pacotes, copia configuração e sobe o serviço na primeira inicialização. Instância criada à mão vira animal de estimação; criada por script vira gado: se morre, outra nasce igual.
+
+## Tipo de instância: como ler o nome
+
+`m7g.large` não é aleatório:
+
+- **m** é a família (uso geral).
+- **7** é a geração. Quanto maior, mais nova.
+- **g** indica processador Graviton (ARM), quando presente.
+- **large** é o tamanho dentro da família.
+
+As famílias principais:
+
+| Família | Perfil | Para quê |
+|---|---|---|
+| **t / m** | uso geral, equilíbrio CPU/memória | API, site, servidor de aplicação |
+| **c** | CPU alta em relação à memória | processamento, build, vídeo |
+| **r / x** | memória alta | banco, cache, análise em memória |
+| **i / d** | disco local rápido | banco com muita escrita, cache |
+| **p / g** | GPU | treino, inferência, renderização |
+
+A série `t` tem um detalhe: ela acumula **créditos de CPU**. Se a máquina fica abaixo da linha de base, guarda crédito; se passa, gasta. Quando o crédito acaba, a performance é limitada. É ótima para carga irregular e péssima para carga constante e alta.
+
+## Como escolher o tamanho
+
+Não adivinhe. Comece pequeno, meça e ajuste.
+
+- **Escala vertical**: trocar por um tipo maior. Simples, exige parar a instância.
+- **Escala horizontal**: colocar mais instâncias atrás de um balanceador. É o caminho para alta disponibilidade.
+
+Para produção, a segunda opção é a que sobrevive à queda de uma máquina. Mas exige aplicação sem estado local: sessão em banco ou cache, arquivo em S3, nada preso ao disco da instância.
+
+## Como comprar
+
+O mesmo tipo de instância tem preços diferentes conforme o compromisso:
+
+| Opção | Compromisso | Quando usar |
+|---|---|---|
+| **On-Demand** | nenhum | carga imprevisível, teste, primeiro contato |
+| **Savings Plans** | uso por hora, 1 ou 3 anos | carga previsível, com flexibilidade de tipo |
+| **Reserved** | tipo e região, 1 ou 3 anos | carga estável, desconto maior |
+| **Spot** | nenhum, mas pode ser interrompida | lote, processamento tolerante a falha |
+| **Dedicated Host** | servidor físico inteiro | licença própria, requisito de conformidade |
+
+Spot é a maior economia e a maior armadilha: a AWS pode retomar a capacidade com aviso curto. Só use em trabalho que pode recomeçar, nunca em banco de produção sem replicação.
+
+## Auto Scaling
+
+Auto Scaling mantém o número de instâncias dentro de uma faixa. Você define mínimo, desejado e máximo, mais uma política:
+
+- **Target tracking**: manter a CPU média em 60%, por exemplo.
+- **Step scaling**: reagir por faixa de métrica.
+- **Scheduled**: crescer antes de um evento conhecido.
+
+O grupo deve estar em mais de uma AZ. Assim, a queda de um data center reduz capacidade, mas não derruba o serviço. O health check do balanceador retira a instância doente do rodízio.
+
+## Disco: EBS e instance store
+
+- **EBS** é disco em bloco, persistente e replicado dentro da AZ. Sobrevive a stop/start e pode virar snapshot.
+- **Instance store** é disco local da máquina física. Mais rápido, mas **efêmero**: para a instância, o dado vai embora.
+
+O volume raiz é um EBS por padrão. Ele fica preso à AZ: um snapshot pode ser restaurado em outra AZ, mas o volume em si não acompanha a instância.
+
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| SSH não conecta | security group sem regra de entrada, IP errado, subnet privada sem NAT | liberar a porta 22 para o seu IP; usar bastion ou Session Manager |
+| Instância lenta de repente | créditos de CPU esgotados | mudar para tipo maior ou habilitar modo ilimitado |
+| Instância sumiu | Spot interrompida | salvar estado fora da instância e tratar interrupção |
+| Fatura alta sem uso | instância ligada, volume e IP elástico parados | desligar/terminar, remover volume órfão, usar Budgets |
+| Aplicação não sobe em outra instância | configuração feita à mão | automatizar via AMI ou user data |
+| Perdeu tudo ao parar | dado em instance store | guardar dado em EBS, S3 ou banco |
+
+## Trade-offs
+
+EC2 dá controle total e cobra por isso. Você responde por patch de sistema operacional, hardening, agente de monitoramento e escala. É o ponto do espectro com mais trabalho e menos delegação.
+
+Também é pouco elástico no sentido fino: uma instância leva minutos para subir, enquanto uma função responde em milissegundos. Para carga muito variável, contêiner ou Lambda podem custar menos e exigir menos operação.
+
+**Regra prática:** EC2 quando você precisa do sistema operacional. Se precisa só de um processo longo, contêiner. Se precisa só de uma função curta, Lambda. Escolha o serviço mais delegado que ainda atende.
+
+Próximo: [Armazenamento](/aws/armazenamento) para decidir onde ficam os dados.

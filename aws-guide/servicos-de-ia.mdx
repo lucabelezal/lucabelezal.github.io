@@ -1,0 +1,79 @@
+---
+title: Serviços de IA
+---
+
+A pergunta não é "qual é o melhor serviço de IA". É "que tarefa eu preciso resolver e ela já existe pronta?". A AWS tem três camadas: API especializada para tarefa comum, foundation model para linguagem e geração, e plataforma para modelo próprio.
+
+## Achar o serviço pelo problema
+
+| Problema | Serviço | O que entrega |
+|---|---|---|
+| extrair texto, tabela e formulário de documento | **Textract** | OCR com estrutura, não só texto solto |
+| detectar objeto, cena, rosto ou conteúdo impróprio em imagem/vídeo | **Rekognition** | rótulos, moderação e comparação facial |
+| analisar sentimento, entidade, idioma e PII em texto | **Comprehend** | NLP pronto, incluindo versão médica |
+| transcrever áudio em texto | **Transcribe** | transcrição em lote ou streaming, com vocabulário customizado |
+| transformar texto em fala | **Polly** | voz neural, com SSML |
+| traduzir texto | **Translate** | tradução em lote ou tempo real, com terminologia própria |
+| construir chatbot com intenção e slot | **Lex** | bot conversacional com integração a Lambda |
+| buscar em documento da empresa | **Kendra** | busca empresarial com conector |
+| assistente sobre o conteúdo da empresa | **Q Business** | respostas e ações sobre dados internos |
+| assistente de código | **Q Developer** | sugestão, explicação e transformação de código |
+| recomendar produto ou conteúdo | **Personalize** | recomendação e ranking por interação |
+| gerar, resumir ou classificar texto | **Bedrock** | foundation models por API |
+| treinar, ajustar e operar modelo próprio | **SageMaker AI** | ciclo de vida completo de ML |
+| orquestrar modelo + APIs em uma tarefa | **Bedrock Agents**, **Strands Agents**, **AgentCore** | agente com ferramenta, memória e runtime |
+| modernizar sistema legado com agente | **AWS Transform** | análise e transformação assistida |
+
+## Serviço pronto ou modelo próprio
+
+**Serviço pronto** entrega uma tarefa específica por API. Você manda a entrada, recebe o resultado, paga por uso. Não treina, não versiona modelo, não opera GPU. Em troca, aceita o limite do serviço: idioma, formato e categoria que ele cobre.
+
+**SageMaker AI** é a plataforma para quando o problema não cabe no pronto: você prepara dado, treina, avalia, implanta e monitora. Componentes que importam:
+
+- **Studio**: ambiente de desenvolvimento.
+- **JumpStart**: catálogo de modelos prontos para implantar ou ajustar.
+- **Pipelines**: automação do fluxo de treino e deploy.
+- **Clarify**: detecção de viés e explicabilidade.
+- **Model Monitor**: alerta de degradação e drift em produção.
+- **Ground Truth**: rotulagem de dado com revisão humana.
+
+## Bedrock ou SageMaker
+
+Os dois parecem competir, mas resolvem coisas diferentes:
+
+- **Bedrock** é API de foundation model. Você consome um modelo grande, adapta com prompt, RAG ou fine-tuning leve e paga por token. Não gerencia infraestrutura.
+- **SageMaker** é plataforma de ML. Você controla dado, treino, imagem, instância e endpoint. Serve para modelo clássico, modelo próprio e ajuste profundo.
+
+Se a tarefa é "responder com base em documento", comece no Bedrock com Knowledge Bases. Se é "prever churn com meu dado tabular", o caminho é SageMaker.
+
+## O que cada camada custa em operação
+
+| Camada | Esforço | Controle | Quando faz sentido |
+|---|---|---|---|
+| API especializada | mínimo | baixo | tarefa padrão, sem dado próprio |
+| Foundation model | baixo a médio | médio | linguagem, geração, resumo, extração |
+| Modelo próprio | alto | total | problema específico, dado proprietário, requisito de modelo |
+
+O custo escondido do modelo próprio não é o treino: é operar. Endpoint ligado, monitoramento, retreino e avaliação contínua são despesa recorrente.
+
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| OCR devolve texto embaralhado | scan torto, baixa resolução ou layout complexo | pré-processar imagem e usar extração de tabela/formulário |
+| Transcrição erra nome próprio | vocabulário fora do padrão | vocabulário customizado no Transcribe |
+| Tradução erra termo técnico | terminologia não configurada | glossário próprio no Translate |
+| Recomendação começa ruim | cold start, sem histórico | usar popularidade e coleta de interação |
+| Chatbot não entende o domínio | intenção mal modelada | revisar intents/slots ou migrar para FM com RAG |
+| Conta alta usando FM para tarefa simples | modelo grande para classificação | API especializada ou modelo menor |
+| Serviço pronto não cobre o idioma | limite do serviço | modelo próprio no SageMaker ou FM multilíngue |
+
+## Trade-offs
+
+Serviço pronto é rápido e barato no começo, mas limita o ajuste e cria dependência da API. Modelo próprio dá controle e transfere para você a operação, o viés e a avaliação.
+
+Reconhecimento facial e análise de pessoa têm uso regulado e risco reputacional. Nem todo problema tecnicamente possível deve ser implementado; a decisão passa por [IA responsável](/aws/ia-responsavel-e-governanca), não só por acurácia.
+
+**Regra prática:** tarefa padrão (OCR, fala, sentimento, tradução) → serviço pronto. Linguagem e geração → Bedrock. Modelo com dado proprietário e requisito próprio → SageMaker. Agente só quando há ferramenta para chamar.
+
+Próximo: [IA responsável e governança](/aws/ia-responsavel-e-governanca) para o que decide se o modelo pode ir para produção.

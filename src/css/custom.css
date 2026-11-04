@@ -566,6 +566,66 @@ code {
   font-size: 0.75rem;
 }
 
+/* Escada de aprendizado do guia AWS (home /aws). */
+.awsTimeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.awsStage {
+  position: relative;
+  margin: 0 0 2rem;
+  padding-left: 2.5rem;
+}
+
+.awsStage::before {
+  content: '';
+  position: absolute;
+  left: 0.7rem;
+  top: 1.7rem;
+  bottom: -1.2rem;
+  width: 1px;
+  background: var(--ifm-color-emphasis-200);
+}
+
+.awsStage:last-child::before {
+  content: none;
+}
+
+.awsStageNum {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 1.4rem;
+  height: 1.4rem;
+  border: 2px solid var(--ifm-color-primary);
+  border-radius: 50%;
+  background: var(--ifm-background-color);
+  color: var(--ifm-color-primary);
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.awsStageHead {
+  margin: 0 0 0.9rem;
+}
+
+.awsStageTitle {
+  margin: 0.1rem 0 0;
+  font-size: 1.05rem;
+}
+
+.awsStageHint {
+  margin: 0.2rem 0 0;
+  color: var(--ifm-color-emphasis-700);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
 .yearHeading {
   margin: 1.75rem 0 0.25rem;
   font-family: var(--ifm-font-family-monospace);

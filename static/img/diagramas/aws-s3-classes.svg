@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 220" role="img" aria-label="Diagrama: espectro de armazenamento do bloco ao arquivo frio, com custo de guardar caindo e custo de ler subindo">
+  <title>Espectro de armazenamento</title>
+  <desc>Bloco e arquivo atendem acesso local; o S3 vai do acesso frequente ao arquivo frio. Quanto mais fria a classe, menor o custo de guardar e maior o custo e o tempo de leitura.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+  <style>
+    text{font-family:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;fill:#24292f}
+    .box{fill:none;stroke:#0969da;stroke-width:2}
+    .store{fill:none;stroke:#d29922;stroke-width:2}
+    .proc{fill:none;stroke:#8957e5;stroke-width:2}
+    .flow{fill:none;stroke:#0969da;stroke-width:1.6}
+    .dash{fill:none;stroke:#57606a;stroke-width:1.4;stroke-dasharray:5 4}
+    .lbl{fill:#57606a}
+    .mono{fill:#57606a}
+    .title{fill:#24292f;font-weight:700}
+    @media (prefers-color-scheme: dark){
+      text{fill:#e6edf3}
+      .box{stroke:#58a6ff}
+      .store{stroke:#e3b341}
+      .proc{stroke:#a371f7}
+      .flow{stroke:#58a6ff}
+      .dash{stroke:#8b949e}
+      .lbl{fill:#8b949e}
+      .mono{fill:#8b949e}
+      .title{fill:#e6edf3}
+    }
+  </style>
+  <text x="18" y="24" font-size="13.75" text-anchor="start" class="lbl" font-weight="700">Do acesso quente ao arquivo frio: guardar fica mais barato, ler fica mais caro</text>
+  <text x="18" y="50" font-size="12.5" text-anchor="start" class="lbl">guardar mais barato →</text>
+  <text x="842" y="50" font-size="12.5" text-anchor="end" class="lbl">← ler mais caro e mais lento</text>
+  <rect x="18" y="66" width="128" height="62" rx="8" class="box"/>
+  <text x="82" y="95" font-size="15" text-anchor="middle">EBS</text>
+  <text x="82" y="112" font-size="12.5" text-anchor="middle" class="mono">bloco, 1 AZ</text>
+  <rect x="158" y="66" width="128" height="62" rx="8" class="box"/>
+  <text x="222" y="95" font-size="15" text-anchor="middle">EFS</text>
+  <text x="222" y="112" font-size="12.5" text-anchor="middle" class="mono">arquivo, NFS</text>
+  <rect x="298" y="66" width="128" height="62" rx="8" class="store"/>
+  <text x="362" y="95" font-size="15" text-anchor="middle">S3 Standard</text>
+  <text x="362" y="112" font-size="12.5" text-anchor="middle" class="mono">acesso frequente</text>
+  <rect x="438" y="66" width="128" height="62" rx="8" class="store"/>
+  <text x="502" y="95" font-size="15" text-anchor="middle">S3 IA</text>
+  <text x="502" y="112" font-size="12.5" text-anchor="middle" class="mono">raro, imediato</text>
+  <rect x="578" y="66" width="128" height="62" rx="8" class="store"/>
+  <text x="642" y="95" font-size="15" text-anchor="middle">Glacier</text>
+  <text x="642" y="112" font-size="12.5" text-anchor="middle" class="mono">minutos a horas</text>
+  <rect x="718" y="66" width="124" height="62" rx="8" class="store"/>
+  <text x="780" y="95" font-size="15" text-anchor="middle">Deep Archive</text>
+  <text x="780" y="112" font-size="12.5" text-anchor="middle" class="mono">horas</text>
+  <path d="M 18 158 L 842 158" class="flow" marker-end="url(#arrow)"/>
+  <text x="18" y="182" font-size="12.5" text-anchor="start" class="lbl">Bloco e arquivo: acesso local. Objeto: acesso por chave via HTTP.</text>
+  <text x="18" y="200" font-size="12.5" text-anchor="start" class="lbl">Versionamento, ciclo de vida e Object Lock são do S3.</text>
+</svg>

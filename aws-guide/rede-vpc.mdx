@@ -1,0 +1,93 @@
+---
+title: Rede e VPC
+---
+
+"Por que a instância não tem internet?" é a pergunta mais comum de quem começa. Quase sempre a resposta não é a instância: é a rede em volta dela. A AWS não liga nada por padrão. Se a instância precisa conversar com o mundo, alguém configurou a rota.
+
+## O que é uma VPC
+
+VPC (Virtual Private Cloud) é uma rede isolada e definida por você dentro da AWS. Ela tem um intervalo de endereços IP (CIDR), subdivide-se em sub-redes e ganha rotas explícitas.
+
+Uma VPC pertence a uma região e pode ocupar várias zonas de disponibilidade. O CIDR precisa ser válido e não pode sobrepor outro CIDR de rede que ela vá conectar por peering ou VPN.
+
+## Sub-redes: pública e privada
+
+Sub-rede é um pedaço do CIDR da VPC **preso a uma única AZ**. O que faz uma sub-rede ser pública não é um botão: é a rota.
+
+- **Sub-rede pública**: a tabela de rotas manda o tráfego externo para o **Internet Gateway** (IGW).
+- **Sub-rede privada**: não há rota direta para o IGW. Para sair, precisa de **NAT**.
+
+Recursos que devem ser acessados da internet (balanceador, servidor web) ficam na pública. Banco e aplicação interna ficam na privada.
+
+![Diagrama: VPC com sub-redes pública e privada, internet gateway, NAT e security groups](/img/diagramas/aws-vpc-subnets.svg)
+
+## O caminho do tráfego
+
+Um desenho típico de aplicação web:
+
+1. O usuário resolve o domínio no **Route 53** e chega ao **load balancer** na sub-rede pública.
+2. O balanceador encaminha para a aplicação na sub-rede privada.
+3. A aplicação acessa o banco, também na privada.
+4. Para baixar um patch ou chamar uma API externa, a aplicação privada sai pelo **NAT Gateway**.
+
+Cada salto depende de uma tabela de rotas e de um security group. Se qualquer um dos dois estiver errado, a conexão falha sem mensagem clara.
+
+## Gateways
+
+| Componente | O que faz |
+|---|---|
+| **Internet Gateway** | liga a VPC à internet; um por VPC |
+| **NAT Gateway** | permite saída da sub-rede privada sem permitir entrada; fica na pública, preso a uma AZ |
+| **NAT instance** | instância EC2 fazendo NAT; mais barata e mais trabalho |
+| **VPC endpoint** | acesso privado a serviços AWS (S3, DynamoDB) sem passar pela internet |
+| **Transit Gateway** | hub que conecta muitas VPCs e redes on-premises |
+
+NAT Gateway é gerenciado, mas cobra por hora e por gigabyte. Para alta disponibilidade, precisa de um por AZ: se o de uma AZ cair, as instâncias daquela AZ ficam sem saída.
+
+## Security group e NACL
+
+As duas camadas de firewall não são a mesma coisa:
+
+| | Security group | NACL |
+|---|---|---|
+| Onde age | na instância/recurso | na sub-rede |
+| Estado | stateful: resposta liberada automaticamente | stateless: precisa liberar ida e volta |
+| Regras | só allow | allow e deny |
+| Ordem | todas avaliadas | avaliadas por número, primeira vence |
+
+Na prática, você vive no security group. Ele é stateful: se a entrada na 443 é permitida, a resposta sai sem regra extra. A NACL existe para uma camada adicional e costuma ser a causa de bloqueio em portas efêmeras quando alguém tenta endurecer a sub-rede.
+
+**Referenciar um security group dentro de outro** é o padrão correto. Em vez de liberar um CIDR inteiro, a regra diz "aceite tráfego vindo do SG do balanceador". A permissão acompanha os recursos, não os IPs.
+
+## Conectar redes
+
+- **VPC peering**: liga duas VPCs diretamente. Não é transitivo: se A fala com B e B fala com C, A não fala com C.
+- **Transit Gateway**: centraliza muitas conexões em um hub. Resolve o problema de N peering em malha.
+- **Site-to-Site VPN**: túnel criptografado pela internet entre a VPC e a rede local.
+- **Direct Connect**: link privado e dedicado até a AWS. Mais estável e mais caro que VPN.
+- **PrivateLink**: expõe um serviço de outra VPC sem abrir a rede inteira.
+
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| Instância privada não baixa pacote | sub-rede sem NAT Gateway ou rota | criar NAT na pública e rota `0.0.0.0/0` para ele |
+| Instância pública não responde | security group sem regra de entrada, ou sem IP público | liberar a porta e conferir IP público/elastic IP |
+| Peering não funciona | CIDRs sobrepostos ou rota ausente nas duas pontas | CIDRs distintos e rota nos dois lados |
+| Balanceador marca destino unhealthy | SG do destino não aceita o SG do balanceador | liberar a porta a partir do SG correto |
+| Não resolve nome interno | DNS da VPC desabilitado ou hosted zone privada ausente | habilitar DNS e associar a zona privada |
+| Sem IP para novas instâncias | sub-rede pequena demais | redimensionar o CIDR ou distribuir em mais sub-redes |
+| NACL bloqueia conexão que o SG libera | porta efêmera não permitida na volta | liberar a faixa de portas efêmeras |
+
+## Trade-offs e armadilhas
+
+VPC dá isolamento e controle, mas exige desenho. A VPC padrão de uma conta nova é conveniente para teste e inadequada para produção: tudo tende a ficar público e sem segmentação.
+
+Duas decisões que custam caro depois:
+
+- **Começar com CIDR pequeno.** Crescer uma VPC é difícil. Planeje o intervalo com folga.
+- **Ignorar o custo de rede.** NAT Gateway, tráfego entre AZs e tráfego de saída são cobrados. Uma arquitetura que conversa demais entre AZs paga por isso.
+
+**Regra prática:** sub-rede pública só para o que precisa receber tráfego da internet. Todo o resto na privada, saindo por NAT. Libere porta por security group, nunca por CIDR amplo. Se a conexão falha, olhe a rota antes de olhar o código.
+
+Próximo: [Entrega de conteúdo](/aws/entrega-de-conteudo) para levar o usuário até a porta.

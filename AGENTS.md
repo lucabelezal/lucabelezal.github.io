@@ -26,6 +26,7 @@ Carregue a skill certa antes de agir. Skills do projeto: canônicas em `skills/`
 | Documentar projeto de system design em `/projects` | `code-blog-content`, `code-blog-chart`, `code-blog-docusaurus` | `skills/` |
 | Escrever capítulo de fundamentos de system design em `/fundamentals` | `code-blog-content`, `code-blog-chart`, `code-blog-docusaurus` | `skills/` |
 | Escrever capítulo de princípio/padrão de design de software em `/design` | `code-blog-content`, `code-blog-docusaurus`, `didactic-writing` | `skills/` |
+| Escrever capítulo do guia AWS em `/aws` | `code-blog-content`, `code-blog-chart`, `code-blog-docusaurus` | `skills/` |
 
 Fluxo blog: `referência visual → code-blog-ui (spec) → code-blog-content (estrutura) → code-blog-docusaurus (código) → npm run build`.
 
@@ -44,6 +45,7 @@ Harness: muitas skills no projeto (~67). AGENTS.md é roteador leve; detalhes fi
   `.ai/fundamentals-guide.md`).
 - `design/` — princípios SOLID e padrões de projeto em `/design` (guia:
   `.ai/design-guide.md`).
+- `aws-guide/` — guia de consulta AWS em `/aws` (guia: `.ai/aws-guide.md`).
 - `src/data/areas.json` — fonte única das áreas no shell Posts (aws, projects,
   fundamentals, design); consumida por `src/utils/areas.ts` e
   `plugins/pt-br-canonical`.
@@ -68,6 +70,18 @@ Harness: muitas skills no projeto (~67). AGENTS.md é roteador leve; detalhes fi
 - Ao publicar post novo: nada manual nas listas — `npm run build` regenera
   o índice via `prebuild`. Só garanta `tag: go` no frontmatter se o post
   pertence à área Go.
+
+## Área AWS
+
+- `/aws` é docs de referência (2ª instância de `plugin-content-docs`) em
+  `aws-guide/`, **fora** de `all-posts.json` e da home. pt-BR only.
+- Shell: padrão **Posts** (`PageShell`), igual a `projects`/`fundamentals`/`design`.
+- Trilha em 5 degraus: a ordem dos capítulos e o `stage` vivem em
+  `src/data/awsTrack.ts`; home, rail e sidebar saem daí. Capítulo novo = `.mdx`
+  + entrada no track com `stage`. Guia: `.ai/aws-guide.md`.
+- Diagramas: `scripts/aws-guide-diagrams.mjs` (SVG theme-aware) e
+  `scripts/aws-guide-excalidraw.mjs` (fontes editáveis). Prefixo `aws-`.
+- Fontes de referência e regra de não citar preço absoluto: `.ai/aws-guide.md`.
 
 ## Área Projetos
 

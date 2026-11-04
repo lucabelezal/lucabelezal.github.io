@@ -1,0 +1,83 @@
+---
+title: IA e machine learning
+---
+
+IA não é um serviço que se liga. É um ciclo: o problema vira dado, o dado vira modelo, o modelo vira previsão, e a previsão precisa continuar funcionando depois que a realidade muda. Quem trata IA como "chamar uma API" pula a parte que decide se o sistema presta.
+
+## IA, ML, deep learning e GenAI
+
+Os termos não são sinônimos. Eles se encaixam:
+
+- **IA** é o campo: fazer máquina executar tarefa que exigiria inteligência humana.
+- **Machine learning (ML)** é a abordagem em que o programa aprende padrão a partir de dados, em vez de receber regra escrita à mão.
+- **Deep learning** é ML com redes neurais de muitas camadas. Funciona bem com imagem, áudio e texto.
+- **GenAI** é deep learning que gera conteúdo novo (texto, imagem, código) a partir de um modelo treinado em grande volume de dados.
+
+Todo GenAI é ML; nem todo ML é GenAI. Um modelo que prevê cancelamento de assinatura é ML clássico e não gera nada.
+
+## Os tipos de aprendizado
+
+| Tipo | Como aprende | Exemplo |
+|---|---|---|
+| **Supervisionado** | com pares entrada → resposta certa | classificar e-mail como spam |
+| **Não supervisionado** | sem rótulo, agrupando semelhança | separar clientes em grupos |
+| **Por reforço** | por recompensa e erro | agente que joga ou controla robô |
+| **Auto-supervisionado** | prevê parte do próprio dado | treinar um foundation model com texto |
+
+A diferença prática está no dado. Supervisionado exige rótulo, e rótulo custa caro: alguém precisa classificar milhares de exemplos. Sem rótulo confiável, o projeto trava antes do modelo.
+
+## O ciclo de vida
+
+1. **Definir o problema** em métrica de negócio. "Reduzir churn em 5%" é problema; "usar rede neural" é solução.
+2. **Coletar e preparar dados**. A maior parte do trabalho mora aqui: limpeza, join, normalização, tratamento de ausência.
+3. **Treinar** o modelo com uma parte dos dados e separar outra para teste.
+4. **Avaliar** contra a métrica e contra o custo do erro. Acurácia alta pode esconder um modelo inútil em classe rara.
+5. **Implantar** atrás de uma API ou em lote.
+6. **Monitorar**. O mundo muda; o modelo não. É aqui que a maioria dos projetos morre sem aviso.
+
+Esse ciclo tem nome: **MLOps**. É a aplicação de DevOps ao modelo: versão de dado, versão de modelo, teste, rollout e monitoramento.
+
+## Para que serve
+
+| Problema | Tipo | Exemplo de serviço |
+|---|---|---|
+| classificar ou prever categoria | supervisionado | SageMaker, Comprehend |
+| prever número | regressão | SageMaker |
+| agrupar sem rótulo | não supervisionado | SageMaker |
+| recomendar item | filtragem colaborativa | Personalize |
+| extrair texto de imagem | visão/OCR | Textract, Rekognition |
+| transcrever ou traduzir fala | speech/NLP | Transcribe, Translate, Polly |
+| gerar ou resumir texto | GenAI | Bedrock |
+
+## Quando não usar ML
+
+ML resolve padrão complexo e repetitivo que muda com o dado. Ele não resolve tudo, e às vezes atrapalha:
+
+- **Regra determinística resolve.** Cálculo de imposto, validação de CPF e faixa de desconto não precisam de modelo.
+- **Não há dado suficiente ou rotulado.** Sem exemplo, não há aprendizado.
+- **O custo do erro é alto e não há revisão humana.** Modelo erra com confiança.
+- **A decisão precisa ser explicada linha a linha.** Modelo complexo explica por aproximação, não por regra.
+
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| Ótimo no teste, ruim em produção | overfitting ou dado de treino diferente do real | validar com dado recente e monitorar drift |
+| Previsão boa na média, ruim no caso importante | métrica não representa o custo do erro | escolher métrica por classe e revisar limiar |
+| Modelo parou de acertar sem código mudar | mudança na distribuição dos dados | monitoramento de drift e retreino |
+| Projeto não sai do notebook | falta de pipeline e dono | MLOps, versionamento e deploy automatizado |
+| Custo de inferência maior que o ganho | modelo grande para problema pequeno | modelo menor, lote ou serviço pronto |
+| Viés descoberto tarde | dado histórico reproduzindo desigualdade | auditoria antes do deploy e revisão contínua |
+
+## Comprar ou construir
+
+Existem dois caminhos, e a escolha é de custo e controle:
+
+- **Serviço pronto** (Rekognition, Textract, Comprehend): entrega tarefa específica por API. Rápido, sem treino, pouco controle sobre o limite.
+- **Modelo próprio** (SageMaker): você treina e opera. Controla o dado, o modelo e a avaliação; assume o trabalho.
+
+Comece pelo serviço pronto. Só construa quando o problema for específico o bastante para o serviço genérico falhar e você tiver dado para treinar.
+
+**Regra prática:** defina a métrica antes do modelo. Se não há dado rotulado nem revisão humana, não é projeto de ML. Se a regra é determinística, escreva a regra.
+
+Próximo: [GenAI e foundation models](/aws/genai-e-foundation-models) para o tipo de modelo que mudou o custo de entrada da IA.

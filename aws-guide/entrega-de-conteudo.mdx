@@ -1,0 +1,93 @@
+---
+title: Entrega de conteúdo
+---
+
+Seu servidor está em São Paulo e o usuário em Tóquio. Cada requisição atravessa o mundo duas vezes antes de o primeiro byte aparecer. Antes de otimizar código, resolva o caminho: **encontrar** o serviço, **entregar** o conteúdo perto do usuário e **distribuir** a carga entre servidores.
+
+## As três camadas
+
+| Camada | Serviço | Pergunta que responde |
+|---|---|---|
+| **DNS** | Route 53 | para qual endereço o nome aponta? |
+| **Borda** | CloudFront | de onde o conteúdo sai mais perto do usuário? |
+| **Balanceamento** | Elastic Load Balancing | qual servidor atende esta requisição? |
+
+![Diagrama: usuário resolve o domínio no Route 53, busca o conteúdo na borda do CloudFront e chega à origem pela load balancer](/img/diagramas/aws-entrega-cdn.svg)
+
+## Route 53: o DNS
+
+Route 53 traduz nome em endereço. Você registra o domínio, cria uma **hosted zone** e adiciona registros:
+
+| Tipo | Aponta para |
+|---|---|
+| **A** | endereço IPv4 |
+| **AAAA** | endereço IPv6 |
+| **CNAME** | outro nome (não pode na raiz do domínio) |
+| **Alias** | recurso AWS (S3, CloudFront, ALB) na raiz, sem custo de consulta |
+
+O diferencial são as **políticas de roteamento**:
+
+- **Simples**: um destino.
+- **Ponderado**: divide o tráfego por peso. Serve para canário e migração gradual.
+- **Latência**: manda o usuário para a região com menor latência.
+- **Failover**: destino principal e secundário, com health check.
+- **Geolocalização**: escolhe por país ou continente.
+- **Multivalor**: devolve vários endereços saudáveis.
+
+O **TTL** é a decisão central. TTL alto reduz consultas e custo, mas atrasa a mudança. Em failover, TTL baixo é o que permite o desvio chegar rápido ao usuário. Não existe certo: existe o tempo que você aceita esperar.
+
+## CloudFront: a CDN
+
+CloudFront é a rede de entrega de conteúdo. Ele mantém cópias do conteúdo em pontos de presença (edge locations) e atende o usuário do ponto mais próximo.
+
+O modelo é: o edge recebe a requisição, verifica se tem o objeto em cache. Se tem (`cache hit`), responde na hora. Se não tem (`cache miss`), busca na **origem**: um bucket S3, um load balancer, um servidor EC2 ou qualquer endpoint HTTP.
+
+O que definir:
+
+- **Comportamento de cache**: quais caminhos são cacheados, por quanto tempo, quais cabeçalhos e cookies entram na chave de cache.
+- **TTL**: mínimo, padrão e máximo. Um TTL alto melhora o hit ratio e atrasa a atualização.
+- **Invalidação**: força a busca na origem. Tem custo e não deve ser rotina; o normal é versionar o nome do arquivo.
+- **Origem privada**: bucket S3 sem acesso público, acessível só pelo CloudFront (Origin Access Control).
+
+CloudFront também acelera conteúdo dinâmico: a conexão entre o edge e a origem usa a rede da AWS, o que costuma ser melhor que a rota pública do usuário.
+
+## Load balancers
+
+O ELB distribui tráfego entre destinos. Os tipos principais:
+
+| Tipo | Camada | Quando usar |
+|---|---|---|
+| **ALB** | HTTP/HTTPS (7) | rotear por caminho ou host, WebSocket, microsserviços |
+| **NLB** | TCP/UDP (4) | performance extrema, IP fixo, protocolos não HTTP |
+| **GWLB** | 3 | inserir appliance de segurança na rede |
+
+ALB entende HTTP: pode encaminhar `/api` para um serviço e `/site` para outro, terminar TLS e injetar cabeçalhos. NLB não olha o conteúdo: só encaminha pacotes, com latência muito baixa.
+
+O health check é o que faz o balanceador útil. Destino que falha é retirado do rodízio. Sem health check correto, o balanceador continua mandando tráfego para uma máquina morta.
+
+## Global Accelerator
+
+Quando o problema é rede, não cache. O Global Accelerator anuncia dois IPs anycast e leva o tráfego pela rede global da AWS até a aplicação. É útil para TCP/UDP, jogos, VoIP e failover rápido entre regiões. Não substitui CDN: um acelera a conexão, o outro evita ir até a origem.
+
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| Site lento só para usuários distantes | sem CDN | CloudFront na frente da origem |
+| Conteúdo atualizado não aparece | cache com TTL alto | versionar o arquivo ou invalidar o caminho |
+| Domínio não aponta para o novo destino | TTL alto ou registro errado | baixar o TTL antes da migração |
+| 502 no ALB | destino recusando conexão ou health check falhando | conferir porta, SG e health check |
+| 504 no ALB | aplicação demorando mais que o timeout | otimizar a aplicação ou ajustar o idle timeout |
+| Certificado não aparece no CloudFront | certificado fora de `us-east-1` | emitir no ACM dessa região |
+| CNAME na raiz do domínio | DNS não permite CNAME no apex | usar registro Alias |
+| Custo de transferência alto | saída direta da origem | cachear mais na borda e revisar price class |
+
+## Trade-offs e armadilhas
+
+CDN melhora latência e reduz carga na origem, mas cria uma camada onde o conteúdo pode ficar velho. Cache é fácil de ligar e difícil de invalidar bem. A disciplina é versionar o nome do arquivo em vez de confiar em invalidação.
+
+Multi-região ativo-ativo reduz latência e aumenta muito a complexidade: replicação, consistência e custo de tráfego entre regiões. Para a maioria dos sistemas, multi-AZ com CDN na frente entrega o mesmo resultado percebido por uma fração do esforço.
+
+**Regra prática:** DNS para encontrar, CDN para entregar perto, load balancer para distribuir. Antes de abrir a segunda região, esgote cache e multi-AZ.
+
+Próximo: [Comunicação](/aws/comunicacao) para ligar os serviços que já têm rede e entrada.

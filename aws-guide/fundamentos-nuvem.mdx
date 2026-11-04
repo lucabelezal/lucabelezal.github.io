@@ -1,0 +1,85 @@
+---
+title: Fundamentos de nuvem
+---
+
+"Colocar na nuvem" não é hospedar um servidor em outro lugar. É trocar a forma de comprar e operar infraestrutura: em vez de comprar máquinas para o pico e conviver com elas ociosas, você pede o recurso quando precisa e paga pelo tempo de uso.
+
+Essa mudança parece pequena. Ela reorganiza custo, equipe e arquitetura.
+
+## O que é computação em nuvem
+
+Nuvem é a entrega sob demanda de computação, armazenamento, banco de dados e rede pela internet, com preço conforme o uso. O provedor é dono do hardware; você provisiona o que precisa pela API, pelo console ou pela linha de comando.
+
+Três propriedades definem o modelo:
+
+- **Sob demanda**: o recurso existe em minutos, sem compra de hardware.
+- **Elástico**: cresce no pico e encolhe depois.
+- **Pay-as-you-go**: a fatura acompanha o consumo, não um contrato fixo.
+
+Sem as três, não é nuvem. Um servidor dedicado alugado por mês é hospedagem, não nuvem: falta elasticidade e cobrança por uso.
+
+## Os modelos de serviço
+
+A pergunta não é "qual serviço usar", é **quanto você quer gerenciar**. Os modelos formam uma escada:
+
+| Modelo | Você gerencia | AWS gerencia | Exemplo na AWS |
+|---|---|---|---|
+| **IaaS** (infraestrutura) | sistema operacional, runtime, aplicação, dados | hardware, rede, virtualização | EC2 |
+| **PaaS** (plataforma) | aplicação e dados | SO, runtime, patch, escala | Elastic Beanstalk, RDS |
+| **SaaS** (software) | só o uso e a configuração | tudo | WorkMail, Chime |
+
+Quanto mais perto de SaaS, menos você gerencia e menos controla. Quanto mais perto de IaaS, mais controla e mais trabalho herda. Não existe melhor: existe o ponto que a sua aplicação precisa.
+
+Um banco RDS é PaaS. Você escolhe o motor, o tamanho e as regras de backup; a AWS aplica patch, faz backup e substitui hardware. Um banco instalado em EC2 é IaaS: você cuida de tudo, inclusive do patch que ninguém lembrou de aplicar.
+
+## Onde a nuvem fica
+
+A infraestrutura da AWS é organizada em camadas geográficas:
+
+- **Região**: um local físico (por exemplo, São Paulo) com várias zonas de disponibilidade. A maioria dos recursos nasce presa a uma região.
+- **Zona de disponibilidade (AZ)**: um ou mais data centers com energia e rede redundantes. A maioria das regiões tem três ou mais AZs isoladas entre si; algumas têm duas.
+- **Edge location**: ponto de presença perto do usuário, usado por CDN e DNS (CloudFront, Route 53).
+
+![Diagrama: região com três zonas de disponibilidade e pontos de presença na borda](/img/diagramas/aws-regiao-az.svg)
+
+A distinção importa na hora de desenhar disponibilidade:
+
+- **Multi-AZ** protege contra a queda de um data center. É o mínimo para produção.
+- **Multi-região** protege contra a queda de uma região inteira e aproxima o usuário. Custa mais, replica dados e complica a consistência.
+
+A escolha da região não é só latência. Pesa também preço (regiões diferentes têm tabelas diferentes), residência de dados (LGPD e contratos exigem o dado em determinado país) e disponibilidade do serviço que você quer usar.
+
+## O que muda na prática
+
+A nuvem troca despesa fixa por despesa variável. Em vez de comprar servidores para o pico do ano, você paga pelo consumo e ajusta a capacidade. O provedor dilui o custo entre milhares de clientes, o que costuma baratear o recurso.
+
+Três consequências que os tutoriais esquecem:
+
+1. **Capacidade deixou de ser adivinhação.** Você não precisa acertar o servidor do ano; pode crescer e encolher em minutos.
+2. **Infraestrutura virou código.** Uma VPC, um banco e uma função podem ser descritos em arquivo e recriados. Isso é a base de ambientes reproduzíveis.
+3. **A fatura virou responsabilidade de engenharia.** Recurso esquecido ligado custa dinheiro todo dia. Custo passou a ser decisão técnica.
+
+E existe o outro lado: nuvem não é automaticamente mais barata. Um servidor pequeno e constante pode sair mais caro em nuvem do que dedicado. A vantagem aparece quando há variação de demanda, necessidade de escala ou ganho de velocidade para o time.
+
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| Usuário do outro lado do mundo reclama de lentidão | tudo em uma região distante | CDN na borda, ou multi-região para o que é crítico |
+| Fatura imprevisível | recursos esquecidos, tráfego de saída, ambiente de teste ligado | tags, orçamento com alerta, desligar o que não é produção |
+| "A nuvem caiu" e o sistema parou | tudo em uma única AZ | distribuir em pelo menos duas AZs e usar health check |
+| Dado pessoal fora do país | região escolhida sem olhar compliance | escolher região por residência de dados e revisar o contrato |
+| Sistema preso a um serviço | dependência direta da API proprietária no domínio | isolar atrás de uma interface (porta) e aceitar o trade-off |
+
+## Trade-offs e armadilhas
+
+Nuvem resolve capacidade e velocidade, mas cria dependência do provedor e uma conta que cresce com o uso. Serviços gerenciados reduzem operação e amarram a arquitetura à API daquele provedor.
+
+Duas armadilhas comuns:
+
+- **Confundir AZ com região.** Duas instâncias em AZs diferentes na mesma região não sobrevivem à queda da região. Para isso, é preciso replicação entre regiões, que custa e atrasa.
+- **Esquecer o tráfego de saída.** Entrada de dados costuma ser gratuita; saída é cobrada. Um sistema que serve vídeo ou exporta volume grande de dados precisa considerar isso no desenho.
+
+**Regra prática:** escolha a região por latência, preço e lei, nessa ordem de restrição. Desenhe para multi-AZ desde o começo; multi-região só quando a queda da região inteira for um risco que o negócio aceita pagar para eliminar.
+
+Próximo: [Computação](/aws/computacao) para ver onde o código roda. Se ainda não leu o vocabulário, comece pelo [Mapa mental](/aws/mapa-mental).

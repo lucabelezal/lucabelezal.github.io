@@ -1,0 +1,97 @@
+---
+title: Armazenamento
+---
+
+Antes de escolher um serviço de armazenamento, responda duas perguntas: **que forma o dado tem** e **como ele será acessado**. Arquivo binário não é linha de tabela; leitura aleatória não é leitura sequencial. A resposta muda o serviço, o custo e o limite.
+
+A AWS organiza o armazenamento em três formas — objeto, bloco e arquivo — e uma camada de arquivo frio dentro do S3.
+
+## As formas de guardar
+
+| Forma | Serviço | O dado é | Acesso |
+|---|---|---|---|
+| **Objeto** | S3 | arquivo + metadados + chave | HTTP, por chave |
+| **Bloco** | EBS | volume formatado, preso a uma instância | sistema de arquivos local |
+| **Arquivo** | EFS, FSx | diretório compartilhado | NFS ou SMB |
+| **Arquivo frio** | classes Glacier do S3 | objeto de longo prazo | restauração antes de ler |
+
+![Diagrama: espectro de armazenamento — bloco, arquivo, objeto e arquivo frio](/img/diagramas/aws-s3-classes.svg)
+
+## S3: objeto
+
+S3 guarda objetos em **buckets**. Um objeto tem chave, conteúdo e metadados. Não existe diretório de verdade: `fotos/2026/capa.jpg` é uma chave com barras no nome.
+
+O bucket é regional, mas o nome é global. Dois buckets no mundo não podem ter o mesmo nome. O S3 é projetado para durabilidade de 99,999999999% (onze noves): a probabilidade de perder um objeto é minúscula. Disponibilidade é outra coisa: depende da classe e do momento. A consistência é forte para leitura após escrita: um objeto gravado pode ser lido imediatamente.
+
+O que você ganha:
+
+- **Versionamento**: cada alteração cria uma versão. Apagar passa a ser reversível.
+- **Ciclo de vida**: mover automaticamente para uma classe mais barata depois de N dias, ou expirar.
+- **Object Lock**: impede exclusão por um período. Serve para requisito legal de retenção.
+- **Replicação**: copiar para outra região de forma assíncrona.
+- **URL pré-assinada**: liberar acesso temporário a um objeto privado sem tornar o bucket público.
+
+### As classes
+
+Classe é trade-off entre frequência de acesso, tempo de recuperação e custo.
+
+| Classe | Padrão de acesso | Recuperação | Custo relativo |
+|---|---|---|---|
+| **S3 Standard** | frequente | imediata | referência |
+| **S3 Intelligent-Tiering** | desconhecido ou variável | imediata | taxa de monitoramento + classe efetiva |
+| **S3 Standard-IA** | raro, mas precisa estar disponível | imediata | mais barato para guardar, cobra por leitura |
+| **S3 One Zone-IA** | raro, tolera perder uma AZ | imediata | mais barato, menos resiliente |
+| **S3 Glacier Instant Retrieval** | arquivo com leitura imediata | imediata | guarda mais barato, leitura mais cara |
+| **S3 Glacier Flexible Retrieval** | arquivo | minutos a horas | bem mais barato |
+| **S3 Glacier Deep Archive** | preservação de longo prazo | horas | o mais barato |
+
+A armadilha está na segunda coluna. Guardar em Glacier é barato; **ler** de Glacier custa e demora. Um sistema que consulta o arquivo toda semana não deveria estar em Deep Archive.
+
+## EBS: bloco
+
+EBS é o disco da instância EC2. Parece um HD local, mas é um volume de rede replicado dentro da zona de disponibilidade.
+
+- Preso a **uma AZ**. Para usar em outra, restaure o snapshot lá.
+- Pode ser anexado a uma instância por vez, na maioria dos tipos.
+- Snapshot é incremental: só os blocos alterados desde o último snapshot são copiados.
+- Tipos com perfis diferentes: uso geral (gp3), IOPS alto (io2), throughput (st1/sc1).
+
+EBS é para o que precisa de um sistema de arquivos local: sistema operacional, banco instalado na instância, diretório de aplicação. Não é para compartilhar entre máquinas.
+
+## EFS e FSx: arquivo
+
+**EFS** é sistema de arquivos NFS gerenciado, elástico e regional. Várias instâncias Linux montam o mesmo diretório ao mesmo tempo. Cresce e encolhe sozinho, e o dado fica replicado entre AZs. É o caminho para conteúdo compartilhado entre servidores.
+
+**FSx** cobre os casos que o EFS não atende: Windows File Server (SMB), Lustre (HPC), NetApp ONTAP e OpenZFS. Cada um existe porque um protocolo ou uma carga específica exige.
+
+Se você tem uma aplicação web simples com upload de arquivo, provavelmente não quer nem EFS nem FSx. Quer S3.
+
+## Escolha rápida
+
+- **Arquivo enviado por usuário, backup, log, mídia** → S3.
+- **Disco de instância, banco instalado no EC2** → EBS.
+- **Diretório compartilhado entre várias máquinas Linux** → EFS.
+- **Compartilhamento Windows ou carga HPC** → FSx.
+- **Arquivo que quase nunca é lido e precisa ser retido** → classe Glacier no S3.
+- **Backup centralizado de vários serviços** → AWS Backup.
+
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| Dados vazaram do bucket | bucket público ou policy permissiva | bloquear acesso público, revisar policy, usar URL pré-assinada |
+| Fatura do S3 maior que o esperado | classe errada, requisições, versões antigas acumuladas | lifecycle, Intelligent-Tiering, expirar versões não correntes |
+| Não consigo apagar o bucket | objetos e versões ainda existem | esvaziar versões antes de excluir |
+| Restauração do Glacier demorou horas | classe fria | planejar a recuperação; usar Instant Retrieval se precisa de imediato |
+| Volume não aparece em outra AZ | EBS é preso à AZ | criar a instância na mesma AZ ou restaurar snapshot |
+| Conta de backup explodiu | snapshots e versões sem retenção | política de retenção e AWS Backup |
+
+## Trade-offs e armadilhas
+
+S3 é barato para guardar e caro para servir em volume alto. Requisição, tráfego de saída e recuperação de classe fria entram na conta. Guardar tudo para sempre em Standard é o erro mais comum e o mais fácil de corrigir com lifecycle.
+
+EBS entrega latência baixa, mas prende o dado à AZ e à instância. Para alta disponibilidade, o dado precisa estar fora do disco local ou replicado.
+
+**Regra prática:** arquivo vai para o S3. Disco de máquina vai para EBS. Diretório compartilhado vai para EFS ou FSx. Se o dado quase nunca é lido, uma classe Glacier com lifecycle resolve o custo.
+
+Próximo: [Bancos de dados](/aws/dados) para o dado que precisa de consulta.

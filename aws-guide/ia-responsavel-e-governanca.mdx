@@ -1,0 +1,89 @@
+---
+title: IA responsável e governança
+---
+
+Um modelo pode acertar 95% e ainda assim não poder ir para produção. Os 5% erram justamente no caso que prejudica alguém, ou o modelo usa dado que não podia, ou ninguém consegue explicar a decisão depois. IA responsável é o conjunto de controles que responde a essas perguntas antes do incidente.
+
+## As dimensões
+
+| Dimensão | Pergunta |
+|---|---|
+| **Justiça** | o modelo erra mais para um grupo do que para outro? |
+| **Explicabilidade** | dá para explicar por que aquela decisão saiu? |
+| **Privacidade** | o dado pessoal usado no treino e no prompt era permitido? |
+| **Segurança** | o sistema resiste a manipulação, vazamento e acesso indevido? |
+| **Transparência** | o usuário sabe que interage com IA e quais são os limites? |
+| **Supervisão humana** | existe revisão para decisão de alto impacto? |
+
+Nenhuma dimensão é binária. O trabalho é medir, documentar e aceitar o risco residual com dono.
+
+## Controles na AWS
+
+| Risco | Controle |
+|---|---|
+| viés e opacidade | **SageMaker Clarify** mede viés e explica atribuição de feature |
+| degradação em produção | **Model Monitor** acompanha qualidade, drift e viés |
+| conteúdo impróprio e vazamento no prompt | **Guardrails for Amazon Bedrock** |
+| PII esquecida no S3 | **Macie** descobre e classifica dado sensível |
+| acesso indevido | **IAM** com menor privilégio, **KMS** para criptografia |
+| tráfego fora da rede privada | endpoint de VPC e PrivateLink |
+| falta de rastro | **CloudTrail** registra chamadas; **Config** registra mudança de recurso |
+| documentação do modelo | **AI Service Cards** e model card interno |
+
+Guardrail não é bala de prata. Ele reduz risco de conteúdo e de dado sensível, mas não corrige modelo enviesado nem permissão ampla.
+
+## Privacidade e LGPD
+
+Dado pessoal em projeto de IA aparece em três lugares: treino, prompt e log. Os três precisam de resposta.
+
+- **Base legal e finalidade**: o dado foi coletado para esse uso? Reaproveitar base para treinar modelo é decisão jurídica, não técnica.
+- **Minimização**: mandar o registro inteiro no prompt quando bastava um campo é vazamento por conveniência.
+- **Retenção**: log de prompt com dado pessoal é armazenamento de dado pessoal. Defina prazo e acesso.
+- **Decisão automatizada**: a LGPD prevê revisão de decisão tomada unicamente por sistema automatizado que afete interesse do titular.
+- **Transferência internacional**: região e fornecedor do modelo entram na conta.
+
+Anonimizar antes de treinar e mascarar PII antes de logar são controles técnicos, não burocracia.
+
+## Segurança de aplicação com IA
+
+O modelo é uma superfície nova. Os ataques mais comuns:
+
+- **Prompt injection**: o dado do usuário contém instrução que sequestra o modelo.
+- **Exfiltração**: o prompt pede dado de outro usuário ou segredo do sistema.
+- **Envenenamento de contexto**: documento recuperado pelo RAG contém instrução maliciosa.
+- **Uso indevido de ferramenta**: agente com permissão demais executa ação destrutiva.
+
+As defesas são antigas: separar instrução de dado, validar entrada e saída, dar ao agente o menor privilégio possível, não colocar segredo no prompt e revisar a ação antes de executar.
+
+## Governança na prática
+
+Governança não é comitê. É inventário e processo:
+
+1. **Inventário**: todo modelo em produção tem dono, propósito e versão.
+2. **Avaliação prévia**: métrica, viés, privacidade e custo documentados antes do deploy.
+3. **Aprovação**: quem assina o risco residual para caso de alto impacto.
+4. **Monitoramento**: qualidade, drift, custo e incidente com alerta.
+5. **Resposta**: o que fazer quando o modelo erra em escala; como desligar.
+6. **Revisão**: retreino e reavaliação com data marcada, não só quando quebra.
+
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| Decisão não explicável em auditoria | modelo opaco sem documentação | Clarify, model card e registro da decisão |
+| PII apareceu no log do prompt | log cru de entrada | mascarar antes de logar e reter por prazo |
+| Modelo pior para um grupo | dado histórico enviesado | medir viés por grupo e corrigir amostra |
+| Usuário convenceu o bot a ignorar regra | prompt injection | separar instrução de conteúdo e aplicar guardrail |
+| Agente apagou recurso | permissão ampla na role | menor privilégio e confirmação humana |
+| Ninguém sabe quantos modelos existem | falta de inventário | catálogo com dono e versão |
+| Incidente sem rastro | log desligado | CloudTrail, log de aplicação e retenção |
+
+## Trade-offs
+
+Guardrail mais rígido reduz risco e também reduz utilidade: bloqueia resposta legítima e aumenta falso positivo. Explicabilidade mais forte costuma custar performance: modelo simples explica melhor, modelo complexo acerta mais.
+
+Logar tudo ajuda auditoria e cria passivo de privacidade. A saída é logar o necessário, mascarar cedo e definir retenção.
+
+**Regra prática:** antes do deploy, responda três perguntas: quem é o dono, qual erro é inaceitável e como desligar. Se não há resposta para as três, o modelo ainda é experimento.
+
+Próximo: [AI Practitioner](/aws/ai-practitioner) para revisar esses conceitos no formato da prova.

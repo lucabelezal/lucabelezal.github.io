@@ -1,0 +1,104 @@
+---
+title: GenAI e foundation models
+---
+
+Um foundation model (FM) é um modelo grande, pré-treinado em volume massivo de dados, que serve para muitas tarefas sem treino novo. Você não constrói o modelo: adapta o comportamento dele ao seu problema. A diferença de custo em relação ao ML clássico está aí.
+
+## Como o modelo funciona
+
+O modelo não lê texto como humano. Ele quebra a entrada em **tokens** (pedaços de palavra) e prevê o próximo token, repetidamente. A resposta é uma sequência provável, não uma consulta a um banco de fatos.
+
+Quatro conceitos explicam quase todo comportamento estranho:
+
+- **Token**: unidade de cobrança e de limite. Prompt e resposta contam.
+- **Janela de contexto**: máximo de tokens que o modelo considera de uma vez (entrada + saída).
+- **Embedding**: representação numérica do significado, usada para busca por similaridade.
+- **Parâmetros de amostragem**: `temperature` e `top_p` controlam o quanto a resposta varia. Zero tende ao previsível; alto tende ao criativo e ao inconsistente.
+
+**Alucinação** é consequência direta disso: o modelo gera continuação plausível, não verdade verificada. Sem contexto ou verificação, ele inventa com confiança.
+
+## Como adaptar sem treinar
+
+| Técnica | O que muda | Custo | Quando usar |
+|---|---|---|---|
+| **Prompt engineering** | instrução e exemplos | baixo | primeiro ajuste, sempre |
+| **RAG** | conhecimento consultado na hora | médio | dado privado, atualizado, com fonte |
+| **Fine-tuning** | comportamento e estilo | alto | tarefa repetitiva, formato rígido |
+| **Pré-treinamento** | o modelo inteiro | proibitivo | quase nunca para uma empresa |
+
+A regra é tentar na ordem. Prompt resolve mais do que parece; RAG resolve conhecimento; fine-tuning resolve comportamento. Treinar do zero é projeto de laboratório, não de aplicação.
+
+## Prompt engineering
+
+Prompt é interface. Um bom prompt declara papel, tarefa, contexto, restrição e formato de saída.
+
+- **Zero-shot**: só a instrução. Funciona para tarefa comum.
+- **Few-shot**: dois ou três exemplos do formato desejado. Reduz ambiguidade.
+- **Chain-of-thought**: pedir o raciocínio antes da resposta. Ajuda em problema com etapas, mas aumenta tokens.
+- **Saída estruturada**: exigir JSON com esquema. Facilita integrar com código.
+- **Restrição explícita**: "responda só com base no contexto; se não houver resposta, diga que não sabe".
+
+Prompt não conserta modelo errado nem substitui dado. Ele reduz a variância da resposta.
+
+## RAG: conhecimento fora do modelo
+
+RAG (Retrieval-Augmented Generation) busca trechos relevantes em uma base e injeta no prompt antes de gerar. O modelo responde com o contexto recuperado, e o sistema pode citar a fonte.
+
+O fluxo:
+
+1. documentos são divididos em **chunks**;
+2. cada chunk vira **embedding** e entra em um índice vetorial;
+3. a pergunta vira embedding e busca os chunks mais próximos;
+4. os chunks vão no prompt, junto com a pergunta;
+5. a resposta é gerada e, idealmente, cita o trecho.
+
+O ponto frágil é a recuperação. Chunk grande demais dilui; pequeno demais perde contexto. Se o trecho certo não é recuperado, o melhor modelo responde errado com elegância.
+
+## Bedrock e o ecossistema
+
+O Amazon Bedrock expõe foundation models de vários fornecedores por uma API única. Em vez de integrar cada fornecedor, você troca de modelo sem trocar o código.
+
+Por cima do modelo, o Bedrock oferece:
+
+- **Knowledge Bases**: RAG gerenciado, com ingestão, chunking e índice vetorial.
+- **Guardrails**: filtro de conteúdo, tópicos proibidos, remoção de dado sensível e verificação de fundamentação.
+- **Agents**: o modelo escolhe e chama APIs para executar uma tarefa.
+- **AgentCore**: runtime, memória, gateway e identidade para agentes em produção.
+
+A família **Amazon Nova** é a linha de foundation models da própria AWS. O **SageMaker** continua sendo o caminho para treinar, ajustar e operar modelo próprio.
+
+## Avaliar antes de prometer
+
+Avaliação de GenAI não é acurácia simples. O que medir depende da tarefa:
+
+| Dimensão | Como medir |
+|---|---|
+| **Correção** | comparação com resposta de referência ou revisão humana |
+| **Fundamentação** | a resposta está sustentada pelo contexto recuperado? |
+| **Formato** | a saída respeita o esquema exigido? |
+| **Segurança** | vaza dado, obedece instrução maliciosa, ofende? |
+| **Custo e latência** | tokens por interação e tempo até o primeiro token |
+
+Métricas automáticas como ROUGE e BLEU comparam texto, não julgam verdade. Usar outro modelo como juiz ajuda a escalar, mas herda o viés do juiz. Amostra humana continua necessária.
+
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| Resposta inventada | modelo sem contexto ou contexto ruim | RAG com fonte e instrução para admitir desconhecimento |
+| Resposta ignora o documento | chunking ruim ou recuperação fraca | ajustar chunk, testar busca e incluir citação |
+| Custo por interação alto | prompt longo e modelo grande | encurtar contexto, cachear e testar modelo menor |
+| Latência alta | modelo grande e saída longa | limitar tokens de saída e usar streaming |
+| Saída muda de formato | prompt ambíguo e temperatura alta | esquema explícito, exemplos e temperatura baixa |
+| Modelo obedece instrução do usuário malicioso | prompt injection | separar instrução de dado e aplicar guardrails |
+| Conhecimento desatualizado | modelo congelado no treino | RAG com base atualizada |
+
+## Trade-offs
+
+RAG é mais barato e atualizável que fine-tuning, mas depende de uma boa base e de recuperação decente. Fine-tuning ensina estilo e formato, não fatos novos; e cria um artefato que precisa ser versionado e reavaliado.
+
+Modelo maior não é automaticamente melhor. Ele custa mais por token, responde mais devagar e pode não ser necessário para classificar, extrair ou resumir.
+
+**Regra prática:** comece com o melhor prompt que você consegue escrever. Se falta conhecimento, RAG. Se falta comportamento consistente, fine-tuning. Meça custo por interação e taxa de erro antes de aumentar o modelo.
+
+Próximo: [Serviços de IA](/aws/servicos-de-ia) para escolher entre modelo pronto, modelo ajustado e API especializada.

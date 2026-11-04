@@ -2,7 +2,9 @@
 title: Comunicação
 ---
 
-Depois de computação e dados, falta o que liga as peças. São os serviços que expõem a aplicação para fora e que fazem componentes conversarem sem ficarem grudados.
+Computação roda, dados persistem, rede e borda entregam. Falta ligar as peças. A pergunta é se a conversa precisa ser **síncrona** — o chamador espera a resposta — ou **assíncrona** — o chamador publica e segue.
+
+Quase todo problema de acoplamento nasce de escolher síncrono onde cabia assíncrono.
 
 ## Os serviços
 
@@ -12,30 +14,61 @@ Depois de computação e dados, falta o que liga as peças. São os serviços qu
 | **SQS** | fila de mensagens | desacoplar produtor e consumidor; absorver picos |
 | **SNS** | publicação/assinatura (pub/sub) | uma mensagem para vários destinos ao mesmo tempo |
 | **EventBridge** | barramento de eventos | arquitetura orientada a evento, roteando por regra |
-| **ELB** | balanceador de carga | distribuir tráfego entre várias instâncias |
+| **Step Functions** | orquestração de fluxo | sequência com estado, retry e espera entre etapas |
+| **Kinesis** | streaming de dados | ingestão contínua de eventos e telemetria |
+| **Amazon MQ** | broker gerenciado | migrar aplicação que já usa AMQP ou JMS |
+
+Balanceamento de carga e entrada HTTP de borda ficam em [Entrega de conteúdo](/aws/entrega-de-conteudo). Aqui o foco é a conversa entre serviços.
 
 ## API Gateway
 
-API Gateway é o ponto de entrada da aplicação. Ele recebe a requisição HTTP, valida autorização, aplica limite de uso e encaminha para o destino — que pode ser uma função Lambda, um contêiner no ECS ou um servidor no EC2.
+API Gateway é o ponto de entrada da aplicação. Ele recebe a requisição HTTP, valida autorização, aplica limite de uso e encaminha para o destino, que pode ser uma função Lambda, um contêiner no ECS ou um servidor no EC2.
 
-O detalhe poderoso: o mesmo API Gateway pode rotear endpoints diferentes para computações diferentes. Um endpoint leve vai para o Lambda; um pesado, para o contêiner.
+O detalhe poderoso: o mesmo API Gateway pode rotear endpoints diferentes para computações diferentes. Um endpoint leve vai para o Lambda; um pesado, para o contêiner. Autorização, chave de API, limite por cliente e cache ficam em um lugar só.
 
 ## Filas e notificações: SQS e SNS
 
-**SQS** é uma fila. O produtor coloca a mensagem; o consumidor retira quando puder. Se o tráfego explode, as mensagens esperam na fila em vez de virar erro para o usuário. A fila é o buffer que desacopla os dois lados.
+**SQS** é uma fila. O produtor coloca a mensagem; o consumidor retira quando puder. Se o tráfego explode, as mensagens esperam na fila em vez de virar erro para o usuário.
 
-**SNS** é pub/sub. Uma publicação é entregue a vários assinantes ao mesmo tempo — é o fan-out: um evento vira várias ações independentes (enviar e-mail, cobrar, atualizar estoque).
+Duas configurações decidem se a fila é útil ou perigosa:
+
+- **Visibility timeout**: o tempo que a mensagem some enquanto o consumidor processa. Curto demais, outra instância pega a mesma mensagem.
+- **Dead-letter queue (DLQ)**: para onde vai a mensagem que falhou várias vezes. Sem DLQ, a mensagem envenenada volta para sempre.
+
+**SNS** é pub/sub. Uma publicação é entregue a vários assinantes ao mesmo tempo: é o fan-out. Um evento vira várias ações independentes (enviar e-mail, cobrar, atualizar estoque).
 
 Combinados, SNS e SQS cobrem a maior parte das arquiteturas distribuídas: o SNS distribui, e cada serviço processa a sua fila.
 
 ## Eventos: EventBridge
 
-EventBridge é um barramento de eventos. Em vez de um serviço chamar o outro diretamente, ele publica um evento ("usuário cadastrado") no barramento. Quem se interessa por aquele evento reage.
+EventBridge é um barramento de eventos. Em vez de um serviço chamar o outro diretamente, ele publica um evento ("usuário cadastrado") no barramento. Quem se interessa por aquele evento reage, conforme uma regra.
 
-Isso deixa a arquitetura mais desacoplada: o emissor não conhece os receptores, e adicionar um novo consumidor não exige mudar quem emite.
+Isso deixa a arquitetura mais desacoplada: o emissor não conhece os receptores, e adicionar um novo consumidor não exige mudar quem emite. O preço é que o fluxo fica menos óbvio: para saber quem reage a um evento, é preciso olhar as regras, não o código do emissor.
 
-![Diagrama: arquitetura AWS heterogênea com clientes, adaptadores primários, domínio e adaptadores secundários](/img/diagramas/aws-arquitetura-evolucao.svg)
+## Orquestração: Step Functions
 
-**Regra prática:** precisa de resposta imediata? API Gateway. Precisa absorver pico ou desacoplar? SQS. Precisa avisar vários destinos? SNS. Precisa reagir a fatos do sistema? EventBridge.
+SQS e EventBridge coordenam mensagens, não um processo com etapas. Quando o fluxo tem ordem, espera, decisão e retry — "cobrar, esperar o pagamento, emitir nota, avisar o cliente" — Step Functions descreve a máquina de estados e executa.
 
-Próximo: [Segurança e custo](/aws/seguranca-e-custo).
+É melhor que encadear funções chamando umas às outras: o estado fica visível, cada etapa tem retry próprio e uma falha não deixa o fluxo pela metade sem registro.
+
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| Mensagem processada duas vezes | entrega pelo menos uma vez (SQS padrão) | consumidor idempotente, com chave única |
+| Mensagem desaparece | visibility timeout curto demais | aumentar o timeout ou estender durante o processamento |
+| Consumidor travado em mensagem ruim | sem DLQ | configurar DLQ e alarme nela |
+| Ordem das mensagens quebrada | fila padrão não garante ordem | usar fila FIFO, aceitando menor throughput |
+| Pico derruba o consumidor | consumidor sem escala e fila sem buffer | aumentar concorrência e usar a fila como amortecedor |
+| Evento não chega | padrão de evento errado | testar a regra no EventBridge antes de publicar |
+| Cliente espera resposta que nunca vem | chamada síncrona em cadeia longa | tornar assíncrono com fila ou evento |
+
+## Trade-offs e armadilhas
+
+Assíncrono desacopla e absorve pico, mas troca uma chamada simples por três problemas novos: duplicação, ordem e falha parcial. Nada disso é gratuito, e nada disso aparece no diagrama.
+
+Síncrono é mais fácil de entender e de depurar, mas acopla disponibilidade: se o serviço de baixo cai, o de cima cai junto. A chamada em cascata transforma uma falha pequena em indisponibilidade geral.
+
+**Regra prática:** precisa de resposta agora? API Gateway síncrono. Pode processar depois? Fila. Precisa avisar vários? SNS. Precisa reagir a um fato? EventBridge. Precisa de etapas com estado? Step Functions. Em qualquer fila, configure DLQ e escreva consumidor idempotente.
+
+Próximo: [Segurança e custo](/aws/seguranca-e-custo) para fechar quem pode publicar e quanto isso custa.

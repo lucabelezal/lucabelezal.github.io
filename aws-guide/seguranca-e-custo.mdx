@@ -12,9 +12,9 @@ As peças:
 
 | Peça | O que é |
 |---|---|
-| **User** | uma identidade para uma pessoa (ou aplicação) |
+| **User** | uma identidade para uma pessoa |
 | **Group** | conjunto de usuários que compartilham permissões |
-| **Role** | identidade assumida temporariamente, usada por serviços |
+| **Role** | identidade assumida temporariamente por um serviço ou por uma pessoa |
 | **Policy** | documento JSON que permite ou nega ações |
 
 O princípio central é o **menor privilégio**: conceder só o necessário e nada além. Um serviço que só lê uma tabela não deve poder apagá-la.
@@ -35,6 +35,25 @@ O modelo divide a segurança em duas partes:
 
 Quanto mais você delega (Lambda, DynamoDB), mais a AWS assume. Quanto mais controla (EC2), mais sobra para você. É o mesmo [espectro de responsabilidade](/aws/mapa-mental#o-espectro-de-responsabilidade) aplicado à segurança.
 
+## Serviços de segurança
+
+O IAM decide quem pode fazer o quê. Os outros serviços cobrem o resto:
+
+| Serviço | O que resolve |
+|---|---|
+| **KMS** | cria e gerencia as chaves de criptografia |
+| **Secrets Manager** | guarda senhas e chaves, com rotação |
+| **WAF** | filtra requisição HTTP maliciosa |
+| **Shield** | protege contra negação de serviço (DDoS) |
+| **GuardDuty** | detecta ameaça a partir de logs e tráfego |
+| **Macie** | encontra dado sensível no S3 |
+| **Inspector** | varre vulnerabilidade em instância e imagem |
+| **Security Hub** | consolida os achados dos outros serviços |
+| **Cognito** | login e identidade para a aplicação |
+| **Artifact** | entrega relatórios de conformidade da AWS |
+
+Nenhum deles substitui permissão bem feita. WAF não conserta uma policy que libera tudo, e GuardDuty avisa depois que a chave vazou. A ordem é: identidade mínima, criptografia, detecção.
+
 ## Custo
 
 A cobrança é por uso, mas o uso tem modelos:
@@ -54,6 +73,19 @@ Para não ser surpreendido:
 - **Tags** — etiquetas nos recursos para saber o que gera cada custo.
 
 **Regra prática:** antes de subir qualquer coisa, configure um alerta de orçamento. O maior risco do iniciante não é o serviço caro, é o recurso esquecido ligado.
+
+## Problemas comuns e solução
+
+| Sintoma | Causa provável | Solução |
+|---|---|---|
+| Acesso negado sem motivo óbvio | policy ausente, limite da organização ou recurso de outra conta | ler a negação no CloudTrail e testar a policy no simulador do IAM |
+| Chave de acesso vazou | chave no código ou no repositório | revogar, rotacionar e trocar por role ou Secrets Manager |
+| Fatura subiu de madrugada | recurso esquecido ou job sem limite | Budgets com alerta, Cost Explorer e tags |
+| Serviço não acessa outro serviço | permissão amarrada a usuário em vez de role | role de serviço com menor privilégio |
+| Sem rastro de quem apagou | CloudTrail desligado | habilitar CloudTrail e reter os logs |
+| Conta comprometida | root em uso e sem MFA | ativar MFA, parar de usar root e revisar acessos |
+
+CloudTrail é o histórico de chamadas da conta: quem fez, o quê, quando e de onde. É o primeiro lugar para olhar quando algo mudou sem explicação. Ele não impede o problema, mas sem ele não há investigação.
 
 ## Suporte
 

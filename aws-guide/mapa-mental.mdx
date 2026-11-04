@@ -38,7 +38,7 @@ Quase todo serviço da AWS é uma sigla. Sem expandir, o nome não diz nada.
 Todo serviço central cai em um destes grupos:
 
 - **Computação** — onde o código executa. EC2, ECS, Fargate, Lambda, EKS.
-- **Dados e objetos** — onde a informação fica. RDS, Aurora, DynamoDB, S3.
+- **Dados e objetos** — onde a informação fica. S3, EBS e EFS para arquivo; RDS, Aurora e DynamoDB para dado consultável.
 - **Comunicação** — como as peças conversam. API Gateway, SQS, SNS, EventBridge, ELB.
 
 ![Diagrama: os três grupos de serviços AWS — computação, dados e objetos, comunicação](/img/diagramas/aws-mapa-grupos.svg)
@@ -55,7 +55,7 @@ Os serviços de computação não são equivalentes. Eles formam um espectro de 
 
 ![Diagrama: espectro de responsabilidade do EC2 ao Lambda](/img/diagramas/aws-espectro-responsabilidade.svg)
 
-Esse espectro é a base do **modelo de responsabilidade compartilhada**: a AWS responde pela segurança *da* nuvem (data centers, hardware, rede); você responde pela segurança *na* nuvem (dados, permissões, configuração). Quanto mais alto no espectro, mais a AWS assume.
+Esse espectro é a base do **modelo de responsabilidade compartilhada**: a AWS responde pela segurança *da* nuvem (data centers, hardware, rede); você responde pela segurança *na* nuvem (dados, permissões, configuração). Quanto mais à direita no espectro (em direção ao Lambda), mais a AWS assume.
 
 **Regra prática:** escolha o ponto do espectro pelo que você quer controlar. Precisa do sistema operacional? EC2. Só quer rodar código? Lambda.
 
@@ -67,7 +67,14 @@ Não existe escolher um serviço para o projeto inteiro. A mesma API pode rotear
 
 O resto do guia detalha cada grupo:
 
+- [Fundamentos de nuvem](/aws/fundamentos-nuvem) — o modelo antes dos serviços.
 - [Computação](/aws/computacao) — onde o código roda.
-- [Dados e objetos](/aws/dados) — onde a informação fica.
+- [EC2 na prática](/aws/ec2) — a máquina virtual por dentro.
+- [Armazenamento](/aws/armazenamento) — S3, EBS, EFS e Glacier.
+- [Bancos de dados](/aws/dados) — onde a informação consultável fica.
+- [Rede e VPC](/aws/rede-vpc) — como os recursos se conectam.
+- [Entrega de conteúdo](/aws/entrega-de-conteudo) — como o usuário chega.
 - [Comunicação](/aws/comunicacao) — como as peças conversam.
 - [Segurança e custo](/aws/seguranca-e-custo) — os temas que os tutoriais pulam.
+
+Próximo: [Fundamentos de nuvem](/aws/fundamentos-nuvem) para transformar o mapa em modelo.

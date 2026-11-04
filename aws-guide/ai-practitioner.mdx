@@ -1,0 +1,68 @@
+---
+title: AI Practitioner (AIF-C01)
+---
+
+O AWS Certified AI Practitioner é a certificação foundational de IA. Ela não cobra treinar modelo nem escrever código de produção: cobra vocabulário, escolha de serviço e noção de risco. É a prova de quem vai usar, avaliar ou conversar sobre IA na AWS.
+
+## A prova em números
+
+| Item | Valor |
+|---|---|
+| Código | AIF-C01 |
+| Questões | 65 (50 contam; 15 não pontuam) |
+| Formato | múltipla escolha, múltipla resposta, ordenação e associação |
+| Duração | 90 minutos |
+| Nota de corte | 700 de 1000 |
+| Nível | foundational |
+
+A pontuação é compensatória: não é preciso passar em cada domínio, só no conjunto. Não há penalidade por chute; deixar em branco é sempre pior.
+
+O formato tem **ordenação** e **associação**, além do múltipla escolha. Ordenar o ciclo de vida de ML ou associar serviço a problema é tão importante quanto decorar nome.
+
+## Os cinco domínios
+
+| Domínio | Peso | O que cai |
+|---|---|---|
+| 1. Fundamentals of AI and ML | 20% | conceitos, casos de uso, ciclo de vida |
+| 2. Fundamentals of GenAI | 24% | tokens, foundation models, limites |
+| 3. Applications of Foundation Models | 28% | design, prompt, fine-tuning, avaliação |
+| 4. Guidelines for Responsible AI | 14% | viés, transparência, explicabilidade |
+| 5. Security, Compliance, and Governance | 14% | proteção de dado, acesso, regulação |
+
+O maior domínio é **aplicações de foundation models** (28%). Somado a GenAI (24%), mais da metade da prova é sobre modelo generativo: como escolher, adaptar, avaliar e operar.
+
+## Como este guia cobre a prova
+
+- Domínio 1 → [IA e machine learning](/aws/ia-e-ml): tipos de aprendizado, ciclo de vida, quando não usar.
+- Domínio 2 → [GenAI e foundation models](/aws/genai-e-foundation-models): tokens, contexto, alucinação.
+- Domínio 3 → [GenAI e foundation models](/aws/genai-e-foundation-models) e [Serviços de IA](/aws/servicos-de-ia): RAG, fine-tuning, Bedrock, SageMaker.
+- Domínio 4 → [IA responsável e governança](/aws/ia-responsavel-e-governanca): viés, explicabilidade, supervisão.
+- Domínio 5 → [IA responsável e governança](/aws/ia-responsavel-e-governanca) e [Segurança e custo](/aws/seguranca-e-custo): IAM, KMS, Macie, CloudTrail, LGPD.
+
+## O que a prova cobra de verdade
+
+Ela é de reconhecimento, não de execução. Três padrões aparecem:
+
+1. **Escolher o serviço para o cenário.** "Precisa extrair dado de formulário" → Textract. "Precisa responder com base em documento interno" → Bedrock com Knowledge Bases. "Precisa de modelo próprio com dado tabular" → SageMaker.
+2. **Distinguir adaptação de modelo.** Prompt não muda conhecimento; RAG adiciona contexto; fine-tuning muda comportamento. Confundir os três derruba questão.
+3. **Reconhecer risco.** PII no prompt, viés em treino, permissão ampla em agente e falta de log são respostas erradas em qualquer cenário.
+
+## O que está fora de escopo
+
+A prova não pede para treinar modelo do zero, escrever pipeline de ML, fazer tuning de hiperparâmetro nem projetar arquitetura de produção. Também não cobra matemática de rede neural.
+
+Isso muda a estratégia: o objetivo é reconhecer o serviço certo e o risco certo para um cenário, não operar o serviço.
+
+## Recursos oficiais
+
+| Recurso | Link |
+|---|---|
+| Exam guide AIF-C01 | [docs.aws.amazon.com](https://docs.aws.amazon.com/aws-certification/latest/ai-practitioner-01/ai-practitioner-01.html) |
+| Página da certificação | [aws.amazon.com](https://aws.amazon.com/certification/certified-ai-practitioner/) |
+| Preparação oficial (Skill Builder) | [skillbuilder.aws](https://skillbuilder.aws/) |
+| Amazon Bedrock | [docs.aws.amazon.com](https://docs.aws.amazon.com/bedrock/) |
+| SageMaker AI | [docs.aws.amazon.com](https://docs.aws.amazon.com/sagemaker/) |
+
+**Regra prática:** decore os cinco domínios e os pesos. Depois, treine a escolha de serviço por cenário; é o que a prova mede.
+
+Fim da trilha. Revise pelo [Mapa mental](/aws/mapa-mental) ou volte ao [início da escada](/aws).
