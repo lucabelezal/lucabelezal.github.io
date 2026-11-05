@@ -1,0 +1,33 @@
+---
+title: O problema
+sidebar_label: 1. O problema
+sidebar_position: 2
+displayed_sidebar: projectsSidebar
+description: O que um encurtador de URL faz e as perguntas que fecham o escopo antes de qualquer decisão de arquitetura.
+---
+
+## O problema
+
+Dada uma URL longa, devolver uma URL curta que redireciona para a original. Exemplo: `https://www.systeminterview.com/q=chatsystem&c=loggedin&v=v3&l=long` vira `https://tinyurl.com/y7keocwj`; clicar no alias leva à URL longa.
+
+## Entender o problema e fechar o escopo
+
+Perguntas de system design nascem **abertas de propósito**. Antes de desenhar qualquer coisa, trocar premissas com quem pergunta é o que separa um sistema real de um chute.
+
+| Pergunta | Resposta que fecha o escopo |
+|---|---|
+| Como funciona? | Cria-se um alias curto; clicar nele redireciona para a URL original. |
+| Qual o volume? | 100 milhões de URLs novas por dia. |
+| Quão curta é a URL? | O mais curto possível. |
+| Quais caracteres são permitidos? | `0-9`, `a-z`, `A-Z` (62 caracteres). |
+| Dá para apagar ou editar? | Não. Simplifica: só cria e lê. |
+
+**Casos de uso:**
+
+- **Encurtar:** dada uma URL longa, devolver uma curta.
+- **Redirecionar:** dada uma URL curta, mandar o cliente para a longa.
+- Alta disponibilidade, escalabilidade e tolerância a falhas.
+
+## Regra prática
+
+Escopo fechado é o primeiro entregável. Sem ele, toda decisão de arquitetura vira chute — e cada capítulo seguinte (estimativa, schema, hash) depende das premissas fixadas aqui.

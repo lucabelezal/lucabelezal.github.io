@@ -1,0 +1,46 @@
+---
+title: Design de alto nível
+sidebar_label: 3. Design de alto nível
+sidebar_position: 4
+displayed_sidebar: projectsSidebar
+description: Endpoints da API, a escolha entre 301 e 302 e a função de hash que mapeia URL longa em curta.
+---
+
+## Endpoints da API
+
+Dois endpoints REST resolvem o caso de uso:
+
+**Encurtar** — `POST /api/v1/data/shorten`
+
+- parâmetro: `{ "longUrl": "..." }`
+- retorno: a URL curta
+
+**Redirecionar** — `GET /api/v1/{shortUrl}`
+
+- retorno: a URL longa, via redirecionamento HTTP
+
+## Redirecionamento: 301 ou 302
+
+Ao receber a URL curta, o servidor responde com um redirecionamento para a longa.
+
+![Diagrama: fluxo de redirecionamento 301 — cliente, servidor de URL curta e site original](/img/diagramas/us-redirect-301.svg)
+
+A escolha entre 301 e 302 muda o comportamento do navegador:
+
+- **301 (permanente):** o navegador guarda em cache. As próximas visitas à mesma URL **não passam pelo encurtador** — vão direto ao destino. Reduz a carga no servidor, mas cega a analítica.
+- **302 (temporário):** o navegador volta ao encurtador a cada clique. Mais carga, porém **permite contar cliques e origem**.
+
+**Regra prática:** priorize carga do servidor → 301. Priorize analítica → 302.
+
+## Do curto ao longo
+
+A forma mais direta de pensar o redirect é uma **tabela hash** `shortURL → longURL`: dada a chave curta, devolve a longa. Serve para começar; memória é cara e limitada, então em produção isso vira banco ([Deep dive](/projects/url-shortener/deep-dive)).
+
+## Encurtando: a função de hash
+
+Para `tinyurl.com/{hashValue}`, precisamos de uma função que mapeie a URL longa a um valor curto, com duas garantias:
+
+- cada URL longa produz **um** valor;
+- cada valor **volta** para a URL longa.
+
+![Diagrama: a URL longa passa pela função de hash e vira uma URL curta](/img/diagramas/us-hash-funcao.svg)

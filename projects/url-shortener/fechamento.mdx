@@ -1,0 +1,26 @@
+---
+title: Fechamento
+sidebar_label: 5. Fechamento
+sidebar_position: 6
+displayed_sidebar: projectsSidebar
+description: O que fica de fora do escopo e o que aprofundar depois.
+---
+
+Com tempo extra, vale levantar:
+
+- **Rate limiter:** usuários maliciosos podem inundar o serviço de pedidos; limitar por IP protege.
+- **Escala dos servidores web:** a camada web é sem estado — cresce adicionando ou removendo servidores.
+- **Escala do banco:** replicação e sharding.
+- **Analítica:** quantos cliques, quando e de onde — exige 302 em vez de 301.
+- **Disponibilidade, consistência e confiabilidade:** a base de qualquer sistema grande.
+
+## O que ficou de fora
+
+- O gerador de ID distribuído como problema à parte (faixas, Snowflake) — vira capítulo de [fundamentos](/fundamentals) quando o projeto crescer.
+- O código de exemplo e o repositório no GitHub entram em um passo futuro.
+
+## Referências
+
+- [ByteByteGo — Design A URL Shortener](https://bytebytego.com/courses/system-design-interview/design-a-url-shortener)
+- [RESTful API Tutorial](https://www.restapitutorial.com/index.html)
+- [Bloom filter](https://en.wikipedia.org/wiki/Bloom_filter)

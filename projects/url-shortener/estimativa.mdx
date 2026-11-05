@@ -1,0 +1,101 @@
+---
+title: Estimativa de capacidade
+sidebar_label: 2. Estimativa
+sidebar_position: 3
+displayed_sidebar: projectsSidebar
+description: Escritas, leituras, volume e storage — e a decisão que cada número força (cache, sharding, custo).
+---
+
+**Estimativa de ordem de grandeza** ("back-of-the-envelope"): descobrir se o sistema é de milhares ou de bilhões de registros *antes* de escolher a tecnologia. Não precisa acertar o número — precisa acertar a **ordem** e saber qual decisão ela força. O método geral está em [Estimativa back-of-the-envelope](/fundamentals/estimativa).
+
+**Premissas (declare-as antes de calcular):**
+
+- 100 milhões de URLs novas por dia
+- proporção leitura:escrita = 10:1
+- vida útil = 10 anos
+- URL média = 100 bytes
+
+## Conta 1 — Escritas por segundo
+
+Converter "por dia" para "por segundo" divide pelo número de segundos do dia:
+
+```
+1 dia = 24 h × 3.600 s = 86.400 s
+100.000.000 ÷ 86.400 ≈ 1.157   →   ~1.160 escritas/s
+```
+
+## Conta 2 — Leituras por segundo
+
+Cada escrita gera cerca de 10 leituras:
+
+```
+1.160 × 10 = 11.600 leituras/s
+```
+
+Isso é a **média**. Tráfego real tem pico de 2 a 3 vezes a média — dimensiona-se pelo pico, não pela média.
+
+## Conta 3 — Volume acumulado em 10 anos
+
+```
+100.000.000/dia × 365 dias = 36.500.000.000/ano   (36,5 bi/ano)
+36,5 bi × 10 anos          = 365.000.000.000       (365 bilhões de registros)
+```
+
+## Conta 4 — Armazenamento
+
+```
+365.000.000.000 registros × 100 bytes = 36.500.000.000.000 bytes = 36,5 TB
+```
+
+**Atenção:** 36,5 TB é o **piso** — conta só o `longURL`. O sistema real carrega mais:
+
+- `id` (8 bytes) + `shortURL` (7 bytes) + overhead de linha → ~+20%
+- índice em `shortURL` (B-tree) → +30% a 50%
+- replicação para alta disponibilidade (2–3 cópias) → ×2 a ×3
+
+Ordem de grandeza realista: **~70 a 110 TB**.
+
+## Resumo das contas
+
+| Conta | Fórmula | Resultado |
+|---|---|---|
+| Escritas/s | 100M ÷ 86.400 | ~1.160/s |
+| Leituras/s | 1.160 × 10 | ~11.600/s |
+| Registros em 10 anos | 100M × 365 × 10 | 365 bilhões |
+| Armazenamento (piso) | 365 bi × 100 B | 36,5 TB |
+| Armazenamento (realista) | piso × 2 a 3 | ~70 a 110 TB |
+
+## O que cada número decide
+
+- **11.600 leituras/s** → cache na frente do banco é obrigatório, não opcional.
+- **365 bilhões de linhas** → sharding; não cabe confortavelmente em um nó só.
+- **70 a 110 TB** → decisão de storage e de custo.
+- **pico acima da média** → folga (headroom) e autoscaling.
+
+## Dimensionamento do banco
+
+A estimativa vira schema e partição:
+
+- **Chave primária:** `id BIGINT` (64 bits). `INT` estoura em 2,1 bilhões — 365 bilhões exigem 64 bits.
+- **Índices:**
+  - PK em `id`.
+  - **Único em `shortURL`** — o redirect consulta por `shortURL`; é o índice mais crítico.
+  - Para deduplicar `longURL`, indexar o **hash da URL** (a URL crua é grande demais para indexar bem).
+- **Sharding:** particionar por hash do `id` distribui uniformemente. Exemplo: 4 shards → ~91 bilhões de linhas cada. A técnica por trás é o [consistent hashing](/fundamentals/consistent-hashing).
+- **QPS no banco:** das 11.600 leituras/s, com acerto de cache de 80–90%, só **~1.160 a 2.320 QPS** chegam ao banco. É esse cálculo que paga o cache.
+- **Gargalo real:** não é só o tamanho — é manter latência baixa sob 11.600 requisições/s.
+
+## Custo aproximado na AWS
+
+Ordem de grandeza, **ilustrativa** — preços mudam; confirme no AWS Pricing Calculator antes de decidir.
+
+| Item | Base de cálculo | Ordem de grandeza |
+|---|---|---|
+| Storage | 36,5 TB em EBS gp3 (~US$0,08/GB-mês) | ~US$2,9 mil/mês (1 cópia) |
+| Storage com replicação | 3 cópias | ~US$8,8 mil/mês |
+| Banco gerenciado | DynamoDB on-demand: storage + RCU/WCU | varia com o tráfego de 11.600 leituras/s |
+| Cache | ElastiCache (Redis) | absorve a maior parte das leituras |
+| Compute | instâncias atrás do balanceador | escala com o pico, não com a média |
+| Egress | tráfego de saída por redirect | cresce com os cliques |
+
+O ponto didático não é o valor exato, e sim a estrutura: **storage, compute, cache e saída escalam de forma diferente**, e a replicação multiplica o custo de storage. Para os conceitos por trás dessas escolhas, veja [Segurança e custo](/aws/seguranca-e-custo) no guia AWS.

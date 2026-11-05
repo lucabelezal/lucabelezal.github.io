@@ -20,17 +20,28 @@ vivas (sem data de publicação), não como posts de blog. Invariantes gerais em
 ```
 projects/
   index.mdx                      # vitrine (ProjectsHome) — cards vêm de projectsTrack.ts
-  <slug>.mdx                     # uma página por projeto
+  <slug>.mdx                     # projeto de uma página só
+  <slug>/                        # projeto com vários capítulos
+    index.mdx                    # visão geral + roadmap
+    <capitulo>.mdx               # um capítulo por arquivo
 ```
 
-Uma página por projeto. Só crie pasta + `_category_.yml` quando o projeto
-realmente tiver vários capítulos.
+Projeto de uma página só: `projects/<slug>.mdx`. Projeto com capítulos: pasta
+`projects/<slug>/` com `index.mdx` (visão geral) + um `.mdx` por capítulo.
 
-Nav da área: `sidebarsProjects.ts` (sidebar único da área).
+Nav da área: `sidebarsProjects.ts` (sidebar único da área). Projeto com capítulos
+vira uma `category` com `link` para o index:
 
 ```ts
 const sidebars: SidebarsConfig = {
-  projectsSidebar: ['url-shortener'],
+  projectsSidebar: [
+    {
+      type: 'category',
+      label: 'URL Shortener',
+      link: {type: 'doc', id: 'url-shortener/index'},
+      items: ['url-shortener/o-problema', 'url-shortener/estimativa'],
+    },
+  ],
 };
 ```
 
@@ -79,7 +90,7 @@ diagramas sim.
 
 ## Projeto novo — checklist
 
-1. Criar `projects/<slug>.mdx` (`displayed_sidebar: projectsSidebar`).
-2. Adicionar `<slug>` em `sidebarsProjects.ts`.
+1. Criar o projeto: `projects/<slug>.mdx` (uma página) ou `projects/<slug>/index.mdx` + capítulos.
+2. Registrar em `sidebarsProjects.ts` (página ou `category`).
 3. Adicionar entrada em `src/data/projectsTrack.ts` (a home lê daí).
 4. Rodar `npm run build` antes de abrir PR.
